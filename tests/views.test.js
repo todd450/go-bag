@@ -34,3 +34,27 @@ test("a refill due within a week becomes a next step", () => {
   run(`S.plan.meds[0].refill = "${day(30)}"`);
   assert.ok(!run(`nextActions(model()).acts.some(a => a.kind === "refill")`));
 });
+
+test("the add-a-kit form folds into a button once there is a kit", () => {
+  const empty = load().run("viewKits(model())");
+  assert.match(empty, /data-submit="newKit"/, "no kits: the form is open");
+  assert.doesNotMatch(empty, /data-act="cancelKit"|data-act="addKit"/, "no kits: nothing to cancel back to");
+
+  const { run } = load({ fixture: "tests/household" });
+  let html = run("viewKits(model())");
+  assert.match(html, /data-act="addKit"/);
+  assert.doesNotMatch(html, /data-submit="newKit"/);
+
+  run("ACT.addKit()");
+  html = run("viewKits(model())");
+  assert.match(html, /data-submit="newKit"/);
+  assert.match(html, /data-act="cancelKit"/);
+  assert.doesNotMatch(html, /data-act="addKit"/);
+
+  run("ACT.cancelKit()");
+  assert.match(run("viewKits(model())"), /data-act="addKit"/);
+
+  run("S.canWrite = false; S.addKit = true");
+  html = run("viewKits(model())");
+  assert.doesNotMatch(html, /data-act="addKit"|data-submit="newKit"/, "read-only: neither");
+});
