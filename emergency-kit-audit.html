@@ -1,0 +1,1859 @@
+<title>Emergency Kit Audit</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: field-manual clipboard — sticky tab strip over one working column; kits read as manila inventory tags */
+:root {
+  --paper: #EDF0EA;
+  --card: #F9FBF6;
+  --ink: #17201B;
+  --ink-2: #4A5650;
+  --rule: #C9D0C4;
+  --accent: #1F5BA8;
+  --accent-ink: #FFFFFF;
+  --meter: #7D8A82;
+  --tag: #EFE3BC;
+  --tag-ink: #3D3418;
+  --good: #2C7A4B;
+  --warn: #A86A12;
+  --bad: #B42318;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #111613; --card: #19201C; --ink: #E4EAE3; --ink-2: #A0ACA4; --rule: #2E3832;
+    --accent: #8AB4F8; --accent-ink: #0B1526; --meter: #8A968E; --tag: #3A3320; --tag-ink: #EDE2BF;
+    --good: #5BC489; --warn: #E2AE4A; --bad: #F2695C; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #111613; --card: #19201C; --ink: #E4EAE3; --ink-2: #A0ACA4; --rule: #2E3832;
+  --accent: #8AB4F8; --accent-ink: #0B1526; --meter: #8A968E; --tag: #3A3320; --tag-ink: #EDE2BF;
+  --good: #5BC489; --warn: #E2AE4A; --bad: #F2695C; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--paper); color: var(--ink); font: 14px/1.45 var(--f-body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper); }
+h1, h2, h3 { font-weight: 600; text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-family: var(--f-display); font-weight: 700; letter-spacing: .01em; }
+h2 { font-size: 1.1rem; letter-spacing: -.005em; }
+h3 { font-size: 1rem; }
+.wiz h2 { font-size: 1.3rem; }
+h3 { font-size: 1.1rem; }
+p { margin: 0; }
+a { color: var(--accent); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-2); }
+.small { font-size: .85rem; }
+.eyebrow { font-size: .78rem; font-weight: 600; color: var(--ink-2); }
+
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); border-bottom: 1px solid var(--rule); }
+.top-in, .wrap { max-width: 1100px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.top-in { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; padding-block: 8px 0; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark { width: 18px; height: 18px; background: #E0612A; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.brand h1 { font-size: 1.25rem; text-transform: uppercase; }
+.hdr-score { font-size: .85rem; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; }
+.hdr-score b { font-family: var(--f-display); font-size: 1.3rem; }
+nav.tabs { display: flex; gap: 4px; overflow-x: auto; width: 100%; }
+nav.tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 6px 10px 5px; font-weight: 600; font-size: .9rem; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+nav.tabs button[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+nav.tabs button:hover { color: var(--ink); }
+
+main.wrap { padding-block: 14px 48px; display: grid; gap: 16px; }
+section.view { display: grid; gap: 16px; min-width: 0; }
+.stack { display: grid; gap: 8px; min-width: 0; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.panel { background: var(--card); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+.notice { border-left: 4px solid var(--accent); background: var(--card); padding: 8px 12px; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.notice p { max-width: 70ch; }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 4px; padding: 6px 12px; font-weight: 600; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--rule); }
+.btn.ghost:hover { border-color: var(--ink-2); }
+.btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+.btn.sm { padding: 2px 8px; font-size: .8rem; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.x { background: none; border: 0; color: var(--ink-2); cursor: pointer; padding: 4px 8px; border-radius: 4px; font-size: 1.1rem; line-height: 1; }
+.x:hover { color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, transparent); }
+
+input[type=text], input[type=number], input[type=month], input[type=date], input[type=tel], select, textarea { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 5px 8px; min-width: 0; }
+textarea { width: 100%; min-height: 56px; resize: vertical; }
+label.f { display: grid; gap: 4px; font-size: .85rem; color: var(--ink-2); }
+label.f > input, label.f > select { color: var(--ink); font-size: .95rem; }
+
+/* Overview */
+.ell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sum { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 10px 24px; }
+.sum-score { display: grid; gap: 6px; align-content: start; }
+.sum-note { grid-column: 1 / -1; border-top: 1px dashed var(--rule); padding-top: 8px; }
+@media (max-width: 760px) { .sum { grid-template-columns: 1fr; } }
+.tab-n { font-size: .75rem; font-variant-numeric: tabular-nums; color: var(--accent); }
+.next { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 12px 28px; }
+.next .sum-score { border-left: 1px dashed var(--rule); padding-left: 20px; }
+@media (max-width: 760px) { .next { grid-template-columns: 1fr; } .next .sum-score { border-left: 0; padding-left: 0; border-top: 1px dashed var(--rule); padding-top: 10px; } }
+.acts { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--rule); }
+.act { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 6px 12px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.act-n { width: 30px; height: 30px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); display: grid; place-items: center; }
+.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.ic-s { width: 14px; height: 14px; }
+.cat-td { display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.shop-chk > .ic { color: var(--ink-2); margin-top: 1px; }
+.act-b { display: grid; gap: 2px; min-width: 0; }
+.act-b b { font-size: 1rem; font-weight: 600; }
+.act-do { display: flex; align-items: center; gap: 10px; padding-top: 1px; }
+.gain { color: var(--good); font-size: .85rem; font-weight: 500; }
+@media (max-width: 560px) { .act { grid-template-columns: 30px minmax(0, 1fr); } .act-do { grid-column: 2; } }
+.score { display: flex; align-items: baseline; gap: 6px; }
+.score .num { font-family: var(--f-display); font-size: 3.2rem; font-weight: 700; line-height: .9; }
+.score .of { color: var(--ink-2); }
+.gaps { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); column-gap: 20px; }
+.gaps li { display: grid; grid-template-columns: minmax(0, 7.5em) auto minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 3px 0; border-bottom: 1px solid var(--rule); font-size: .88rem; }
+.gaps li b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gaps .amt { font-variant-numeric: tabular-nums; font-size: .8rem; white-space: nowrap; }
+.gaps .why { font-size: .8rem; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+
+.ov-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 24px; align-items: start; }
+@media (max-width: 900px) { .ov-cols { grid-template-columns: 1fr; } }
+.sec-h { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
+.grp { display: grid; gap: 4px; }
+.grp + .grp { margin-top: 10px; }
+.grp-h { display: grid; gap: 2px; }
+
+.hz { display: grid; border-top: 1px solid var(--rule); }
+.hz-row { display: grid; grid-template-columns: minmax(0, 1fr) 104px 56px 36px 24px; gap: 10px; align-items: center; padding: 3px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
+.hz-row.off { opacity: .55; }
+.hz-name, .kit-name { display: flex; gap: 8px; align-items: baseline; background: none; border: 0; padding: 2px 0; text-align: left; cursor: pointer; }
+.hz-name b, .kit-name b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.hz-name .mode, .kit-name .mode { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.hz-name:hover b, .kit-name:hover b { color: var(--accent); }
+.mode { font-size: .78rem; color: var(--ink-2); }
+.bar { height: 7px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--c); }
+.pct { font-family: var(--f-mono); font-size: .82rem; text-align: right; font-weight: 500; }
+.hz-row .x { padding: 2px 6px; font-size: 1rem; }
+.hz-detail { grid-column: 1 / -1; display: grid; gap: 6px; padding: 2px 0 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; border: 1px solid var(--rule); color: var(--ink); border-radius: 999px; padding: 2px 9px 2px 7px; font-variant-numeric: tabular-nums; }
+.chip .ic { color: var(--ink-2); }
+.chip.full { border-color: color-mix(in srgb, var(--good) 45%, var(--rule)); background: color-mix(in srgb, var(--good) 9%, transparent); }
+.chip.full .ic { color: var(--good); }
+.lvl { font-size: .78rem; padding: 2px 4px; }
+.hz-lvl.alarm { color: var(--bad); font-weight: 600; }
+.hz-lvl .pri { color: var(--accent); }
+.hz-like { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--ink-2); }
+@media (max-width: 560px) {
+  .hz-row { grid-template-columns: minmax(0, 1fr) 100px 36px 24px; }
+  .hz-row .bar, .hz-name .mode { display: none; }
+  .hz-name, .hz-name b { white-space: normal; }
+}
+.kit-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px 40px; gap: 0 10px; align-items: center; padding: 3px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
+.kit-row .kit-miss { grid-column: 1 / -1; margin-top: -2px; }
+.kit-pct { font-family: var(--f-display); font-size: 1.9rem; font-weight: 700; line-height: 1; }
+.exp-row { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-bottom: 1px solid var(--rule); font-size: .88rem; }
+.exp-row .flag { flex: none; font-size: .72rem; }
+
+/* Kits */
+.kits-grid { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 860px) { .kits-grid { grid-template-columns: 1fr; } }
+.tags { display: grid; gap: 6px; }
+.tag { position: relative; text-align: left; background: var(--tag); color: var(--tag-ink); border: 1px solid color-mix(in srgb, var(--tag-ink) 25%, transparent); border-radius: 4px 12px 12px 4px; padding: 6px 10px 6px 26px; cursor: pointer; display: grid; gap: 0; width: 100%; line-height: 1.3; }
+.tag::before { content: ""; position: absolute; left: 9px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--paper); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tag-ink) 40%, transparent); }
+.tag[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tag { padding-right: 54px; }
+.tag-pct { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-family: var(--f-display); font-size: 1.3rem; font-weight: 700; }
+.tag b { font-family: var(--f-display); font-size: 1.12rem; letter-spacing: .01em; }
+.tag .mono { font-size: .68rem; opacity: .85; }
+.photos { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.photos img { width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid var(--rule); flex: none; background: var(--rule); }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); }
+table { border-collapse: collapse; width: 100%; min-width: 820px; font-size: .85rem; }
+th { text-align: left; font-weight: 600; font-size: .78rem; color: var(--ink-2); padding: 5px 6px; border-bottom: 1px solid var(--rule); }
+td { padding: 1px 4px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+td input:not([type=checkbox]), td select { width: 100%; padding: 3px 5px; background: transparent; border-color: transparent; }
+td input:hover, td select:hover, td input:focus, td select:focus { border-color: var(--rule); background: var(--paper); }
+td.num input { text-align: right; font-family: var(--f-mono); }
+td .flag { font-size: .78rem; font-weight: 500; }
+.flag.expired { color: var(--bad); } .flag.soon { color: var(--warn); }
+td.val { padding-right: 8px; }
+.val-in { display: flex; align-items: center; gap: 6px; }
+.vbar { flex: 1; height: 6px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+.vbar i { display: block; height: 100%; background: var(--accent); }
+.val-in b { width: 2.2em; text-align: right; font-weight: 500; }
+.val-note { display: block; font-size: .7rem; line-height: 1.2; color: var(--ink-2); padding-bottom: 2px; }
+.th-sort { white-space: nowrap; background: none; border: 0; padding: 0; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.th-sort[aria-pressed="true"] { color: var(--ink); }
+.th-sort:hover { color: var(--accent); }
+tr.addrow td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.working { display: flex; gap: 10px; align-items: center; }
+.pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite; flex: none; }
+@keyframes pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+
+/* Household */
+.hh-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.people { display: grid; gap: 6px; }
+.person { display: grid; grid-template-columns: minmax(0, 1.2fr) 76px minmax(0, 2fr) 32px; gap: 6px; align-items: center; padding-bottom: 6px; border-bottom: 1px solid var(--rule); }
+.pneeds { grid-column: 1 / -1; font-size: .72rem; color: var(--ink-2); }
+.conds { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.conds label { display: inline-flex; gap: 5px; align-items: center; font-size: .8rem; color: var(--ink-2); cursor: pointer; }
+.pet { display: grid; grid-template-columns: minmax(0, 1fr) 90px 32px; gap: 8px; align-items: center; max-width: 420px; }
+@media (max-width: 640px) { .person { grid-template-columns: minmax(0, 1fr) 76px 32px; } .person .needs { grid-column: 1 / -1; grid-row: 2; } .person .pneeds { grid-row: 3; } .person .conds { grid-row: 4; } }
+.cond-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; align-items: start; }
+.cond { border: 1px solid var(--rule); border-radius: 4px; background: var(--paper); }
+.cond.on { border-color: var(--accent); }
+.cond-t { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; width: 100%; text-align: left; background: none; border: 0; padding: 7px 10px 7px 34px; cursor: pointer; position: relative; }
+.cond-t::before { content: ""; position: absolute; left: 10px; top: 9px; width: 14px; height: 14px; border: 1.5px solid var(--ink-2); border-radius: 3px; }
+.cond.on .cond-t::before { background: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--paper); }
+.who-names { font-size: .78rem; color: var(--ink-2); }
+.who { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 0 10px 8px 34px; }
+.who label { display: inline-flex; gap: 6px; align-items: center; font-size: .85rem; cursor: pointer; }
+.who input { accent-color: var(--accent); }
+.wiz { max-width: 760px; gap: 14px; border-color: var(--accent); }
+.wiz-dots { display: flex; gap: 4px; }
+.wiz-dots i { width: 22px; height: 4px; border-radius: 2px; background: var(--rule); }
+.wiz-dots i.on { background: var(--accent); }
+.wiz-nav { border-top: 1px dashed var(--rule); padding-top: 10px; }
+
+/* Shopping */
+.shop { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--rule); }
+.shop-row { display: grid; grid-template-columns: minmax(0, 1fr) 84px 200px 28px; gap: 4px 12px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--rule); }
+.shop-chk { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; min-width: 0; }
+.shop-chk input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--accent); flex: none; cursor: pointer; }
+.shop-chk > span { display: grid; gap: 1px; min-width: 0; }
+.shop-row.done b { text-decoration: line-through; color: var(--ink-2); font-weight: 500; }
+.shop-kit select { width: 100%; font-size: .85rem; }
+.shop-meta { display: grid; justify-items: end; gap: 1px; font-variant-numeric: tabular-nums; }
+.shop-tip { color: var(--ink-2); max-width: 64ch; margin-top: 2px; }
+.shop-row.over { opacity: .6; }
+.shop-cut { padding: 10px 0 4px; border-bottom: 1px dashed var(--rule); }
+.shop-sum { margin: 0; }
+.shop-tools { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
+.shop-tools label { display: flex; gap: 6px; align-items: center; color: var(--ink-2); }
+#shop-budget { width: 80px; }
+.shop-add { display: flex; gap: 8px; }
+.shop-add input { flex: 1; }
+@media (max-width: 560px) {
+  .shop-row { grid-template-columns: minmax(0, 1fr) 28px; }
+  .shop-meta { grid-column: 1; grid-row: 2; display: flex; gap: 10px; justify-content: flex-start; padding-left: 56px; }
+  .shop-kit { grid-column: 1; grid-row: 3; padding-left: 56px; }
+  .shop-kit:empty, .shop-meta:empty { display: none; }
+  .shop-row > .x { align-self: start; }
+}
+.reasons { display: grid; gap: 0; }
+.reasons div { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
+@media (max-width: 640px) { .reasons div { grid-template-columns: 1fr; gap: 2px; } }
+
+/* Review */
+.review { max-width: 72ch; display: grid; gap: 10px; }
+.plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; align-items: start; }
+::placeholder { color: color-mix(in srgb, var(--ink-2) 50%, transparent); opacity: 1; }
+.hint { font-size: .78rem; color: var(--ink-2); font-weight: 400; }
+.med { display: grid; grid-template-columns: minmax(0, 140px) minmax(0, 1fr) 28px; gap: 6px; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--rule); }
+.med select { grid-area: 1 / 1; } .med input[type=text] { grid-area: 1 / 2; } .med .x { grid-area: 1 / 3; }
+.med input[type=date] { grid-area: 2 / 1; } .med .med-st { grid-area: 2 / 2 / 3 / 4; }
+.med-st.bad { color: var(--bad); font-weight: 600; } .med-st.warn { color: var(--warn); font-weight: 600; }
+.review h3 { margin-top: 10px; }
+.review ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+
+td.sel, th.sel { width: 40px; text-align: center; padding-left: 10px; }
+td.sel input, th.sel input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
+.selbar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; padding: 10px 14px; border: 1px solid var(--bad); border-radius: 6px; background: color-mix(in srgb, var(--bad) 7%, var(--card)); }
+.selbar b { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.hdr-score.up b { color: var(--good); transition: color .2s; }
+.hdr-score b { transition: color .8s; }
+.shop-row.flash { animation: flash 1.4s ease-out; }
+@keyframes flash { from { background: color-mix(in srgb, var(--good) 22%, transparent); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .shop-row.flash { animation: none; } .hdr-score b { transition: none; } }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 4px; z-index: 20; max-width: calc(100% - 32px); font-size: .9rem; display: flex; gap: 14px; align-items: center; }
+.toast button { background: none; color: inherit; border: 1px solid currentColor; border-radius: 3px; padding: 3px 10px; font-weight: 600; cursor: pointer; }
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><h1>Emergency Kit Audit</h1></div>
+    <div class="hdr-score" id="hdr-score"></div>
+    <nav class="tabs" id="tabs" aria-label="Sections">
+      <button data-act="tab" data-v="overview">Readiness</button>
+      <button data-act="tab" data-v="kits">Kits</button>
+      <button data-act="tab" data-v="shop">Shopping<span class="tab-n" id="tab-shop-n"></span></button>
+      <button data-act="tab" data-v="household">Household</button>
+      <button data-act="tab" data-v="plan">Plan</button>
+    </nav>
+  </div>
+</header>
+<main class="wrap">
+  <div id="banner"></div>
+  <section class="view" id="v-overview"></section>
+  <section class="view" id="v-kits" hidden></section>
+  <section class="view" id="v-shop" hidden></section>
+  <section class="view" id="v-household" hidden></section>
+  <section class="view" id="v-plan" hidden></section>
+</main>
+<input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
+<div class="toast" id="toast" role="status" hidden><span id="toast-msg"></span><button id="toast-act" type="button" hidden></button></div>
+
+<script>
+/* ---------- reference data ---------- */
+const CATS = {
+  water: ["Water", "bottled water, water pouches or jugs (filters and purification tablets go here too but don't add litres)"],
+  food: ["Food", "ration bars, canned, freeze-dried or shelf-stable food"],
+  first_aid: ["First aid", "general first-aid kits, adhesive bandages, gauze, antiseptic, tweezers, gloves"],
+  wound: ["Wound care", "saline wound and eye wash, butterfly closures, non-stick pads, antibiotic ointment, splinter tweezers"],
+  trauma: ["Bleeding control", "tourniquet, hemostatic or compression gauze, pressure (Israeli) bandage, trauma shears"],
+  burns: ["Burn care", "burn gel, burn dressings, non-stick pads"],
+  splint: ["Splints & sprains", "SAM splint, elastic wrap, triangular bandage or sling, instant cold packs"],
+  cpr: ["CPR & airway", "CPR face shield or pocket mask, AED"],
+  allergy: ["Allergy & anaphylaxis", "epinephrine auto-injectors, antihistamines"],
+  bites: ["Bites & stings", "tick remover, sting relief wipes, hydrocortisone cream, instant cold pack"],
+  poison: ["Poison safety", "Poison Control number saved and posted, locking medicine box, cabinet latches, carbon monoxide alarm"],
+  diagnostics: ["Health monitoring", "thermometer, pulse oximeter, blood-pressure cuff, glucose meter and test strips"],
+  medications: ["Medications", "prescriptions, pain relievers, allergy meds, spare glasses"],
+  light: ["Light", "flashlights, headlamps, lanterns, light sticks"],
+  power: ["Power", "batteries, power banks, solar or crank chargers, cables"],
+  communication: ["Comms", "NOAA or hand-crank radio, whistle, two-way radios, printed contact list"],
+  documents: ["Documents & cash", "copies of IDs and insurance, cash, USB drive of records"],
+  shelter: ["Shelter & warmth", "emergency blankets, sleeping bags, tarp, tent, hand warmers"],
+  clothing: ["Clothing", "change of clothes, rain gear, sturdy shoes, gloves, hats"],
+  hygiene: ["Hygiene", "wipes, soap, sanitizer, toothbrush, menstrual products"],
+  sanitation: ["Sanitation", "heavy garbage bags, bucket toilet, toilet paper, bleach"],
+  tools: ["Tools", "multi-tool, knife, duct tape, utility shut-off wrench, rope, lighter or matches, plastic sheeting"],
+  masks: ["Masks", "N95 or P100 respirators"],
+  fire_safety: ["Fire safety", "fire extinguisher, escape ladder, fire blanket"],
+  car: ["Vehicle gear", "jumper cables, tire inflator, ice scraper, tow strap, flares, shovel"],
+  comfort: ["Everyday comfort", "phone charger and cable, snacks, wet wipes, tissues, umbrella, spare socks or sweatshirt, pen and paper, plastic bags, sunscreen, lip balm"],
+  pets: ["Pet supplies", "pet food, leash, carrier, bowls, pet medications"],
+  baby: ["Baby supplies", "diapers, formula, bottles, baby wipes"],
+  kids: ["Kids' comfort", "comfort toy, cards, books, crayons, games for children"],
+  other: ["Other", "anything that fits nowhere else"],
+};
+/* Line icons, one per category plus a few for setup steps. 24×24, drawn with the current text colour. */
+const ICONS = {
+  water: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
+  food: '<ellipse cx="12" cy="6" rx="6" ry="2.2"/><path d="M6 6v12c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V6M6 11c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2"/>',
+  first_aid: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5h6v2M12 10.5v6M9 13.5h6"/>',
+  trauma: '<rect x="3" y="9" width="18" height="6" rx="1.5"/><path d="M9 9V6.5h6V9M9 15v2.5h6V15"/>',
+  burns: '<path d="M12 21a6 6 0 0 0 6-6c0-4-3-5.5-3.5-9-2 1.5-3 3.5-3 5.5-1-.5-1.8-1.5-2-2.8C7.8 10.2 6 12.5 6 15a6 6 0 0 0 6 6z"/>',
+  splint: '<rect x="9" y="3" width="6" height="18" rx="1.5"/><path d="M7 8h10M7 16h10"/>',
+  cpr: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/><path d="M7 12h2.5l1.2-2 2 4 1.3-2H17"/>',
+  allergy: '<path d="M14 4l6 6M17 7l-9 9-2.5-.5L5 13l9-9M8 16l-4 4"/>',
+  diagnostics: '<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/>',
+  medications: '<rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/>',
+  light: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>',
+  power: '<rect x="3" y="7" width="16" height="10" rx="2"/><path d="M21 10.5v3M12 9l-2.5 3.5h3L10 15.5"/>',
+  communication: '<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/>',
+  documents: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',
+  shelter: '<path d="M12 4L3 20h18zM12 13l-3.5 7M12 13l3.5 7"/>',
+  clothing: '<path d="M8 4L3 7l2 4 2-1v10h10V10l2 1 2-4-5-3a4 4 0 0 1-8 0z"/>',
+  hygiene: '<rect x="4" y="11" width="13" height="9" rx="3"/><circle cx="17" cy="6" r="2"/><circle cx="12" cy="6.5" r="1.3"/><circle cx="20.2" cy="10" r="1.2"/>',
+  sanitation: '<path d="M4 8h16l-1.8 12H5.8zM5 8a7 5 0 0 1 14 0"/>',
+  tools: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/>',
+  masks: '<path d="M4 9c3-1 5-2 8-2s5 1 8 2v3c0 4-4 7-8 7s-8-3-8-7zM8 12h8M9 15h6"/>',
+  fire_safety: '<rect x="8" y="8" width="8" height="13" rx="2"/><path d="M12 8V5H8M12 5l4-1.5"/>',
+  car: '<path d="M4 16v-4l2.5-5h11l2.5 5v4zM4 12h16"/><circle cx="8" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/>',
+  pets: '<circle cx="6.5" cy="10" r="1.8"/><circle cx="10" cy="6" r="1.8"/><circle cx="14" cy="6" r="1.8"/><circle cx="17.5" cy="10" r="1.8"/><path d="M12 12c-3 0-5 3.5-5 5.5 0 1.5 1.5 2.5 3 2l2-.6 2 .6c1.5.5 3-.5 3-2 0-2-2-5.5-5-5.5z"/>',
+  baby: '<path d="M9 8h6v11a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2zM10 8V6.5a2 2 0 0 1 4 0V8M9 12h2.5M9 15h2.5"/>',
+  kids: '<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>',
+  wound: '<rect x="2.5" y="8.5" width="19" height="7" rx="3.5" transform="rotate(-45 12 12)"/><path d="M10.6 10.6h.01M13.4 13.4h.01M10.6 13.4h.01M13.4 10.6h.01"/>',
+  bites: '<ellipse cx="12" cy="14" rx="4" ry="5.5"/><path d="M12 8.5V20M8.3 12h7.4M8.3 16h7.4M10 8.8 8 5M14 8.8 16 5"/>',
+  poison: '<path d="M9 3h6M10 3v4.5L5.5 17a2.5 2.5 0 0 0 2.3 3.5h8.4a2.5 2.5 0 0 0 2.3-3.5L14 7.5V3"/><path d="M10 14l4 3M14 14l-4 3"/>',
+  comfort: '<path d="M4 10h13v4a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6zM17 11h1.5a2.5 2.5 0 0 1 0 5H17M8 3c-1 1.5 1 2.5 0 4M12 3c-1 1.5 1 2.5 0 4"/>',
+  other: '<circle cx="12" cy="12" r="8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/>',
+  home: '<path d="M4 11l8-7 8 7M6 9.5V20h12V9.5M10 20v-5h4v5"/>',
+  pin: '<path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/>',
+  person: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  flag: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
+};
+const icon = (k, cls = "ic") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ICONS.other}</svg>`;
+const KIND_ICON = { setup: "home", hazards: "pin", refill: "medications", ages: "person", plan: "flag" };
+const AGE = { adult: ["Adult", 2000], teen: ["Teen (13–17)", 2200], child: ["Child (3–12)", 1600], infant: ["Under 3", 1000], senior: ["Senior (65+)", 1800] };
+/* An exact age, when given, decides the group and the calories (roughly the USDA estimates for a
+   moderately active person); without one the saved group is used. */
+const yearsOf = m => m.years === "" || m.years == null || !(num(m.years) >= 0) ? null : Math.min(120, num(m.years));
+const groupOf = m => {
+  const y = yearsOf(m);
+  if (y == null) return AGE[m.age] ? m.age : "adult";
+  return y < 3 ? "infant" : y < 13 ? "child" : y < 18 ? "teen" : y < 65 ? "adult" : "senior";
+};
+const kcalFor = m => {
+  const y = yearsOf(m);
+  if (y == null) return AGE[groupOf(m)][1];
+  return y < 1 ? 800 : y < 4 ? 1000 : y < 9 ? 1400 : y < 14 ? 1800 : y < 19 ? 2200 : y < 65 ? 2000 : 1800;
+};
+const personNeeds = m => {
+  const g = groupOf(m);
+  const extra = { infant: " · diapers, formula, wipes", child: " · a comfort or activity item", senior: " · raises cardiac risk" }[g] || "";
+  return `${yearsOf(m) == null ? AGE[g][0] + " · " : ""}${kcalFor(m).toLocaleString()} kcal + 3.8 L water a day${extra}`;
+};
+const ageText = m => { const y = yearsOf(m); return y == null ? AGE[groupOf(m)][0] : `age ${y < 1 ? "under 1" : Math.floor(y)}`; };
+const CONDITIONS = {
+  meds: "Takes daily medication",
+  allergy: "Severe allergy, carries an EpiPen",
+  diabetes: "Diabetes",
+  heart: "Heart condition",
+  device: "Uses a powered medical device",
+  mobility: "Limited mobility",
+};
+const KIT_TYPES = { go: "Go-bag", home: "Home supply", car: "Vehicle kit" };
+const MODES = {
+  evacuate: { label: "Evacuate", kits: ["go", "car"] },
+  shelter: { label: "Shelter in place", kits: ["home", "go"] },
+  vehicle: { label: "In the car", kits: ["car"] },
+};
+const LEVELS = { high: ["High", 3], moderate: ["Moderate", 2], low: ["Low", 1], none: ["Not relevant", 0] };
+/* How much an emergency matters to this household, on top of how likely it is: multiplies its weight in the score. */
+const IMPORTANCE = { normal: ["As much as the others", 1], more: ["More than most", 2], most: ["One of our top priorities", 3] };
+const importanceOf = id => (IMPORTANCE[S.hazards?.importance?.[id]] || IMPORTANCE.normal)[1];
+const HAZARDS = [
+  { id: "outage", name: "Extended power outage", mode: "shelter", days: 7, base: "moderate", needs: ["water", "food", "light", "power", "communication", "first_aid", "medications", "hygiene", "sanitation"] },
+  { id: "evacuation", name: "Short-notice evacuation", mode: "evacuate", days: 3, base: "moderate", needs: ["water", "food", "first_aid", "medications", "documents", "light", "power", "communication", "clothing", "hygiene", "shelter"] },
+  { id: "housefire", name: "House fire", mode: "evacuate", days: 1, base: "moderate", needs: ["fire_safety", "documents", "medications", "light", "clothing"] },
+  { id: "stranded", name: "Stranded on the road", mode: "vehicle", days: 1, base: "moderate", vehicle: true, needs: ["water", "food", "shelter", "light", "car", "first_aid", "communication"] },
+  { id: "earthquake", name: "Earthquake", mode: "shelter", days: 14, needs: ["water", "food", "first_aid", "tools", "light", "sanitation", "shelter", "clothing", "communication"] },
+  { id: "wildfire", name: "Wildfire & smoke", mode: "evacuate", days: 3, needs: ["masks", "documents", "water", "food", "medications", "communication", "first_aid", "clothing", "light"] },
+  { id: "hurricane", name: "Hurricane", mode: "shelter", days: 14, needs: ["water", "food", "light", "power", "communication", "first_aid", "tools", "sanitation", "documents"] },
+  { id: "flood", name: "Flooding", mode: "evacuate", days: 3, needs: ["water", "food", "documents", "communication", "light", "first_aid", "clothing", "hygiene"] },
+  { id: "tornado", name: "Tornado", mode: "shelter", days: 1, needs: ["light", "communication", "first_aid", "clothing", "tools"] },
+  { id: "winter", name: "Winter storm", mode: "shelter", days: 7, needs: ["shelter", "water", "food", "light", "power", "communication", "first_aid"] },
+  { id: "heat", name: "Extreme heat", mode: "shelter", days: 3, needs: ["water", "first_aid", "power", "communication", "medications"] },
+  { id: "pandemic", name: "Pandemic or quarantine", mode: "shelter", days: 14, needs: ["water", "food", "masks", "medications", "hygiene", "first_aid"] },
+  { id: "chemical", name: "Hazmat shelter-in-place", mode: "shelter", days: 1, needs: ["tools", "masks", "communication", "water", "light"] },
+  { id: "tsunami", name: "Tsunami", mode: "evacuate", days: 3, needs: ["water", "food", "documents", "communication", "first_aid", "clothing", "light"] },
+  /* Everyday: small things that go wrong often. A kit that handles them gets opened, so it gets kept up. */
+  { id: "mishap", group: "everyday", name: "Small mishaps on the road", mode: "vehicle", vehicle: true, days: 1, when: "Spills, delays, a dead phone, a forgotten jacket", base: () => "moderate", needs: ["comfort", "power", "hygiene", "clothing"], kidsToo: true },
+  /* Health emergencies: likelihood comes from who lives here; `kits` says which kits are within reach. */
+  { id: "cuts", group: "health", name: "Cuts, scrapes and splinters", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · most weeks", base: h => h.kids || h.infants ? "high" : "moderate", needs: ["wound", "first_aid"] },
+  { id: "injury", group: "health", name: "Heavy bleeding", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: () => "moderate", needs: ["trauma", "first_aid", "communication"] },
+  { id: "fall", group: "health", name: "Falls, sprains and broken bones", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first hour", base: h => h.kids || h.seniors || h.mobility ? "moderate" : "low", needs: ["splint", "first_aid", "light", "communication"] },
+  { id: "burns", group: "health", name: "Burns and scalds", mode: "anywhere", kits: ["home", "go"], days: 1, when: "Mostly the kitchen · first minutes", base: h => h.kids || h.infants ? "moderate" : "low", needs: ["burns", "first_aid", "fire_safety"] },
+  { id: "choking", group: "health", name: "Choking", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Mealtimes, small toys · first minutes", base: h => h.kids || h.infants || h.seniors ? "moderate" : "low", needs: ["cpr", "communication"] },
+  { id: "cardiac", group: "health", name: "Cardiac arrest", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.heart || h.seniors ? "moderate" : "low", needs: ["cpr", "communication"] },
+  { id: "poison", group: "health", name: "Poisoning or overdose", mode: "anywhere", kits: ["home"], days: 1, when: "Mostly at home · call Poison Control first", base: h => h.kids || h.infants ? "moderate" : "low", needs: ["poison", "communication"] },
+  { id: "bites", group: "health", name: "Bites and stings", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Pets, outdoors · first hour", base: h => h.pets || h.kids ? "moderate" : "low", needs: ["bites", "wound", "medications"] },
+  { id: "anaphylaxis", group: "health", name: "Severe allergic reaction", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.allergic ? "high" : "none", needs: ["allergy", "communication", "first_aid"] },
+  { id: "illness", group: "health", name: "Serious illness at home", mode: "shelter", days: 3, when: "At home · 72 h", base: () => "moderate", needs: ["diagnostics", "medications", "hygiene", "masks", "water", "food"] },
+  { id: "meds", group: "health", name: "Medication supply cut off", mode: "anywhere", kits: ["home", "go"], days: 14, when: "Pharmacy closed or evacuated · 2 weeks", base: h => h.dailyMeds ? "high" : "none", needs: ["medications", "diagnostics"], qty: { medications: h => Math.max(1, h.dailyMeds) } },
+  { id: "lowsugar", group: "health", name: "Low blood sugar", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.diabetes ? "high" : "none", needs: ["diagnostics"] },
+  { id: "device", group: "health", name: "Power loss for a medical device", mode: "shelter", days: 3, when: "At home · 72 h", base: h => h.devices ? "high" : "none", needs: ["power", "light", "communication"], qty: { power: h => 2 + 2 * h.devices } },
+];
+const kitsFor = hz => hz.kits || MODES[hz.mode].kits;
+const HZ = Object.fromEntries(HAZARDS.map(h => [h.id, h]));
+const VIEWS = ["overview", "kits", "shop", "household", "plan"];
+
+/* ---------- state ---------- */
+const S = {
+  view: VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : location.hash === "#review" ? "plan" : "overview",
+  profile: null, hazards: null, review: null, shopping: null, plan: null, kits: [], items: [],
+  live: false, loaded: false, slow: false, canWrite: true,
+  openKit: null, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
+  hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(),
+  scan: null, draft: null, hzCheck: null, rv: null,
+};
+let db = null, assets = null, sample = null;
+
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const num = x => { const n = +x; return Number.isFinite(n) && n > 0 ? n : 0; };
+const uid = () => (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : Math.random().toString(36).slice(2) + Date.now().toString(36)).slice(0, 20);
+const f1 = n => (Math.round(n * 10) / 10).toLocaleString();
+const clone = o => JSON.parse(JSON.stringify(o ?? null));
+const strip = ({ id, ...rest }) => rest;
+/* Bars are neutral until a score is in good shape; red is kept for real problems (expired, overdue, a likely health emergency you can't handle). */
+const statusColor = s => s >= 75 ? "var(--good)" : "var(--meter)";
+const statusInk = s => s >= 75 ? "var(--good)" : "var(--ink)";
+const catLabel = c => (CATS[c] || CATS.other)[0];
+const D = () => S.canWrite ? "" : "disabled";
+const when = t => t ? new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+
+let toastTimer, toastAction = null;
+function toast(msg, action) {
+  const t = $("#toast"), b = $("#toast-act");
+  $("#toast-msg").textContent = msg;
+  toastAction = action || null;
+  b.hidden = !action; if (action) b.textContent = action.label;
+  t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; toastAction = null; }, action ? 9000 : 4200);
+}
+$("#toast-act").addEventListener("click", () => { const a = toastAction; toastAction = null; $("#toast").hidden = true; a?.run(); });
+function sampleErr(e) {
+  switch (e?.code) {
+    case "not_granted": case "sampling_disabled": case "not_declared": case "capability_disabled": case "capability_removed":
+      return "Claude isn't available to this page. Allow it from the artifact's permissions, or add items by hand.";
+    case "images_unavailable": return "This view can't send photos to Claude. Add items by hand instead.";
+    case "image_rejected": return "Claude couldn't open one of those photos. Use JPEG or PNG under 20 MB.";
+    case "rate_limited": return "You've hit a usage limit. Try again in a little while.";
+    case "session_expired": return "Your session expired. Reload the page and sign in again.";
+    case "invalid_json": return "Claude's answer came back in the wrong shape. Try again.";
+    case "refused": return "Claude declined that request. Try different photos.";
+    default: return "Couldn't reach Claude. Try again.";
+  }
+}
+function expState(it) {
+  if (!/^\d{4}-\d{2}$/.test(it.expires || "")) return null;
+  const [y, m] = it.expires.split("-").map(Number);
+  const days = (new Date(y, m, 1) - new Date()) / 864e5;
+  return days < 0 ? "expired" : days < 90 ? "soon" : null;
+}
+
+/* ---------- storage (db when available, memory otherwise) ---------- */
+const COLS = { kits: "kits", items: "items" };
+async function setDoc(col, id, data) {
+  if (db) {
+    try { await db.doc(col + "/" + id).set(data); }
+    catch (e) { toast(e?.code === "invalid_argument" ? "You can view this audit but not change it." : "Couldn't save. Check your connection and try again."); throw e; }
+  } else {
+    if (col === "household") S[id] = data;
+    else { const arr = S[col]; const i = arr.findIndex(x => x.id === id); const row = { id, ...data }; if (i >= 0) arr[i] = row; else arr.push(row); }
+    render();
+  }
+}
+async function delDoc(col, id) {
+  if (db) { try { await db.doc(col + "/" + id).delete(); } catch (e) { toast("Couldn't delete. Try again."); throw e; } }
+  else { if (col === "household") S[id] = null; else S[col] = S[col].filter(x => x.id !== id); render(); }
+}
+
+/* ---------- the readiness model ---------- */
+function household() {
+  const p = S.profile || {};
+  const members = Array.isArray(p.members) && p.members.length ? p.members : [{ age: "adult" }];
+  const has = (...cs) => members.filter(m => Array.isArray(m.conditions) && cs.some(c => m.conditions.includes(c))).length;
+  return {
+    dailyMeds: has("meds", "diabetes"), allergic: has("allergy"), diabetes: has("diabetes"),
+    heart: has("heart"), devices: has("device"), mobility: has("mobility"),
+    seniors: members.filter(m => groupOf(m) === "senior").length,
+    members,
+    people: members.length,
+    kcalDay: members.reduce((a, m) => a + kcalFor(m), 0),
+    pets: (Array.isArray(p.pets) ? p.pets : []).reduce((a, x) => a + num(x.count), 0),
+    infants: members.filter(m => groupOf(m) === "infant").length,
+    kids: members.filter(m => groupOf(m) === "child").length,
+    vehicles: num(p.vehicles),
+  };
+}
+function relevance(hz, h) {
+  const lv = S.hazards?.levels?.[hz.id];
+  if (hz.vehicle && h.vehicles === 0) return "none";
+  if (LEVELS[lv]) return lv;
+  return (typeof hz.base === "function" ? hz.base(h) : hz.base) || "none";
+}
+function stock(types) {
+  const kitIds = new Set(S.kits.filter(k => types.includes(k.type)).map(k => k.id));
+  return stockItems(S.items.filter(it => kitIds.has(it.kitId)));
+}
+function stockItems(items) {
+  const st = { count: {}, liters: 0, kcal: 0 };
+  for (const it of items) {
+    if (expState(it) === "expired") continue;
+    const c = CATS[it.category] ? it.category : "other";
+    st.count[c] = (st.count[c] || 0) + Math.max(1, num(it.qty));
+    st.liters += num(it.liters); st.kcal += num(it.kcal);
+  }
+  return st;
+}
+function needFor(cat, hz, h) {
+  const d = hz.days;
+  if (hz.qty?.[cat]) return { need: hz.qty[cat](h) };
+  switch (cat) {
+    case "trauma": return { need: 2 };
+    case "allergy": return { need: Math.max(1, 2 * h.allergic) };
+    case "diagnostics": return { need: h.diabetes ? 2 : 1 };
+    case "water": return { need: Math.round((h.people * 3.8 + h.pets * 1) * d), unit: "L" };
+    case "food": return { need: h.kcalDay * d, unit: "kcal" };
+    case "light": return { need: Math.max(1, Math.ceil(h.people / 2)) };
+    case "shelter": case "masks": return { need: h.people };
+    case "clothing": return { need: hz.mode === "evacuate" ? h.people : 1 };
+    case "tools": return { need: 2 };
+    case "car": return { need: 3 };
+    case "comfort": return { need: 4 };
+    case "pets": return { need: Math.max(1, h.pets) };
+    case "baby": return { need: h.infants * 2 };
+    case "kids": return { need: h.kids };
+    default: return { need: 1 };
+  }
+}
+function model() {
+  const h = household();
+  const stocks = Object.fromEntries(Object.entries(MODES).map(([m, d]) => [m, stock(d.kits)]));
+  const results = HAZARDS.map(hz => {
+    const rel = relevance(hz, h);
+    const needs = [...hz.needs];
+    if (!hz.group && hz.mode !== "vehicle" && h.pets) needs.push("pets");
+    if (!hz.group && hz.mode !== "vehicle" && h.infants) needs.push("baby");
+    if ((!hz.group && hz.mode !== "vehicle" || hz.kidsToo) && h.kids) needs.push("kids");
+    const st = stocks[hz.mode] || stock(kitsFor(hz));
+    const rows = needs.map(cat => needRow(cat, hz, h, st));
+    return { hz, rel, wt: LEVELS[rel][1] * importanceOf(hz.id), rows, score: scoreRows(rows) };
+  });
+  const active = results.filter(r => r.wt > 0);
+  const tw = active.reduce((a, r) => a + r.wt, 0);
+  const overall = tw ? Math.round(active.reduce((a, r) => a + r.wt * r.score, 0) / tw) : null;
+  const g = {};
+  for (const r of active) for (const row of r.rows) {
+    if (row.cov >= 1) continue;
+    const x = g[row.cat] ||= { cat: row.cat, imp: 0, worst: null, hazards: [] };
+    x.imp += r.wt * (1 - row.cov) * row.w;
+    x.hazards.push(r.hz.name);
+    if (!x.worst || row.need > x.worst.need) x.worst = { ...row, hz: r.hz };
+  }
+  const gaps = Object.values(g).sort((a, b) => b.imp - a.imp);
+  const kitName = Object.fromEntries(S.kits.map(k => [k.id, k.name]));
+  const exp = S.items.map(it => ({ it, st: expState(it), kit: kitName[it.kitId] })).filter(x => x.st && x.kit)
+    .sort((a, b) => String(a.it.expires).localeCompare(String(b.it.expires)));
+  const kitRes = Object.fromEntries(S.kits.map(k => [k.id, kitReadiness(k, h, active)]));
+  return { h, stocks, results, active, overall, gaps, exp, kitRes };
+}
+function needRow(cat, hz, h, st) {
+  const { need, unit } = needFor(cat, hz, h);
+  const have = cat === "water" ? st.liters : cat === "food" ? st.kcal : (st.count[cat] || 0);
+  return { cat, need, have, unit, cov: need > 0 ? Math.min(1, have / need) : 1, w: cat === "water" || cat === "food" || cat === "comfort" && hz.mode === "vehicle" ? 2 : 1 };
+}
+const scoreRows = rows => rows.length ? Math.round(100 * rows.reduce((a, r) => a + r.w * r.cov, 0) / rows.reduce((a, r) => a + r.w, 0)) : 0;
+/* The household score if these categories were fully stocked: what closing a gap is worth. */
+function overallIf(M, cats) {
+  const tw = M.active.reduce((a, r) => a + r.wt, 0);
+  if (!tw) return null;
+  return Math.round(M.active.reduce((a, r) => a + r.wt * scoreRows(r.rows.map(x => cats.has(x.cat) ? { ...x, cov: 1 } : x)), 0) / tw);
+}
+const orList = (xs, word = "or") => xs.length < 2 ? xs.join("") : xs.slice(0, -1).join(", ") + ` ${word} ` + xs.at(-1);
+const gal = l => f1(l / 3.785);
+/* A gap in plain language: how much to get, sized for the emergency that needs the most of it. */
+function gapPlan(g, h) {
+  const row = g.worst, short = Math.max(0, row.need - row.have);
+  const kits = kitsFor(row.hz);
+  const others = g.hazards.length - 1;
+  const why = `For ${row.hz.name.toLowerCase()}${others ? ` and ${others} other emergenc${others > 1 ? "ies" : "y"}` : ""}. Goes in a ${orList(kits.map(k => KIT_TYPES[k].toLowerCase()))}.`;
+  const hint = (CATS[g.cat] || CATS.other)[1];
+  if (row.unit === "L") {
+    const L = Math.ceil(short), days = L / (h.people * 3.8 + h.pets);
+    return { kits, why, hint, qty: L, unit: "L", name: "Drinking water", title: `Add ${L} L of drinking water`, detail: `About ${gal(L)} gallons: ${f1(days)} more days for everyone.`, text: `Drinking water: ${L} L (${gal(L)} gal)` };
+  }
+  if (row.unit === "kcal") {
+    const k = Math.ceil(short / 100) * 100, days = f1(k / h.kcalDay);
+    return { kits, why, hint, qty: k, unit: "kcal", name: "Shelf-stable food", title: `Add ${days} days of food for everyone`, detail: `About ${k.toLocaleString()} calories: ${hint}.`, text: `Shelf-stable food: ${days} days (${k.toLocaleString()} kcal)` };
+  }
+  const n = Math.ceil(short);
+  return { kits, why, hint, qty: n, unit: "", name: catLabel(g.cat), title: `${catLabel(g.cat)}: add ${n}`, detail: `Such as ${hint}.`, text: `${catLabel(g.cat)} × ${n}` };
+}
+/* Readiness if these list entries were bought and put in the kit each would go in, the same sum ticking uses.
+   An entry with no kit of the right type yet can only be estimated, as if its category were full. */
+function scoreIfShopped(M, es) {
+  return es.every(e => shopKit(e)) ? scoreIfBought(es) : overallIf(M, new Set(es.map(e => e.cat)));
+}
+const scoreIfFilled = (M, gaps) => scoreIfShopped(M, gaps.map(g => shopFromGap(g, M.h)));
+/* Up to three things to do next: setup that changes every number first, then the gaps worth the most points. */
+function nextActions(M) {
+  const p = S.profile, out = [];
+  if (!p || p.example) out.push({ kind: "setup", title: "Tell us who lives with you", detail: "Where you live, everyone's age and any health needs. Four quick steps, and everything else is sized from them." });
+  else if (!S.hazards?.assessedAt && p.location) out.push({ kind: "hazards", title: `Check which emergencies are likely in ${p.location}`, detail: "Claude rates floods, earthquakes, wildfire and more for where you live, so your gaps target the right risks." });
+  const ms = p && !p.example && Array.isArray(p.members) ? p.members : [];
+  const plan = S.plan || {};
+  const due = (Array.isArray(plan.meds) ? plan.meds : []).map(x => ({ x, st: refillState(x) })).filter(o => o.st.days != null && o.st.days <= 7).sort((a, b) => a.st.days - b.st.days)[0];
+  if (due && out.length < 2) out.push({ kind: "refill", title: `Refill ${due.x.who ? due.x.who + "'s " : ""}${due.x.name || "medication"}`, detail: `${due.st.text}. Pharmacies close in emergencies, so try to keep a week or two spare.` });
+  const noAge = ms.filter(m => yearsOf(m) == null);
+  if (noAge.length && out.length < 2) out.push({ kind: "ages", title: noAge.length === ms.length ? "Add everyone's age" : `Add ${orList(noAge.map((m, i) => m.label || "a person"), "and")}'s age`, detail: "Food is sized by age, and toddlers and young kids need supplies of their own." });
+  if (p && !p.example && !String(plan.meetNear || "").trim() && !String(plan.contactName || "").trim() && out.length < 2)
+    out.push({ kind: "plan", title: "Pick a meeting place and an out-of-area contact", detail: "Two minutes now saves a frantic search later. They go on your family plan." });
+  const base = M.overall;
+  const gaps = M.gaps.map(g => ({ kind: "gap", g, ...gapPlan(g, M.h), gain: base == null ? 0 : Math.max(0, scoreIfFilled(M, [g]) - base) }))
+    .sort((a, b) => b.gain - a.gain || b.g.imp - a.g.imp);
+  const acts = [...out, ...gaps].slice(0, 3);
+  const shown = acts.filter(a => a.kind === "gap");
+  return { acts, more: gaps.length - shown.length, after: base == null ? null : scoreIfFilled(M, shown.map(a => a.g)) };
+}
+
+/* ---------- shopping list ---------- */
+/* What to put in the cart for a gap: store-sized packs, a ballpark US price for comparing and budgeting
+   (null means prescription only, 0 means you likely have it at home), and a tip for the aisle. */
+const pl = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
+const whoIs = (h, f) => h.members.map((m, i) => [m, personName(m, i)]).filter(([m]) => f(m)).map(([, n]) => n);
+const hasCond = c => m => (m.conditions || []).includes(c);
+function buyGuide(cat, qty, unit, kt, h) {
+  const n = Math.max(1, Math.ceil(num(qty))), q = num(qty), go = kt === "go" || kt === "car";
+  const kids = whoIs(h, m => groupOf(m) === "child"), little = whoIs(h, m => groupOf(m) === "infant");
+  const allergic = whoIs(h, hasCond("allergy")), onMeds = whoIs(h, m => hasCond("meds")(m) || hasCond("diabetes")(m));
+  switch (cat) {
+    case "water": {
+      if (go) { const c = Math.ceil(q / 12); return { line: `${pl(c, "case")} of 24 half-litre bottles`, price: c * 6, tip: "Bottles fit in a bag and don't leak. Pick cases with a best-by date printed on them." }; }
+      const j = Math.ceil(q / 26.5), g1 = Math.ceil(q / 3.785);
+      return { line: `${pl(j, "7-gallon water container")}, filled from your tap`, price: j * 22, tip: `The cheapest way to store a lot of water. Keep them out of sunlight and refill every 6 months. Or buy ${g1} one-gallon jugs, about $${Math.round(g1 * 1.5)}, which are easier to carry.` };
+    }
+    case "food": {
+      if (go) { const b = Math.ceil(q / 3600); return { line: pl(b, "3,600-calorie ration bar"), price: b * 10, tip: "They last 5 years, need no water or cooking, and won't make you thirsty." }; }
+      const safe = allergic.length > 0;
+      const cans = Math.ceil(q * .35 / 450), jars = Math.ceil(q * .25 / 6700), crack = Math.ceil(q * .2 / 1800), snack = Math.ceil(q * .2 / (safe ? 1900 : 2700));
+      return { line: `${pl(cans, "can")} of soup, chili and beans, ${pl(jars, "big jar")} of ${safe ? "sunflower seed butter" : "peanut butter"}, ${pl(crack, "box", "boxes")} of crackers and ${safe ? pl(snack, "box", "boxes") + " of nut-free granola bars" : pl(snack, "bag") + " of trail mix"}`,
+        price: Math.round(cans * 1.8 + jars * 6 + crack * 4 + snack * (safe ? 5 : 8)),
+        tip: `${safe ? `Nut-free picks because ${orList(allergic, "and")} ${allergic.length > 1 ? "have" : "has"} a severe allergy. Check every label. ` : ""}Choose food that needs no cooking and that you already eat, and get ring-pull cans or a manual can opener. Eat and replace it before it expires.` };
+    }
+    case "first_aid": return { line: n > 1 ? pl(n, "family first-aid kit") : "A family first-aid kit (around 100 pieces)", price: n * 25, tip: "Get one with a printed contents list, so you can see what's been used and restock it." };
+    case "trauma": return { line: pl(n, "CAT or SOF-T tourniquet"), price: n * 30, tip: "Buy from a medical supplier rather than a marketplace seller: counterfeit tourniquets break. A one-hour Stop the Bleed class shows you how to use one." };
+    case "burns": return { line: "Burn gel and 2 sterile burn dressings", price: 15, tip: "Cool a burn under running water for 20 minutes first. The gel comes after." };
+    case "splint": return { line: "A SAM splint and 2 elastic wraps", price: 20, tip: "A SAM splint rolls flat and bends to fit an arm, leg or ankle." };
+    case "cpr": return { line: "A CPR face shield or pocket mask", price: 10, tip: "A CPR class matters far more than this. Many fire stations run free ones." };
+    case "allergy": return { line: `${pl(n, "epinephrine auto-injector")}${allergic.length ? ` for ${orList(allergic, "and")}` : ""}, plus an antihistamine`, price: null,
+      tip: `Prescription only. Ask ${allergic.length ? orList(allergic, "and") + "'s" : "the"} doctor for an extra two-pack to keep in the kit, and check its expiry every year.` };
+    case "diagnostics": {
+      const dia = whoIs(h, hasCond("diabetes"));
+      return dia.length ? { line: `A spare glucose meter and test strips for ${orList(dia, "and")}`, price: 40, tip: "Keep it with spare lancets and fast sugar such as glucose tablets." }
+        : { line: "A digital thermometer and a fingertip pulse oximeter", price: 30, tip: "Low oxygen readings (under 92%) are a reason to get help fast." };
+    }
+    case "medications": {
+      const kidsMed = [...little, ...kids];
+      return { line: `Pain relievers, an antihistamine and anti-diarrhea tablets${kidsMed.length ? `, plus children's ibuprofen for ${orList(kidsMed, "and")}` : ""}`, price: kidsMed.length ? 30 : 20,
+        tip: onMeds.length ? `${orList(onMeds, "and")} also ${onMeds.length > 1 ? "need" : "needs"} a spare week of daily medication. Ask the pharmacy about an early refill, and track it on the Plan tab.` : "Store-brand versions work the same and cost much less. Spare glasses go here too." };
+    }
+    case "light": return { line: pl(n, "LED headlamp"), price: n * 12, tip: "Headlamps keep both hands free. Get ones that take the same AA or AAA batteries as your radio." };
+    case "power": return { line: "A 20,000 mAh power bank and a pack of lithium AA batteries", price: 40,
+      tip: h.devices ? "Someone uses a powered medical device. Ask its supplier for a backup battery sized for it: a power bank won't be enough." : "Charge the power bank every 3 months. Lithium AAs keep for about 20 years in storage." };
+    case "communication": return { line: "A hand-crank NOAA weather radio", price: 30, tip: "Pick one with a USB port so it can charge a phone. Put a printed contact list next to it." };
+    case "documents": return { line: "A waterproof document pouch, a USB drive and cash in small bills", price: 15, tip: "Copy IDs, insurance and prescriptions onto the drive. Card machines stop working when the power's out. The cash isn't in the price." };
+    case "shelter": return go ? { line: pl(n, "reusable emergency blanket"), price: n * 5, tip: "The thicker reusable kind lasts. Thin foil ones tear the first time." }
+      : { line: pl(n, "warm blanket or sleeping bag", "warm blankets or sleeping bags"), price: 0, tip: "Spare bedding from home counts. Put it in the bin and add it to the kit." };
+    case "clothing": return { line: n > 1 ? `A change of clothes for ${h.members.length <= n ? "everyone" : n + " people"}` : "A change of clothes", price: 0, tip: `From your closet: sturdy shoes, socks, a rain jacket and a warm layer.${kids.length + little.length ? " Size kids' clothes up each year." : ""}` };
+    case "hygiene": return { line: "Wet wipes, hand sanitizer, soap and travel toothbrushes", price: 20, tip: "Add menstrual products and any skin or eye care people use every day." };
+    case "sanitation": return { line: "A 5-gallon bucket with a toilet seat lid, heavy-duty bags and kitty litter", price: 35, tip: "After an earthquake toilets may not flush for weeks. It's the thing people most often wish they'd bought." };
+    case "tools": return { line: "A multi-tool, duct tape and a gas shut-off wrench", price: 40, tip: "Hang the wrench by the gas meter, and note where it is on the Plan tab." };
+    case "masks": { const packs = Math.ceil(n / 10); return { line: `${pl(packs, "pack")} of 10 N95 masks`, price: packs * 15, tip: kids.length + little.length ? `Adult masks won't seal on small faces. Look for kids' sizes for ${orList([...kids, ...little], "and")}.` : "Look for NIOSH approval printed on each mask." }; }
+    case "fire_safety": return { line: "An ABC fire extinguisher (2-A:10-B:C or bigger)", price: 45, tip: "Mount it near the kitchen exit, not over the stove." };
+    case "wound": return { line: "Saline wound wash, butterfly closures, non-stick pads and fine-point tweezers", price: 20, tip: "Rinse a cut under clean running water for a few minutes, then close and cover it. Saline also works as an eye wash." };
+    case "bites": return { line: "A tick remover, sting relief wipes, hydrocortisone cream and an instant cold pack", price: 18,
+      tip: `Pull ticks straight out, close to the skin. Wash any animal bite with soap and water for 5 minutes and see a doctor if it broke the skin.${allergic.length ? ` If ${orList(allergic)} ${allergic.length > 1 ? "are" : "is"} stung, follow their anaphylaxis plan.` : " Swelling of the face or trouble breathing after a sting means call 911."}` };
+    case "poison": return { line: little.length + kids.length ? "A locking medicine box, cabinet latches and a carbon monoxide alarm" : "A locking medicine box and a carbon monoxide alarm", price: little.length + kids.length ? 60 : 50,
+      tip: "Save Poison Control (1-800-222-1222 in the US) in every phone and on the fridge, and call it before doing anything else. Don't make anyone vomit." };
+    case "comfort": return { line: `A car comfort pouch: a phone cable and car charger, snacks, wet wipes, tissues, spare socks and an umbrella${kids.length + little.length ? `, plus a small treat for ${orList([...kids, ...little], "and")}` : ""}`, price: 35,
+      tip: "It's the bag you'll actually open: a spilled drink, a long wait, a dead phone, sudden rain. Swap the snacks every few months so they're ones people want." };
+    case "car": return { line: "Jumper cables, a tire inflator and an ice scraper", price: 70, tip: "A plug-in tire inflator is easier than a spare tire on the side of the road." };
+    case "pets": {
+      const kinds = (S.profile?.pets || []).map(p => String(p.kind || "").toLowerCase()).filter(Boolean);
+      return { line: `A week of food for the ${kinds.length ? orList(kinds, "and") : "pets"}, a spare leash and a collapsible bowl`, price: 35 * Math.max(1, h.pets), tip: "Add a copy of vaccination records and a recent photo, in case you get separated." };
+    }
+    case "baby": return { line: `Diapers, wipes and a week of formula or toddler food${little.length ? ` for ${orList(little, "and")}` : ""}`, price: 45, tip: "Check the size before you buy: kids outgrow diapers between restocks." };
+    case "kids": return { line: kids.length ? `A small comfort kit each for ${orList(kids, "and")}` : pl(n, "comfort kit"), price: n * 10, tip: "A toy, cards and a book. Let them choose: something familiar helps more than something new." };
+    default: return { line: `${catLabel(cat)} × ${n}`, tip: "" };
+  }
+}
+/* The kit item a list entry becomes when ticked. */
+const itemFromShop = (e, kitId) => ({ kitId, name: e.name || catLabel(e.cat), category: e.cat, qty: e.unit ? 1 : Math.max(1, num(e.qty)), liters: e.unit === "L" ? num(e.qty) : 0, kcal: e.unit === "kcal" ? num(e.qty) : 0, expires: "", note: "Bought from the shopping list", source: "list" });
+/* Household readiness if these entries were bought and put in their kits: the same sum ticking them does. */
+function scoreIfBought(list) {
+  const add = list.filter(e => CATS[e.cat] && shopKit(e)).map(e => ({ id: "_sim", ...itemFromShop(e, shopKit(e)) }));
+  if (!add.length) return model().overall;
+  S.items.push(...add);
+  try { return model().overall; } finally { S.items.splice(S.items.length - add.length); }
+}
+/* A list entry with everything the row shows, worked out from the household as it is now. */
+function shopInfo(e, M) {
+  if (!CATS[e.cat]) return { line: e.text, sub: "", tip: "", gain: 0 };
+  const kt = S.kits.find(k => k.id === (e.done ? e.inKit : shopKit(e)))?.type || (Array.isArray(e.kits) && e.kits[0]) || "home";
+  const b = buyGuide(e.cat, e.qty, e.unit, kt, M.h);
+  return { ...b, sub: e.unit ? e.text : catLabel(e.cat), gain: e.done || e.kitId === "none" || M.overall == null ? 0 : Math.max(0, scoreIfShopped(M, [e]) - M.overall) };
+}
+const money = p => p === undefined ? "" : p === null ? "Prescription" : p === 0 ? "From home" : `$${p}`;
+const shopItems = () => Array.isArray(S.shopping?.items) ? S.shopping.items : [];
+const saveShop = items => setDoc("household", "shopping", { items, updatedAt: Date.now() }).catch(() => {});
+function shopFromGap(g, h) {
+  const p = gapPlan(g, h);
+  return { id: uid(), cat: g.cat, qty: p.qty, unit: p.unit, name: p.name, text: p.text, note: p.hint, kits: p.kits, kitId: "", done: false, at: Date.now() };
+}
+/* The kit a bought item goes into: the one picked on the row, else the first kit of a type that covers the gap. */
+function shopKit(e) {
+  if (e.kitId === "none") return "";
+  if (e.kitId && S.kits.some(k => k.id === e.kitId)) return e.kitId;
+  const types = Array.isArray(e.kits) ? e.kits : [];
+  const k = S.kits.filter(k => types.includes(k.type)).sort((a, b) => types.indexOf(a.type) - types.indexOf(b.type) || (a.createdAt || 0) - (b.createdAt || 0))[0];
+  return k ? k.id : "";
+}
+/* Each kit type has its own standard; relevant hazards of the matching mode add their needs to it. */
+const KIT_STD = {
+  go: { label: "72-hour go-bag", mode: "evacuate", days: 3, needs: ["water", "food", "first_aid", "medications", "documents", "light", "power", "communication", "clothing", "hygiene", "shelter", "tools"] },
+  home: { label: "2-week home supply", mode: "shelter", days: 14, needs: ["water", "food", "first_aid", "medications", "light", "power", "communication", "hygiene", "sanitation", "tools", "shelter", "fire_safety"] },
+  car: { label: "24-hour car kit", mode: "vehicle", days: 1, needs: ["water", "food", "shelter", "light", "car", "first_aid", "communication", "tools", "comfort"] },
+};
+function kitReadiness(kit, h, active) {
+  const std = KIT_STD[kit.type] || KIT_STD.go;
+  const serves = Math.min(50, Math.round(num(kit.serves))) || h.people;
+  const whole = serves >= h.people;
+  const kh = { ...h, people: serves, kcalDay: whole ? h.kcalDay : Math.round(serves * h.kcalDay / h.people), pets: whole ? h.pets : 0, infants: whole ? h.infants : 0, kids: whole ? h.kids : 0 };
+  const drivers = active.filter(r => r.hz.kits ? r.hz.kits.includes(kit.type) : r.hz.mode === std.mode);
+  const qty = Object.assign({}, ...drivers.map(r => r.hz.qty || {}));
+  const needs = new Set(std.needs);
+  for (const r of drivers) { r.hz.needs.forEach(n => needs.add(n)); if (r.hz.kidsToo && kh.kids) needs.add("kids"); }
+  if (std.mode !== "vehicle" && kh.pets) needs.add("pets");
+  if (std.mode !== "vehicle" && kh.infants) needs.add("baby");
+  if (std.mode !== "vehicle" && kh.kids) needs.add("kids");
+  if (std.mode !== "shelter") needs.delete("fire_safety");
+  const st = stockItems(S.items.filter(i => i.kitId === kit.id));
+  const rows = [...needs].map(cat => needRow(cat, { mode: std.mode, days: std.days, qty }, kh, st));
+  return { std, serves, whole, kh, rows, score: scoreRows(rows), drivers };
+}
+/* Splits a kit's score across its items: each checklist row's points go to the items filling it,
+   in proportion to what each supplies, so an item's points add up with the rest to the kit score. */
+function itemValues(kit, r) {
+  const W = r.rows.reduce((a, x) => a + x.w, 0) || 1;
+  const byRow = Object.fromEntries(r.rows.map(x => [x.cat, x]));
+  const out = {};
+  for (const it of S.items.filter(i => i.kitId === kit.id)) {
+    const c = CATS[it.category] ? it.category : "other";
+    if (expState(it) === "expired") { out[it.id] = { pts: 0, note: "Expired, so it doesn't count" }; continue; }
+    let pts = 0, over = false;
+    const add = (row, amt) => {
+      if (!row || !amt || !row.have) return;
+      pts += 100 * row.w * row.cov / W * amt / row.have;
+      if (row.need > 0 && row.have > row.need) over = true;
+    };
+    add(byRow.water, num(it.liters));
+    add(byRow.food, num(it.kcal));
+    if (c !== "water" && c !== "food") add(byRow[c], Math.max(1, num(it.qty)));
+    const note = pts ? (over ? `Kit has more ${catLabel(c).toLowerCase()} than it needs` : "")
+      : c === "water" ? "Add litres so it counts"
+      : c === "food" ? "Add calories so it counts"
+      : "Not on this kit's checklist";
+    out[it.id] = { pts, note };
+  }
+  return out;
+}
+const ptsLabel = p => p >= 1 ? String(Math.round(p)) : p > 0 ? "<1" : "0";
+const servesLine = r => `${r.serves} ${r.serves === 1 ? "person" : "people"}${r.kh.pets && r.std.mode !== "vehicle" ?` and ${r.kh.pets} pet${r.kh.pets > 1 ? "s" : ""}` : ""}`;
+function amount(row, h, days = "household-days") {
+  if (row.unit === "L") return `${f1(row.have)} of ${row.need} L <span class="muted">(${f1(row.have / 3.785)} of ${f1(row.need / 3.785)} gal)</span>`;
+  if (row.unit === "kcal") return `${f1(row.have / h.kcalDay)} of ${f1(row.need / h.kcalDay)} ${days}`;
+  return `${row.have} of ${row.need}`;
+}
+const chipsFor = (rows, h, days) => rows.map(row => `<span class="chip ${row.cov >= 1 ? "full" : ""}">${icon(row.cat, "ic ic-s")}${esc(catLabel(row.cat))} · ${amount(row, h, days).replace(/<[^>]+>/g, "")}</span>`).join("");
+const modeLine = hz => hz.when || `${MODES[hz.mode].label} · ${hz.days === 1 ? "24 h" : hz.days === 3 ? "72 h" : hz.days + " days"}`;
+
+/* ---------- views ---------- */
+function viewBanner() {
+  const ex = S.profile?.example || S.kits.some(k => k.example);
+  const parts = [];
+  if (!S.live && S.loaded) parts.push(`<div class="notice"><p><b>Not saving.</b> This view can't reach storage, so changes last only until you close the page.</p></div>`);
+  if (S.slow && !S.loaded) parts.push(`<div class="notice"><p>Your saved kits can't be reached yet. They'll appear when the connection returns.</p></div>`);
+  if (ex && S.canWrite) {
+    parts.push(S.confirm === "examples"
+      ? `<div class="notice"><p>Remove the example household and every kit and item marked as an example?</p><div class="row"><button class="btn danger sm" data-act="clearExamples">Remove examples</button><button class="btn ghost sm" data-act="cancelConfirm">Keep them</button></div></div>`
+      : `<div class="notice"><p><b>You're looking at example data.</b> Replace the household with yours and photograph your own kits. Example kits are tagged EXAMPLE.</p><button class="btn ghost sm" data-act="askConfirm" data-k="examples">Clear examples</button></div>`);
+  }
+  return parts.join("");
+}
+
+function actBtn(a) {
+  if (a.kind === "setup") return `<button class="btn sm" data-act="startWizard" ${D()}>Start</button>`;
+  if (a.kind === "hazards") return S.hzCheck?.state === "working" ? `<span class="working small"><span class="pulse"></span>Checking…</span>` : `<button class="btn sm" data-act="hzCheck" ${D()}>Check now</button>`;
+  if (a.kind === "ages") return `<button class="btn sm" data-act="tab" data-v="household">Add ages</button>`;
+  if (a.kind === "refill" || a.kind === "plan") return `<button class="btn sm" data-act="tab" data-v="plan">Open plan</button>`;
+  return shopItems().some(x => !x.done && x.cat === a.g.cat)
+    ? `<button class="btn ghost sm" data-act="tab" data-v="shop">On your list ✓</button>`
+    : `<button class="btn sm" data-act="shopAdd" data-cat="${a.g.cat}" ${D()}>Add to list</button>`;
+}
+const actRow = (a, i) => `<li class="act">
+  <span class="act-n" title="Step ${i + 1}">${icon(a.kind === "gap" ? a.g.cat : KIND_ICON[a.kind])}</span>
+  <div class="act-b"><b>${esc(a.title)}</b><p class="small">${esc(a.detail)}</p>${a.why ? `<p class="small muted">${esc(a.why)}</p>` : ""}${a.kind === "hazards" && S.hzCheck?.state === "error" ? `<p class="small" style="color:var(--bad)">${esc(S.hzCheck.msg)}</p>` : ""}</div>
+  <div class="act-do">${a.gain > 0 ? `<span class="gain mono" title="Readiness points this adds">+${a.gain}</span>` : ""}${actBtn(a)}</div>
+</li>`;
+function viewOverview(M) {
+  const { h, results, overall, gaps, exp } = M;
+  const N = nextActions(M);
+  const nGap = N.acts.filter(a => a.kind === "gap").length;
+  const listed = new Set(shopItems().filter(x => !x.done).map(x => x.cat));
+  const unlisted = gaps.filter(g => !listed.has(g.cat)).length;
+  const sc = overall ?? 0;
+  const c = statusColor(sc);
+  const assessed = S.hazards?.assessedAt;
+  const hzNote = assessed
+    ? `Hazard levels for <b>${esc(S.hazards.location || S.profile?.location || "your area")}</b> checked ${when(assessed)}.`
+    : `Only the emergencies every household faces are counted so far. <button class="btn ghost sm" data-act="tab" data-v="household">Check hazards for your area</button>`;
+  const sorted = [...results].sort((a, b) => b.wt - a.wt || a.score - b.score);
+  const applies = r => LEVELS[r.rel][1] > 0 && !(r.hz.vehicle && h.vehicles === 0);
+  const offCount = results.filter(r => !applies(r)).length;
+  const group = (label, rows, note) => { rows = S.showOff ? rows : rows.filter(applies); return rows.length ? `<div class="grp">
+    <div class="grp-h"><span class="eyebrow">${label}</span>${note ? `<span class="small muted">${note}</span>` : ""}</div>
+    <div class="hz">${rows.map(r => hzRow(r, h)).join("")}</div></div>` : ""; };
+  return `
+  <div class="panel next">
+    <div class="stack">
+      <div class="stack" style="gap:2px">
+        <p class="eyebrow">Next steps</p>
+        <h2>${N.acts.length ? (N.acts.length === 1 ? "Your next step" : `Your next ${N.acts.length} steps`) : "Nothing urgent"}</h2>
+        <p class="small muted">${nGap && overall != null && N.after > overall ? `Filling ${nGap === 1 ? "this gap" : `these ${nGap} gaps`} takes readiness from ${overall} to ${N.after}.`
+          : N.acts.length ? "Start here. These shape every number the app works out."
+          : "No gaps against the emergencies you've marked as relevant. Keep an eye on expiry dates."}</p>
+      </div>
+      ${N.acts.length ? `<ol class="acts">${N.acts.map(actRow).join("")}</ol>` : ""}
+      ${N.more > 0 ? `<div class="row"><span class="small muted">${N.more} more gap${N.more === 1 ? "" : "s"} after these.</span>${S.canWrite && unlisted ? `<button class="btn ghost sm" data-act="shopAddAll">${unlisted === gaps.length ? `Put all ${unlisted} on your shopping list` : `Add ${unlisted} more to your shopping list`}</button>` : ""}</div>` : ""}
+    </div>
+    <div class="sum-score">
+      <p class="eyebrow">Household readiness</p>
+      <div class="score"><span class="num">${overall ?? "–"}</span><span class="of">/ 100</span></div>
+      <div class="bar" style="--c:${c}" role="img" aria-label="Readiness ${sc} out of 100"><span style="width:${sc}%"></span></div>
+      <p class="mono small muted">${h.people} people · ${h.pets} pet${h.pets === 1 ? "" : "s"} · ${S.kits.length} kit${S.kits.length === 1 ? "" : "s"} · ${S.items.length} items${exp.length ? ` · <span style="color:var(--warn)">${exp.length} expiring</span>` : ""}</p>
+      <p class="small muted">Averaged across the emergencies that apply to you, weighted by how likely each one is and how much it matters to you. ${hzNote}</p>
+    </div>
+  </div>
+
+  <div class="ov-cols">
+    <div class="stack">
+      <div class="sec-h"><h2>Kits</h2><span class="small muted">Each against a standard kit of its type</span></div>
+      ${S.kits.length ? `<div class="hz">${[...S.kits].sort((a, b) => M.kitRes[a.id].score - M.kitRes[b.id].score).map(k => kitRow(k, M.kitRes[k.id])).join("")}</div>`
+        : `<p class="small muted">No kits yet. <button class="btn ghost sm" data-act="tab" data-v="kits">Add your first kit</button></p>`}
+      <div class="sec-h" style="margin-top:10px"><h2>Expiring</h2><span class="small muted">Expired items don't count</span></div>
+      ${exp.length ? `<div class="hz">${exp.map(x => `<div class="exp-row"><span class="ell"><b>${esc(x.it.name)}</b> <span class="muted">· ${esc(x.kit)}</span></span><span class="mono flag ${x.st}">${x.st === "expired" ? "Expired" : "Expires"} ${esc(x.it.expires)}</span></div>`).join("")}</div>`
+        : `<p class="small muted">Nothing expires in the next 90 days${S.items.some(i => i.expires) ? "" : ". Add expiry dates to food, water, batteries and medications so they show up here"}.</p>`}
+    </div>
+    <div class="stack">
+      <div class="sec-h"><h2>Emergencies</h2><span class="small muted">Open one to see what it needs, or to change how likely it is</span></div>
+      ${group("Disasters and outages", sorted.filter(r => !r.hz.group))}
+      ${group("Health emergencies", sorted.filter(r => r.hz.group === "health"), "Set from who lives here and their health on the Household tab. A first-aid course matters more than any kit.")}
+      ${group("Everyday", sorted.filter(r => r.hz.group === "everyday"), "Small things that go wrong often. A kit that handles them is one you'll open, and so keep stocked.")}
+      ${offCount ? `<div><button class="btn ghost sm" data-act="toggleOff" aria-expanded="${!!S.showOff}">${S.showOff ? "Hide" : "Show"} ${offCount} that ${offCount === 1 ? "doesn't" : "don't"} apply to you</button></div>` : ""}
+    </div>
+  </div>`;
+}
+function kitRow(k, r) {
+  const c = statusColor(r.score);
+  const miss = r.rows.filter(x => x.cov < 1).sort((a, b) => a.cov - b.cov);
+  const missText = miss.length ? "Short on " + miss.map(x => catLabel(x.cat).toLowerCase()).join(", ") + "." : "Has everything on its checklist.";
+  return `<div class="kit-row">
+    <button class="kit-name ell" data-act="gotoKit" data-id="${esc(k.id)}" title="Open ${esc(k.name)}"><b>${esc(k.name)}</b><span class="mode">${esc(r.std.label)} · ${esc(servesLine(r))}</span></button>
+    <div class="bar" style="--c:${c}"><span style="width:${r.score}%"></span></div>
+    <div class="pct">${r.score}%</div>
+    <p class="kit-miss small muted ell" title="${esc(missText)}">${esc(missText)}</p>
+  </div>`;
+}
+function kitReadyPanel(kit, r) {
+  const c = statusColor(r.score);
+  return `<div class="panel stack">
+    <div class="row" style="justify-content:space-between;align-items:flex-end">
+      <div><p class="eyebrow">Kit readiness</p>
+        <div class="row" style="gap:10px;align-items:baseline"><span class="kit-pct" style="color:${statusInk(r.score)}">${r.score}%</span><span class="small muted">as a ${esc(r.std.label)} for ${esc(servesLine(r))}</span></div></div>
+      ${S.canWrite ? `<label class="f">People this kit is for<input type="number" min="1" max="50" id="kit-serves-${esc(kit.id)}" value="${r.serves}" data-change="serves" data-id="${esc(kit.id)}" style="width:110px"></label>` : ""}
+    </div>
+    <div class="bar" style="--c:${c}"><span style="width:${r.score}%"></span></div>
+    <div class="chips">${chipsFor(r.rows, r.kh, "days")}</div>
+    <p class="small muted">${r.drivers.length ? `Checklist covers ${esc(r.drivers.map(d => d.hz.name.toLowerCase()).join(", "))}. ` : ""}${r.whole ? "" : "Pet, baby and kids' supplies are expected only in kits for the whole household. "}Expired items don't count.</p>
+  </div>`;
+}
+const RISK = { high: "High risk", moderate: "Moderate risk", low: "Low risk", none: "Doesn't apply" };
+function hzRow(r, h) {
+  const open = S.openHz.has(r.hz.id);
+  const off = LEVELS[r.rel][1] === 0;
+  const c = statusColor(r.score);
+  const why = S.hazards?.reasons?.[r.hz.id];
+  const lockedOff = r.hz.vehicle && h.vehicles === 0;
+  const alarm = r.hz.group === "health" && r.rel === "high" && r.score < 50;
+  const pri = importanceOf(r.hz.id);
+  return `<div class="hz-row ${off ? "off" : ""}">
+    <button class="hz-name ell" data-act="toggleHz" data-id="${r.hz.id}" aria-expanded="${open}" title="${esc(r.hz.name)} · ${esc(modeLine(r.hz))}"><b>${esc(r.hz.name)}</b><span class="mode">${esc(modeLine(r.hz))}</span></button>
+    <div class="hz-lvl small ${alarm ? "alarm" : "muted"}">${pri > 1 && !off && !lockedOff ? `<span class="pri" title="${esc(IMPORTANCE[S.hazards.importance[r.hz.id]][0])}: counts ${pri}× in your score">★</span> ` : ""}${lockedOff ? "No vehicle" : alarm ? "Needs attention" : RISK[r.rel] || ""}</div>
+    <div class="bar" style="--c:${c}"><span style="width:${r.score}%"></span></div>
+    <div class="pct" ${alarm ? `style="color:var(--bad)"` : ""}>${r.score}%</div>
+    <button class="x" data-act="toggleHz" data-id="${r.hz.id}" aria-expanded="${open}" aria-label="Details for ${esc(r.hz.name)}">${open ? "−" : "+"}</button>
+    ${open ? `<div class="hz-detail">
+      ${why ? `<p class="small">${esc(why)}</p>` : ""}
+      ${lockedOff ? "" : `<label class="hz-like small">How likely is this for you?
+        <select class="lvl" data-change="level" data-id="${r.hz.id}" aria-label="Likelihood of ${esc(r.hz.name)}" ${D()}>${Object.entries(LEVELS).map(([k, v]) => `<option value="${k}" ${k === r.rel ? "selected" : ""}>${v[0]}</option>`).join("")}</select></label>
+      <label class="hz-like small">How much does it matter to you?
+        <select class="lvl" data-change="importance" data-id="${r.hz.id}" aria-label="Importance of ${esc(r.hz.name)}" ${D()}>${Object.entries(IMPORTANCE).map(([k, v]) => `<option value="${k}" ${v[1] === pri ? "selected" : ""}>${v[0]}</option>`).join("")}</select></label>`}
+      <p class="small muted">Counts ${kitsFor(r.hz).map(k => KIT_TYPES[k].toLowerCase().replace(/y$/, "ie") + "s").join(", ").replace(/, ([^,]*)$/, " and $1")}. ${r.hz.group ? (r.hz.days > 1 ? `Needs sized for ${r.hz.days} days.` : "") : `Needs sized for ${h.people} ${h.people === 1 ? "person" : "people"}${h.pets ? ` and ${h.pets} pet${h.pets > 1 ? "s" : ""}` : ""} over ${r.hz.days === 1 ? "24 hours" : r.hz.days + " days"}.`}</p>
+      <div class="chips">${chipsFor(r.rows, h)}</div>
+    </div>` : ""}
+  </div>`;
+}
+
+function viewKits(M) {
+  const kit = S.kits.find(k => k.id === S.openKit) || null;
+  const counts = {};
+  for (const it of S.items) counts[it.kitId] = (counts[it.kitId] || 0) + 1;
+  const list = [...S.kits].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  return `<div class="kits-grid">
+    <div class="stack">
+      <h2>Your kits</h2>
+      <div class="tags">${list.map(k => `<button class="tag" data-act="openKit" data-id="${esc(k.id)}" aria-pressed="${k.id === S.openKit}">
+        <span class="mono">${esc(KIT_TYPES[k.type] || "Kit")}${k.example ? " · EXAMPLE" : ""}</span><b>${esc(k.name)}</b>
+        <span class="small">${counts[k.id] || 0} items${k.where ? " · " + esc(k.where) : ""}</span>
+        <span class="tag-pct" style="color:${statusInk(M.kitRes[k.id].score)}" aria-label="Readiness ${M.kitRes[k.id].score} percent">${M.kitRes[k.id].score}%</span></button>`).join("") || `<p class="muted">No kits yet. Add the first one below: a go-bag, a home supply bin or a car kit.</p>`}</div>
+      ${S.canWrite ? `<form class="panel stack" data-submit="newKit">
+        <p class="eyebrow">Add a kit</p>
+        <label class="f">Name<input type="text" id="nk-name" name="name" required placeholder="Hall closet go-bag" maxlength="60"></label>
+        <label class="f">Type<select id="nk-type" name="type">${Object.entries(KIT_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>
+        <label class="f">Where it's kept<input type="text" id="nk-where" name="where" placeholder="Garage shelf" maxlength="60"></label>
+        <button class="btn" type="submit">Add kit</button>
+      </form>` : ""}
+    </div>
+    <div class="stack">${kit ? kitDetail(kit, M.kitRes[kit.id]) : `<div class="panel"><p class="muted">Pick a kit to see its contents, or add one.</p></div>`}</div>
+  </div>`;
+}
+function kitDetail(kit, ready) {
+  const val = itemValues(kit, ready);
+  const maxPts = Math.max(1, ...Object.values(val).map(v => v.pts));
+  const byValue = S.itemSort === "value";
+  const items = S.items.filter(i => i.kitId === kit.id).sort((a, b) => (byValue ? val[b.id].pts - val[a.id].pts : 0) || String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name)));
+  const sortTh = (k, label) => `<button class="th-sort" data-act="sortItems" data-k="${k}" aria-pressed="${S.itemSort === k}">${label}${S.itemSort === k ? " ↓" : ""}</button>`;
+  const photos = Array.isArray(kit.photos) ? kit.photos : [];
+  const scanning = S.scan?.kitId === kit.id ? S.scan : null;
+  const draft = S.draft?.kitId === kit.id ? S.draft : null;
+  return `
+  <div class="row" style="justify-content:space-between;align-items:flex-end">
+    <div><p class="eyebrow">${esc(KIT_TYPES[kit.type] || "Kit")}${kit.where ? " · " + esc(kit.where) : ""}</p><h2>${esc(kit.name)}</h2></div>
+    ${S.canWrite ? (S.confirm === "kit:" + kit.id
+      ? `<div class="row"><span class="small">Delete this kit, its ${items.length} items and ${photos.length} photos?</span><button class="btn danger sm" data-act="delKit" data-id="${esc(kit.id)}">Delete</button><button class="btn ghost sm" data-act="cancelConfirm">Cancel</button></div>`
+      : `<button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button>`) : ""}
+  </div>
+  ${kitReadyPanel(kit, ready)}
+  ${photos.length ? `<div class="photos">${photos.map(id => `<img src="/_blob/${esc(id)}" alt="Photo of ${esc(kit.name)}" loading="lazy">`).join("")}</div>` : ""}
+  ${S.canWrite ? `<div class="panel stack">
+    <div class="row" style="justify-content:space-between">
+      <div><b>Photograph the contents</b><p class="small muted">Lay items out so labels face up. Claude lists what it sees, then you check the list before anything is saved.</p></div>
+      ${scanning?.state === "working" ? `<button class="btn ghost" data-act="stopScan">Stop</button>` : `<button class="btn" data-act="pickPhotos" ${draft ? "disabled" : ""}>Add photos</button>`}
+    </div>
+    ${scanning ? (scanning.state === "working" ? `<div class="working"><span class="pulse"></span><span>${esc(scanning.msg)}</span></div>` : `<p class="small" style="color:var(--bad)">${esc(scanning.msg)}</p>`) : ""}
+  </div>` : ""}
+  ${draft ? draftTable(draft) : ""}
+  ${S.canWrite && S.sel.size ? `<div class="selbar">
+    <b>${S.sel.size} selected</b>
+    <button class="btn danger sm" data-act="removeSel">Remove from kit</button>
+    <button class="btn ghost sm" data-act="clearSel">Cancel</button>
+  </div>` : ""}
+  <div class="tbl-wrap"><table>
+    <thead><tr>${S.canWrite ? `<th class="sel"><input type="checkbox" id="sel-all" data-change="selAll" aria-label="Select all items" ${items.length && items.every(i => S.sel.has(i.id)) ? "checked" : ""} ${items.length ? "" : "disabled"}></th>` : ""}<th style="width:28%">Item</th><th>${sortTh("cat", "Category")}</th><th style="width:60px">Qty</th><th style="width:76px">Water L</th><th style="width:86px">Food kcal</th><th style="width:140px">Expires</th><th style="width:118px" title="Kit readiness points this item earns. Every item's points add up to the kit's score.">${sortTh("value", "Value")}</th><th style="width:32px"></th></tr></thead>
+    <tbody>
+      ${items.map(it => { const st = expState(it); const on = S.sel.has(it.id); return `<tr class="${on ? "picked" : ""}">
+        ${S.canWrite ? `<td class="sel"><input type="checkbox" id="sel-${esc(it.id)}" data-change="sel" data-id="${esc(it.id)}" aria-label="Select ${esc(it.name)}" ${on ? "checked" : ""}></td>` : ""}
+        <td><input type="text" id="it-${esc(it.id)}-name" value="${esc(it.name)}" data-change="item" data-id="${esc(it.id)}" data-f="name" aria-label="Item name" ${D()}>${it.note ? `<div class="small muted" style="padding:0 6px">${esc(it.note)}</div>` : ""}</td>
+        <td class="cat-td">${icon(it.category)}<select id="it-${esc(it.id)}-cat" data-change="item" data-id="${esc(it.id)}" data-f="category" aria-label="Category" ${D()}>${catOptions(it.category)}</select></td>
+        <td class="num"><input type="number" min="1" id="it-${esc(it.id)}-qty" value="${esc(Math.max(1, num(it.qty)))}" data-change="item" data-id="${esc(it.id)}" data-f="qty" aria-label="Quantity" ${D()}></td>
+        <td class="num"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-l" value="${num(it.liters) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="liters" aria-label="Litres of water" ${D()}></td>
+        <td class="num"><input type="number" min="0" step="50" id="it-${esc(it.id)}-k" value="${num(it.kcal) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="kcal" aria-label="Food calories" ${D()}></td>
+        <td><input type="month" id="it-${esc(it.id)}-exp" value="${esc(it.expires || "")}" data-change="item" data-id="${esc(it.id)}" data-f="expires" aria-label="Expiry month" ${D()}>${st ? `<span class="flag ${st}">${st === "expired" ? "expired" : "expiring soon"}</span>` : ""}</td>
+        <td class="val" title="${esc(val[it.id].note || `Earns ${ptsLabel(val[it.id].pts)} of this kit's ${ready.score} points`)}"><div class="val-in"><span class="vbar"><i style="width:${Math.round(100 * val[it.id].pts / maxPts)}%"></i></span><b class="mono">${ptsLabel(val[it.id].pts)}</b></div>${val[it.id].note ? `<span class="val-note">${esc(val[it.id].note)}</span>` : ""}</td>
+        <td>${S.canWrite ? `<button class="x" data-act="delItem" data-id="${esc(it.id)}" aria-label="Remove ${esc(it.name)}">×</button>` : ""}</td>
+      </tr>`; }).join("")}
+      ${S.canWrite ? `<tr class="addrow">
+        <td class="sel"></td>
+        <td><input type="text" id="add-name" placeholder="Add an item by hand…" maxlength="80" aria-label="New item name"></td>
+        <td><select id="add-cat" aria-label="New item category">${catOptions("water")}</select></td>
+        <td class="num"><input type="number" id="add-qty" min="1" value="1" aria-label="New item quantity"></td>
+        <td class="num"><input type="number" id="add-l" min="0" step="0.1" aria-label="New item litres"></td>
+        <td class="num"><input type="number" id="add-k" min="0" step="50" aria-label="New item calories"></td>
+        <td><input type="month" id="add-exp" aria-label="New item expiry"></td>
+        <td></td>
+        <td><button class="btn sm" data-act="addItem" aria-label="Add item">+</button></td>
+      </tr>` : ""}
+    </tbody>
+  </table></div>
+  <p class="small muted">${S.canWrite && items.length ? "Tick anything that's no longer in this kit, then remove it. " : ""}Water L and Food kcal are totals for the whole line (a 24-pack of 500 ml bottles is 12 L). Only these two columns count toward water and food needs. Value is how many of the kit's ${ready.score} readiness points each item earns: a checklist line's points are shared by the items that fill it, so a lone tourniquet is worth more than one of twenty water bottles.</p>`;
+}
+function catOptions(sel) { return Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${k === sel ? "selected" : ""}>${v[0]}</option>`).join(""); }
+function draftTable(d) {
+  return `<div class="panel stack" style="border-color:var(--accent)">
+    <div class="row" style="justify-content:space-between">
+      <div><b>Claude found ${d.rows.length} item${d.rows.length === 1 ? "" : "s"}</b><p class="small muted">Fix anything it misread, remove what isn't there, then add them to the kit.</p></div>
+      <div class="row"><button class="btn" data-act="draftSave" ${d.rows.length ? "" : "disabled"}>Add ${d.rows.length} to kit</button><button class="btn ghost" data-act="draftCancel">Discard</button></div>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th style="width:30%">Item</th><th>Category</th><th style="width:70px">Qty</th><th style="width:90px">Water L</th><th style="width:100px">Food kcal</th><th style="width:150px">Expires</th><th style="width:36px"></th></tr></thead>
+      <tbody>${d.rows.map((r, i) => `<tr>
+        <td><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted" style="padding:0 6px">${esc(r.note)}</div>` : ""}</td>
+        <td><select id="d-${r.key}-cat" data-input="draft" data-i="${i}" data-f="category" aria-label="Category">${catOptions(r.category)}</select></td>
+        <td class="num"><input type="number" min="1" id="d-${r.key}-qty" value="${r.qty}" data-input="draft" data-i="${i}" data-f="qty" aria-label="Quantity"></td>
+        <td class="num"><input type="number" min="0" step="0.1" id="d-${r.key}-l" value="${r.liters || ""}" data-input="draft" data-i="${i}" data-f="liters" aria-label="Litres"></td>
+        <td class="num"><input type="number" min="0" step="50" id="d-${r.key}-k" value="${r.kcal || ""}" data-input="draft" data-i="${i}" data-f="kcal" aria-label="Calories"></td>
+        <td><input type="month" id="d-${r.key}-exp" value="${esc(r.expires)}" data-input="draft" data-i="${i}" data-f="expires" aria-label="Expiry"></td>
+        <td><button class="x" data-act="draftDrop" data-i="${i}" aria-label="Remove ${esc(r.name)}">×</button></td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+  </div>`;
+}
+
+const personName = (m, i) => m.label || `Person ${i + 1}`;
+function hhWhere(d) {
+  return `<div class="hh-grid">
+    <label class="f">Location<input type="text" id="hh-location" value="${esc(d.location || "")}" data-input="hh" data-p="location" placeholder="Town, region, country" ${D()}></label>
+    <label class="f">Home<select id="hh-home" data-input="hh" data-p="home" ${D()}>${["House", "Apartment or condo", "Townhouse", "Mobile home", "Other"].map(o => `<option ${o === d.home ? "selected" : ""}>${o}</option>`).join("")}</select></label>
+    <label class="f">Vehicles<input type="number" min="0" id="hh-vehicles" value="${esc(num(d.vehicles))}" data-input="hh" data-p="vehicles" ${D()}></label>
+  </div>`;
+}
+function hhPeople(members) {
+  return `<div class="people">${members.map((m, i) => `<div class="person">
+      <input type="text" id="hh-m${i}-label" value="${esc(m.label || "")}" data-input="hh" data-p="members.${i}.label" placeholder="Name or role" aria-label="Person ${i + 1} name" ${D()}>
+      <input type="number" min="0" max="120" step="1" id="hh-m${i}-years" value="${yearsOf(m) ?? ""}" data-input="hh" data-p="members.${i}.years" data-blank="1" placeholder="${yearsOf(m) == null ? "Age" : ""}" aria-label="Person ${i + 1} age in years" ${D()}>
+      <input class="needs" type="text" id="hh-m${i}-needs" value="${esc(m.needs || "")}" data-input="hh" data-p="members.${i}.needs" placeholder="Anything else: medications, glasses, devices…" aria-label="Person ${i + 1} special needs" ${D()}>
+      ${S.canWrite ? `<button type="button" class="x" data-act="hhDel" data-k="members" data-i="${i}" aria-label="Remove ${esc(personName(m, i))}">×</button>` : ""}
+      <p class="pneeds mono" id="hh-m${i}-sizing">${personNeeds(m)}</p>
+    </div>`).join("")}</div>
+    ${S.canWrite ? `<div><button type="button" class="btn ghost sm" data-act="hhAdd" data-k="members">Add person</button></div>` : ""}`;
+}
+/* One question per condition instead of a checkbox grid per person: switch a need on, then say who has it. */
+function hhHealth(members) {
+  return `<div class="cond-list">${Object.entries(CONDITIONS).map(([k, v]) => {
+    const who = members.map((m, i) => [m, i]).filter(([m]) => (m.conditions || []).includes(k));
+    const on = who.length > 0 || S.condOpen.has(k);
+    return `<div class="cond ${on ? "on" : ""}">
+      <button type="button" class="cond-t" data-act="condToggle" data-k="${k}" aria-pressed="${on}" ${D()}><span>${v}</span>${who.length && members.length > 1 ? `<span class="who-names">${esc(who.map(([m, i]) => personName(m, i)).join(", "))}</span>` : ""}</button>
+      ${on && members.length > 1 ? `<div class="who" role="group" aria-label="Who: ${esc(v)}">${members.map((m, i) => `<label><input type="checkbox" id="hh-m${i}-c-${k}" data-change="hhCond" data-i="${i}" data-k="${k}" ${(m.conditions || []).includes(k) ? "checked" : ""} ${D()}>${esc(personName(m, i))}</label>`).join("")}</div>` : ""}
+    </div>`;
+  }).join("")}</div>`;
+}
+function hhPets(pets) {
+  return `<div class="people">${pets.map((p, i) => `<div class="pet">
+      <input type="text" id="hh-p${i}-kind" value="${esc(p.kind || "")}" data-input="hh" data-p="pets.${i}.kind" placeholder="Dog, cat…" aria-label="Pet kind" ${D()}>
+      <input type="number" min="0" id="hh-p${i}-count" value="${esc(num(p.count))}" data-input="hh" data-p="pets.${i}.count" aria-label="How many" ${D()}>
+      ${S.canWrite ? `<button type="button" class="x" data-act="hhDel" data-k="pets" data-i="${i}" aria-label="Remove pet">×</button>` : ""}
+    </div>`).join("") || `<p class="small muted">No pets.</p>`}</div>
+    ${S.canWrite ? `<div><button type="button" class="btn ghost sm" data-act="hhAdd" data-k="pets">Add pet</button></div>` : ""}`;
+}
+const WIZ = [
+  ["Where do you live?", "Your town decides which disasters are worth planning for.", d => hhWhere(d)],
+  ["Who lives with you?", "Ages size everyone's food and add baby or kids' supplies when they apply. Leave an age blank if you'd rather not say.", d => hhPeople(d.members || [])],
+  ["Does anyone have health needs?", "These switch on emergencies like a medication supply running out. Skip this if nobody does.", d => hhHealth(d.members || [])],
+  ["Any pets?", "Pets need their own food, water and a carrier.", d => hhPets(d.pets || [])],
+];
+function viewWizard(d) {
+  const i = S.wiz, [q, why, body] = WIZ[i], last = i === WIZ.length - 1;
+  return `<form class="panel stack wiz" data-submit="wizNext">
+    <div class="row" style="justify-content:space-between"><p class="eyebrow">Step ${i + 1} of ${WIZ.length}</p><div class="wiz-dots" aria-hidden="true">${WIZ.map((_, j) => `<i class="${j <= i ? "on" : ""}"></i>`).join("")}</div></div>
+    <div class="stack" style="gap:4px"><h2>${q}</h2><p class="muted">${why}</p></div>
+    ${body(d)}
+    <div class="row wiz-nav">
+      ${i ? `<button type="button" class="btn ghost" data-act="wizBack">Back</button>` : `<button type="button" class="btn ghost" data-act="wizClose">Cancel</button>`}
+      <span style="flex:1"></span>
+      ${i >= 2 ? `<button type="button" class="btn ghost" data-act="wizNext">Skip</button>` : ""}
+      <button class="btn" type="submit">${last ? "Save household" : "Next"}</button>
+    </div>
+  </form>`;
+}
+function viewHousehold() {
+  const d = S.hhDraft || {};
+  const members = Array.isArray(d.members) ? d.members : [];
+  const pets = Array.isArray(d.pets) ? d.pets : [];
+  const hz = S.hazards;
+  const chk = S.hzCheck;
+  const fresh = !S.profile || S.profile.example;
+  return `
+  <div class="stack">
+    <div class="row" style="justify-content:space-between"><h2>Household</h2>${S.canWrite && S.wiz == null ? `<button class="btn ${fresh ? "" : "ghost "}sm" data-act="startWizard">${fresh ? "Set up in 4 quick steps" : "Walk me through it"}</button>` : ""}</div>
+    <p class="muted" style="max-width:70ch">Needs are sized from this: 3.8 L of water per person per day, food calories by each person's age, masks and blankets per person, and baby, kids' and pet supplies when they apply. Health needs switch on the health emergencies that follow from them, like a medication supply running out or a powered device losing power. Your location is what Claude uses to judge which emergencies are likely.</p>
+  </div>
+  ${S.wiz != null ? viewWizard(d) : `<form class="panel stack" data-submit="saveHH">
+    ${hhWhere(d)}
+    <div class="stack"><p class="eyebrow">People</p>${hhPeople(members)}</div>
+    <div class="stack"><p class="eyebrow">Health needs</p><p class="small muted">Does anyone in your home have any of these? Switch one on, then tick who.</p>${hhHealth(members)}</div>
+    <div class="stack"><p class="eyebrow">Pets</p>${hhPets(pets)}</div>
+    <label class="f">Anything else that matters in an emergency<textarea id="hh-notes" data-input="hh" data-p="notes" placeholder="Near a river or coast, wooded lot, well water, wood stove, second floor bedrooms, commute over a bridge…" ${D()}>${esc(d.notes || "")}</textarea></label>
+    ${S.canWrite ? `<div class="row"><button class="btn" type="submit" ${S.hhDirty ? "" : "disabled"}>Save household</button>${S.hhDirty ? `<span class="small muted">Unsaved changes</span>` : `<span class="small muted">${S.profile?.updatedAt ? "Saved " + when(S.profile.updatedAt) : ""}</span>`}</div>` : ""}
+  </form>`}
+
+  <div class="panel stack">
+    <div class="row" style="justify-content:space-between">
+      <div><b>Hazards for your area</b><p class="small muted">Claude rates each emergency for your saved location and circumstances. You can override any rating on the Readiness tab.</p></div>
+      ${S.canWrite ? (chk?.state === "working" ? `<div class="working"><span class="pulse"></span><span>Checking ${esc(S.profile?.location || "")}…</span></div>`
+        : `<button class="btn" data-act="hzCheck" ${S.profile?.location && !S.hhDirty ? "" : "disabled"}>${hz?.assessedAt ? "Check again" : "Check hazards"}</button>`) : ""}
+    </div>
+    ${!S.profile?.location ? `<p class="small muted">Save a location first.</p>` : S.hhDirty ? `<p class="small muted">Save your changes first.</p>` : ""}
+    ${chk?.state === "error" ? `<p class="small" style="color:var(--bad)">${esc(chk.msg)}</p>` : ""}
+    ${hz?.assessedAt ? `<div class="reasons">${HAZARDS.filter(h => hz.levels?.[h.id]).sort((a, b) => LEVELS[hz.levels[b.id]][1] - LEVELS[hz.levels[a.id]][1]).map(h => `<div><span><b>${esc(h.name)}</b><br><span class="mono small">${esc(LEVELS[hz.levels[h.id]]?.[0] || "")}</span></span><span>${esc(hz.reasons?.[h.id] || "")}</span></div>`).join("")}</div>
+      ${hz.notes ? `<p class="small"><b>Also:</b> ${esc(hz.notes)}</p>` : ""}<p class="small muted">Checked ${when(hz.assessedAt)} for ${esc(hz.location || "")}.</p>` : ""}
+  </div>`;
+}
+
+function viewShop(M) {
+  const items = shopItems();
+  const left = items.filter(x => !x.done), got = items.filter(x => x.done);
+  const listed = new Set(left.map(x => x.cat));
+  const unlisted = M.gaps.filter(g => !listed.has(g.cat)).length;
+  const info = new Map(items.map(e => [e.id, shopInfo(e, M)]));
+  const I = e => info.get(e.id);
+  const kitName = id => S.kits.find(k => k.id === id)?.name;
+  const kitOpts = e => { const cur = shopKit(e); return `<option value="none" ${cur ? "" : "selected"}>Not in a kit yet</option>` + S.kits.map(k => `<option value="${esc(k.id)}" ${k.id === cur ? "selected" : ""}>Goes in ${esc(k.name)}</option>`).join(""); };
+  /* Points per dollar. Things already at home rank first; prescriptions can't be budgeted, so they rank last. */
+  const ratio = e => { const i = I(e); return i.price == null ? -1 : i.price === 0 ? (i.gain ? 1e6 + i.gain : 0) : i.gain / i.price; };
+  const sort = S.shopSort || "points";
+  const order = [...left];
+  if (sort === "points") order.sort((a, b) => I(b).gain - I(a).gain);
+  else if (sort === "value") order.sort((a, b) => ratio(b) - ratio(a) || I(b).gain - I(a).gain);
+  const budget = Math.max(0, num(S.budget));
+  let pick = null, spent = 0;
+  if (budget) {
+    pick = new Set();
+    for (const e of [...left].sort((a, b) => ratio(b) - ratio(a))) { const pr = I(e).price; if (pr != null && I(e).gain > 0 && spent + pr <= budget) { pick.add(e.id); spent += pr; } }
+    order.sort((a, b) => pick.has(b.id) - pick.has(a.id));
+  }
+  const after = M.overall == null ? null : scoreIfBought(left);
+  const pickAfter = pick && M.overall != null ? scoreIfBought(left.filter(e => pick.has(e.id))) : null;
+  const total = left.reduce((a, e) => a + (I(e).price || 0), 0), rx = left.filter(e => I(e).price === null).length;
+  const row = e => { const i = I(e); return `<li class="shop-row ${e.done ? "done" : ""} ${S.flash === e.id ? "flash" : ""} ${pick && !pick.has(e.id) && !e.done ? "over" : ""}">
+    <label class="shop-chk"><input type="checkbox" id="shop-${esc(e.id)}" data-change="shopTick" data-id="${esc(e.id)}" ${e.done ? "checked" : ""} ${D()}>${icon(e.cat || "other")}<span><b>${esc(i.line)}</b>${!e.done && i.sub ? `<span class="small muted">${esc(i.sub)}</span>` : ""}${!e.done && i.tip ? `<span class="small shop-tip">${esc(i.tip)}</span>` : ""}</span></label>
+    <div class="shop-meta">${e.done ? "" : `${i.gain ? `<span class="gain mono" title="Readiness points this adds">+${i.gain}</span>` : ""}${money(i.price) ? `<span class="small muted">${money(i.price)}</span>` : ""}`}</div>
+    <div class="shop-kit">${e.done ? (kitName(e.inKit) ? `<span class="small muted">In ${esc(kitName(e.inKit))}</span>` : "")
+      : CATS[e.cat] && S.kits.length ? `<select id="shop-${esc(e.id)}-kit" data-change="shopKit" data-id="${esc(e.id)}" aria-label="Kit for ${esc(i.line)}" ${D()}>${kitOpts(e)}</select>` : ""}</div>
+    ${S.canWrite ? `<button class="x" data-act="shopDel" data-id="${esc(e.id)}" aria-label="Remove ${esc(i.line)} from the list">×</button>` : ""}
+  </li>`; };
+  const cut = pick ? order.findIndex(e => !pick.has(e.id)) : -1;
+  const rows = order.map((e, k) => (k === cut && k > 0 ? `<li class="shop-cut small muted">Over your budget</li>` : "") + row(e)).join("");
+  return `
+  <div class="stack">
+    <h2>Shopping list</h2>
+    <p class="muted" style="max-width:70ch">Tick things off as you buy them. Each ticked item goes straight into the kit shown beside it, so your readiness rises as you shop. Untick to take it back out. Prices are rough US store prices, to help you plan.</p>
+  </div>
+  <div class="panel stack">
+    <div class="row" style="justify-content:space-between">
+      <b>${left.length ? `${left.length} to buy` : "Nothing to buy yet"}</b>
+      <div class="row">
+        ${S.canWrite && unlisted && left.length ? `<button class="btn ghost sm" data-act="shopAddAll">Add ${unlisted} more gap${unlisted === 1 ? "" : "s"}</button>` : ""}
+        ${left.length ? `<button class="btn ghost sm" data-act="shopShare">Share list</button>` : ""}
+      </div>
+    </div>
+    ${left.length ? `
+    <p class="shop-sum">About <b>$${total.toLocaleString()}</b>${rx ? ` plus ${rx} prescription item${rx === 1 ? "" : "s"}` : ""}.${after != null && after > M.overall ? ` Buying it all takes readiness from ${M.overall} to <b>${after}</b>.` : ""}</p>
+    <div class="shop-tools">
+      <label class="small">Order <select id="shop-sort" data-change="shopSort">
+        <option value="points" ${sort === "points" ? "selected" : ""}>Most points first</option>
+        <option value="value" ${sort === "value" ? "selected" : ""}>Most points per dollar</option>
+        <option value="added" ${sort === "added" ? "selected" : ""}>Order added</option></select></label>
+      <label class="small">Spend up to $ <input type="number" id="shop-budget" data-change="budget" min="0" step="5" inputmode="numeric" value="${budget || ""}" placeholder="Any" aria-label="Budget in dollars"></label>
+      ${pick ? `<span class="small">${pick.size ? `<b>$${spent}</b> buys ${pl(pick.size, "item")}${pickAfter != null && pickAfter > M.overall ? `: readiness ${M.overall} → <b>${pickAfter}</b>` : ""}.` : "Nothing on the list fits that budget yet."} <button class="btn ghost sm" data-act="budgetClear">Clear</button></span>` : ""}
+    </div>
+    <ul class="shop">${rows}</ul>`
+      : M.gaps.length ? `<p class="small muted">Start with the gaps worth the most points. You can add the rest later.</p>
+      ${S.canWrite ? `<div class="row"><button class="btn sm" data-act="shopAddTop">Add the top ${Math.min(5, M.gaps.length)}</button>${M.gaps.length > 5 ? `<button class="btn ghost sm" data-act="shopAddAll">Add all ${M.gaps.length}</button>` : ""}</div>` : ""}`
+      : `<p class="small muted">Your kits cover every emergency you've marked as relevant.</p>`}
+    ${S.canWrite ? `<form class="shop-add" data-submit="shopNew"><input type="text" id="shop-new" placeholder="Add something else…" maxlength="80" aria-label="Add an item to the list"><button class="btn ghost sm" type="submit">Add</button></form>` : ""}
+  </div>
+  ${got.length ? `<div class="panel stack">
+    <div class="row" style="justify-content:space-between"><b>Got it (${got.length})</b>${S.canWrite ? `<button class="btn ghost sm" data-act="shopClear">Clear these</button>` : ""}</div>
+    <ul class="shop">${got.map(row).join("")}</ul>
+  </div>` : ""}`;
+}
+
+/* The family plan: what a kit can't hold. Each field saves when you leave it. */
+const PLAN = [
+  ["Where to meet", [
+    ["meetNear", "Near home", "If you have to get out fast, like in a fire", "The big oak at the end of the street"],
+    ["meetFar", "Outside your neighbourhood", "If you can't get back home", "Library on Main St"],
+    ["destination", "Where you'd go if told to evacuate", "A friend or relative outside the area, or a hotel", "Aunt Sue's in Bend"],
+  ]],
+  ["Who everyone checks in with", [
+    ["contactName", "Out-of-area contact", "Long-distance calls and texts often get through when local ones don't", "Name"],
+    ["contactPhone", "Their phone", "", "Phone number", "tel"],
+  ]],
+  ["Shut-offs", [
+    ["shutWater", "Water shut-off", "", "Basement, by the front wall"],
+    ["shutGas", "Gas shut-off", "Only turn it off if you smell gas. The utility has to turn it back on", "Outside, left of the garage"],
+    ["shutPower", "Electrical panel", "", "Garage, behind the door"],
+  ]],
+];
+const savePlan = data => setDoc("household", "plan", { ...data, updatedAt: Date.now() }).catch(() => {});
+function refillState(x) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(x.refill || "")) return { cls: "muted", text: "Add the next refill date", days: null };
+  const [y, m, d] = x.refill.split("-").map(Number), due = new Date(y, m - 1, d);
+  const days = Math.round((due - new Date(new Date().toDateString())) / 864e5);
+  return days < 0 ? { cls: "bad", text: `Refill overdue by ${-days} day${days === -1 ? "" : "s"}`, days }
+    : days <= 7 ? { cls: "warn", text: days === 0 ? "Refill due today" : `Refill due in ${days} day${days === 1 ? "" : "s"}`, days }
+    : { cls: "muted", text: `Next refill ${when(due)}`, days };
+}
+function planText() {
+  const p = S.plan || {};
+  const lines = PLAN.flatMap(([, fs]) => fs).filter(([k]) => String(p[k] || "").trim()).map(([k, label]) => `${label}: ${p[k]}`);
+  for (const x of Array.isArray(p.meds) ? p.meds : []) if (x.name) lines.push(`Medication: ${x.who ? x.who + " — " : ""}${x.name}${x.refill ? `, next refill ${x.refill}` : ""}`);
+  return lines.join("\n") || "nothing filled in yet";
+}
+function viewPlan(M) {
+  const p = S.plan || {};
+  const fields = PLAN.flatMap(([, fs]) => fs);
+  const filled = fields.filter(([k]) => String(p[k] || "").trim()).length;
+  const ms = household().members.map((m, i) => personName(m, i));
+  const meds = Array.isArray(p.meds) ? p.meds : [];
+  const onMeds = household().members.map((m, i) => [m, personName(m, i)]).filter(([m, n]) => (m.conditions || []).some(c => c === "meds" || c === "diabetes") && !meds.some(x => x.who === n)).map(([, n]) => n);
+  const field = ([k, label, hint, ph, type]) => `<label class="f">${label}<input type="${type || "text"}" id="plan-${k}" value="${esc(p[k] || "")}" data-change="plan" data-f="${k}" placeholder="${esc(ph)}" maxlength="120" ${D()}>${hint ? `<span class="hint">${hint}</span>` : ""}</label>`;
+  const med = (x, i) => { const st = refillState(x); return `<div class="med">
+      <select id="med-${i}-who" data-change="planMed" data-i="${i}" data-f="who" aria-label="Who takes it" ${D()}><option value="">Who?</option>${ms.map(n => `<option ${n === x.who ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
+      <input type="text" id="med-${i}-name" value="${esc(x.name || "")}" data-change="planMed" data-i="${i}" data-f="name" placeholder="Medication" maxlength="80" aria-label="Medication" ${D()}>
+      <input type="date" id="med-${i}-refill" value="${esc(x.refill || "")}" data-change="planMed" data-i="${i}" data-f="refill" aria-label="Next refill due" ${D()}>
+      ${S.canWrite ? `<button class="x" data-act="planMedDel" data-i="${i}" aria-label="Remove ${esc(x.name || "medication")}">×</button>` : ""}
+      <span class="med-st small ${st.cls}">${st.text}</span>
+    </div>`; };
+  return `
+  <div class="stack">
+    <h2>Family plan</h2>
+    <p class="muted" style="max-width:70ch">The parts of being ready that a kit can't hold. Everything saves as you go, and Claude's review below builds on it. <span class="mono">${filled} of ${fields.length}</span> filled in.</p>
+  </div>
+  <div class="plan-grid">
+    ${PLAN.map(([title, fs]) => `<div class="panel stack"><p class="eyebrow">${title}</p>${fs.map(field).join("")}</div>`).join("")}
+    <div class="panel stack">
+      <p class="eyebrow">Medication refills</p>
+      ${onMeds.length ? `<p class="small">${esc(orList(onMeds, "and"))} ${onMeds.length > 1 ? "take" : "takes"} daily medication. Add it here for a reminder on your next steps a week before a refill is due.</p>` : meds.length ? "" : `<p class="small muted">Add any medication someone can't go without, with its next refill date.</p>`}
+      ${meds.map(med).join("")}
+      ${S.canWrite ? `<div><button class="btn ghost sm" data-act="planMedAdd">Add medication</button></div>` : ""}
+    </div>
+  </div>
+  ${viewReview()}`;
+}
+
+function viewReview() {
+  const rv = S.rv;
+  const saved = S.review;
+  const text = rv?.text ?? saved?.text ?? "";
+  return `
+  <div class="stack">
+    <h2>Claude's review</h2>
+    <p class="muted" style="max-width:70ch">Claude reads your household, hazards, scores and full inventory, then writes a short plan: what to buy next with quantities, what to rotate, and the plans and skills a kit can't cover.</p>
+    <div class="row">
+      ${rv?.state === "working" ? `<button class="btn ghost" data-act="rvStop">Stop</button><div class="working"><span class="pulse"></span><span>${rv.text ? "Writing…" : "Thinking…"}</span></div>`
+        : `<button class="btn" data-act="rvRun" ${S.kits.length ? "" : "disabled"}>${saved ? "Write a new review" : "Write my review"}</button>`}
+      ${saved?.at && !rv ? `<span class="small muted">Last written ${when(saved.at)}</span>` : ""}
+    </div>
+    ${rv?.state === "error" ? `<p class="small" style="color:var(--bad)">${esc(rv.msg)}</p>` : ""}
+  </div>
+  ${text ? `<article class="panel review">${formatReview(text)}</article>` : `<div class="panel"><p class="muted">${S.kits.length ? "No review yet. It reads better once your plan above is filled in." : "No review yet. Add at least one kit, then ask for one."}</p></div>`}`;
+}
+function formatReview(t) {
+  const out = []; let list = [];
+  const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  const flush = () => { if (list.length) { out.push(`<ul>${list.map(l => `<li>${inline(l)}</li>`).join("")}</ul>`); list = []; } };
+  for (const raw of t.split("\n")) {
+    const line = raw.trim();
+    if (!line) { flush(); continue; }
+    if (/^#{1,4}\s/.test(line)) { flush(); out.push(`<h3>${inline(line.replace(/^#+\s*/, ""))}</h3>`); }
+    else if (/^([-*•]|\d+[.)])\s/.test(line)) list.push(line.replace(/^([-*•]|\d+[.)])\s+/, ""));
+    else { flush(); out.push(`<p>${inline(line)}</p>`); }
+  }
+  flush();
+  return out.join("");
+}
+
+/* ---------- render ---------- */
+function render() {
+  const a = document.activeElement;
+  const keep = a && a.id && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.tagName === "SELECT")
+    ? { id: a.id, value: a.value, s: a.selectionStart, e: a.selectionEnd } : null;
+  const M = model();
+  if (S.sel.size) { const live = new Set(S.items.filter(i => i.kitId === S.openKit).map(i => i.id)); for (const id of S.sel) if (!live.has(id)) S.sel.delete(id); }
+  if (!S.openKit && S.kits.length) S.openKit = [...S.kits].sort((x, y) => (x.createdAt || 0) - (y.createdAt || 0))[0].id;
+  document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.v === S.view ? "page" : "false"));
+  $("#hdr-score").innerHTML = M.overall == null ? "" : `<span class="eyebrow">Readiness</span><b>${M.overall}</b><span class="eyebrow">/ 100</span>`;
+  const toBuy = shopItems().filter(x => !x.done).length;
+  $("#tab-shop-n").textContent = toBuy ? ` ${toBuy}` : "";
+  $("#banner").innerHTML = viewBanner();
+  for (const v of VIEWS) $("#v-" + v).hidden = v !== S.view;
+  const el = $("#v-" + S.view);
+  el.innerHTML = S.view === "overview" ? viewOverview(M) : S.view === "kits" ? viewKits(M) : S.view === "shop" ? viewShop(M) : S.view === "household" ? viewHousehold() : viewPlan(M);
+  if (keep) {
+    const n = document.getElementById(keep.id);
+    if (n) {
+      if (n.value !== keep.value) n.value = keep.value;
+      n.focus({ preventScroll: true });
+      try { if (keep.s != null) n.setSelectionRange(keep.s, keep.e); } catch (_) {}
+    }
+  }
+  celebrate(M);
+}
+
+/* ---------- progress feedback ---------- */
+/* Days the stock would keep everyone going: the lower of water (3.8 L a person, about 1 L a pet) and food. */
+const daysCovered = (st, h) => !st || !h.people ? 0 : Math.min(st.liters / (h.people * 3.8 + h.pets), h.kcalDay ? st.kcal / h.kcalDay : 0);
+const MILESTONES = { home: [1, 3, 7, 14], go: [1, 3] };
+const calm = () => typeof requestAnimationFrame !== "function" || !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+function celebrate(M) {
+  if (!S.loaded) return;
+  const now = { overall: M.overall, home: daysCovered(M.stocks.shelter, M.h), go: daysCovered(M.stocks.evacuate, M.h) };
+  const prev = S.prev; S.prev = now;
+  if (!prev) return;
+  if (now.overall != null && prev.overall != null && now.overall > prev.overall) countUp(prev.overall, now.overall);
+  const hit = k => [...MILESTONES[k]].reverse().find(d => prev[k] < d && now[k] >= d);
+  const home = hit("home"), go = hit("go"), days = d => `${d} day${d === 1 ? "" : "s"}`;
+  const msg = home ? `Milestone: your supplies at home now last ${days(home)} for everyone.`
+    : go ? `Milestone: your go-bags and car kits now cover ${days(go)} on the move.` : "";
+  if (msg) setTimeout(() => { if (!toastAction) toast(msg); }, 1600);
+}
+function countUp(from, to) {
+  const hdr = $("#hdr-score");
+  hdr.classList.remove("up"); void hdr.offsetWidth; hdr.classList.add("up");
+  clearTimeout(S.upT); S.upT = setTimeout(() => hdr.classList.remove("up"), 1300);
+  if (calm()) return;
+  const t0 = performance.now();
+  const step = t => {
+    const k = Math.min(1, (t - t0) / 700), v = Math.round(from + (to - from) * (1 - (1 - k) ** 3));
+    document.querySelectorAll("#hdr-score b, .sum-score .num").forEach(n => { n.textContent = v; });
+    if (k < 1) S.upRaf = requestAnimationFrame(step);
+  };
+  cancelAnimationFrame(S.upRaf); S.upRaf = requestAnimationFrame(step);
+}
+
+/* ---------- prompts ---------- */
+function catGuide() { return Object.entries(CATS).map(([k, v]) => `${k}: ${v[1]}`).join("\n"); }
+function profileText() {
+  const p = S.profile || {}, h = household();
+  return [
+    `Location: ${p.location || "not given"}`,
+    `Home: ${p.home || "not given"}; vehicles: ${h.vehicles}`,
+    `People: ${h.members.map(m => {
+      const notes = [...(m.conditions || []).filter(c => CONDITIONS[c]).map(c => CONDITIONS[c].toLowerCase()), m.needs].filter(Boolean);
+      return `${m.label ? m.label + " — " : ""}${ageText(m)}${notes.length ? " (" + notes.join("; ") + ")" : ""}`;
+    }).join("; ")}`,
+    `Pets: ${(p.pets || []).filter(x => num(x.count)).map(x => `${num(x.count)} ${x.kind || "pet"}`).join(", ") || "none"}`,
+    `Notes: ${p.notes || "none"}`,
+  ].join("\n");
+}
+function photoPrompt(kit) {
+  return `These photos show the contents of an emergency kit called "${kit.name}" (${KIT_TYPES[kit.type] || "kit"}). List every distinct supply item you can see. Combine identical units into one line with a quantity. If an item is partly hidden or you are unsure what it is, still list it and say so in the note.
+
+Reply with only a JSON array. Each element:
+{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or ""}
+
+Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"expires":"2027-06","note":""}]
+
+Category ids:
+${catGuide()}`;
+}
+function hazardPrompt() {
+  return `Rate how likely each emergency below is for this household over roughly the next ten years, using what you know about the climate, geology, infrastructure and history of where they live, plus their circumstances.
+
+${profileText()}
+
+Emergencies (id — name):
+${HAZARDS.filter(h => !h.group).map(h => `${h.id} — ${h.name}`).join("\n")}
+
+Levels: "high" = a known, recurring risk there; "moderate" = plausible; "low" = rare but possible; "none" = essentially doesn't apply.
+
+Reply with only JSON in this shape, rating every id exactly once:
+{"hazards":[{"id":"earthquake","level":"high","why":"one sentence specific to their location"}],"notes":"one or two sentences on any important local risk not in the list, or empty"}`;
+}
+function reviewPrompt(M) {
+  const { h } = M;
+  const kitName = Object.fromEntries(S.kits.map(k => [k.id, `${k.name} (${KIT_TYPES[k.type] || "kit"}${k.where ? ", " + k.where : ""})`]));
+  const byKit = {};
+  for (const it of S.items) (byKit[it.kitId] ||= []).push(`${it.name} ×${Math.max(1, num(it.qty))}${num(it.liters) ? `, ${num(it.liters)} L` : ""}${num(it.kcal) ? `, ${num(it.kcal)} kcal` : ""}${it.expires ? `, exp ${it.expires}${expState(it) === "expired" ? " (EXPIRED)" : ""}` : ""}`);
+  let inv = S.kits.map(k => `${kitName[k.id]}:\n${(byKit[k.id] || ["(empty)"]).map(x => "  - " + x).join("\n")}`).join("\n");
+  if (inv.length > 12000) inv = inv.slice(0, 12000) + "\n(…inventory truncated)";
+  const scores = M.active.map(r => `${r.hz.name} — likelihood ${LEVELS[r.rel][0]}${importanceOf(r.hz.id) > 1 ? `, the household rates it "${IMPORTANCE[S.hazards.importance[r.hz.id]][0].toLowerCase()}"` : ""}, ${modeLine(r.hz)}, readiness ${r.score}%. Short: ${r.rows.filter(x => x.cov < 1).map(x => `${catLabel(x.cat)} ${x.unit === "L" ? f1(x.have) + "/" + x.need + " L" : x.unit === "kcal" ? f1(x.have / h.kcalDay) + "/" + f1(x.need / h.kcalDay) + " household-days" : x.have + "/" + x.need}`).join(", ") || "nothing"}`).join("\n");
+  return `You are reviewing a household's emergency preparedness. Today is ${new Date().toISOString().slice(0, 10)}.
+
+HOUSEHOLD
+${profileText()}
+
+HAZARD NOTES
+${S.hazards?.notes || "none"}
+
+FAMILY PLAN (what they've written down so far)
+${planText()}
+
+READINESS BY KIT (each kit against the standard for its type)
+${S.kits.map(k => { const r = M.kitRes[k.id]; return `${k.name}: ${r.score}% as a ${r.std.label} for ${servesLine(r)}. Short: ${r.rows.filter(x => x.cov < 1).map(x => catLabel(x.cat)).join(", ") || "nothing"}`; }).join("\n") || "no kits"}
+
+READINESS BY EMERGENCY (computed by the app: water 3.8 L per person per day, food by age, go-bags and car kits count for evacuation, home supplies and go-bags for sheltering, car kits for being stranded; health emergencies are rated from the household's health conditions and count whichever kits would be within reach)
+${scores || "none rated"}
+
+INVENTORY
+${inv}
+
+Write a practical review in plain language, at most 400 words, using exactly these sections as "## " headings:
+## Biggest risks for you
+## Buy or add next
+(a numbered list, most important first, with specific quantities sized to this household, and which kit each item belongs in)
+## Check and rotate
+(expired or soon-expiring items, things that need testing such as batteries and radios)
+## Plans a kit can't cover
+(build on the family plan above: name what's missing from it, such as meeting places, an out-of-area contact, utility shut-offs, documents or medication refills, and tailor it to the people listed; don't repeat what they've already filled in)
+Use "- " bullets inside sections. No preamble and no closing remarks.`;
+}
+
+/* ---------- actions ---------- */
+async function shrink(file, max = 1600) {
+  try {
+    const bmp = await createImageBitmap(file);
+    const s = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    return await new Promise(r => c.toBlob(b => r(b || file), "image/jpeg", 0.85));
+  } catch (_) { return file; }
+}
+function cleanRows(out) {
+  const arr = Array.isArray(out) ? out : Array.isArray(out?.items) ? out.items : [];
+  return arr.filter(x => x && String(x.name || "").trim()).map(x => ({
+    key: uid(),
+    name: String(x.name).trim().slice(0, 80),
+    category: CATS[x.category] ? x.category : "other",
+    qty: Math.max(1, Math.round(num(x.qty) || 1)),
+    liters: Math.round(num(x.liters) * 10) / 10,
+    kcal: Math.round(num(x.kcal)),
+    expires: /^\d{4}-\d{2}$/.test(x.expires || "") ? x.expires : "",
+    note: String(x.note || "").slice(0, 120),
+  }));
+}
+async function scanPhotos(files) {
+  const kit = S.kits.find(k => k.id === S.openKit);
+  if (!kit || !files.length) return;
+  if (!sample) { toast("Reading photos needs Claude, which this view can't reach. Add items by hand instead."); return; }
+  const lim = await sample.limits().catch(() => null);
+  if (!lim?.images) { toast("This view can't send photos to Claude. Add items by hand instead."); return; }
+  const ctl = new AbortController();
+  S.scan = { kitId: kit.id, state: "working", msg: `Preparing ${files.length} photo${files.length > 1 ? "s" : ""}…`, ctl };
+  render();
+  const photoIds = [];
+  try {
+    const blobs = [];
+    for (const f of files) blobs.push(await shrink(f));
+    if (assets) {
+      S.scan.msg = "Saving photos…"; render();
+      for (const b of blobs) { try { photoIds.push((await assets.upload(b, { type: b.type || "image/jpeg" })).id); } catch (_) {} }
+    }
+    const max = lim.images.maxCount || 5;
+    let rows = [];
+    for (let i = 0; i < blobs.length; i += max) {
+      S.scan.msg = blobs.length > max ? `Claude is reading photos ${i + 1}–${Math.min(blobs.length, i + max)} of ${blobs.length}…` : "Claude is reading your photos. This can take a minute…";
+      render();
+      rows = rows.concat(cleanRows(await sample.json(photoPrompt(kit), { images: blobs.slice(i, i + max), signal: ctl.signal })));
+    }
+    S.draft = { kitId: kit.id, rows, photoIds };
+    S.scan = null;
+  } catch (e) {
+    for (const id of photoIds) assets?.delete(id).catch(() => {});
+    S.scan = e?.code === "cancelled" ? null : { kitId: kit.id, state: "error", msg: sampleErr(e) };
+  }
+  render();
+}
+async function saveDraft() {
+  const d = S.draft; const kit = S.kits.find(k => k.id === d?.kitId);
+  if (!d || !kit) return;
+  const now = Date.now();
+  const rows = d.rows.filter(r => String(r.name).trim());
+  try {
+    await Promise.all(rows.map(r => setDoc("items", uid(), { kitId: kit.id, name: r.name.trim(), category: r.category, qty: Math.max(1, Math.round(num(r.qty) || 1)), liters: num(r.liters), kcal: num(r.kcal), expires: r.expires || "", note: r.note || "", source: "photo", addedAt: now })));
+    if (d.photoIds.length) await setDoc("kits", kit.id, { ...strip(kit), photos: [...(kit.photos || []), ...d.photoIds], updatedAt: now });
+    S.draft = null;
+    toast(`Added ${rows.length} item${rows.length === 1 ? "" : "s"} to ${kit.name}`);
+  } catch (_) {}
+  render();
+}
+async function runHazardCheck() {
+  if (!sample) { toast("Claude isn't available in this view."); return; }
+  const loc = S.profile?.location;
+  S.hzCheck = { state: "working" }; render();
+  try {
+    const out = await sample.json(hazardPrompt());
+    const levels = {}, reasons = {};
+    for (const x of out?.hazards || []) {
+      if (HZ[x?.id] && !HZ[x.id].group && LEVELS[x?.level]) { levels[x.id] = x.level; reasons[x.id] = String(x.why || "").slice(0, 280); }
+    }
+    if (!Object.keys(levels).length) throw { code: "invalid_json" };
+    // Health levels are the household's own overrides, not something a location check should reset.
+    for (const hz of HAZARDS) if (hz.group && S.hazards?.levels?.[hz.id]) levels[hz.id] = S.hazards.levels[hz.id];
+    await setDoc("household", "hazards", { levels, reasons, importance: S.hazards?.importance || {}, notes: String(out?.notes || "").slice(0, 600), assessedAt: Date.now(), location: loc });
+    S.hzCheck = null;
+    toast("Hazard ratings updated");
+  } catch (e) { S.hzCheck = { state: "error", msg: e?.code ? sampleErr(e) : "Couldn't save the ratings." }; }
+  render();
+}
+async function runReview() {
+  if (!sample) { toast("Claude isn't available in this view."); return; }
+  const ctl = new AbortController();
+  S.rv = { state: "working", text: "", ctl }; render();
+  try {
+    const { text } = await sample(reviewPrompt(model()), { signal: ctl.signal, cache: false, onText: ({ text }) => { S.rv.text = text; if (S.view === "plan") render(); } });
+    S.rv = null;
+    if (S.canWrite) await setDoc("household", "review", { text, at: Date.now() }).catch(() => {});
+    if (!db) S.review = { text, at: Date.now() };
+  } catch (e) {
+    S.rv = e?.code === "cancelled" ? (e.text ? { state: "done", text: e.text } : null) : { state: "error", msg: sampleErr(e), text: e?.text || "" };
+  }
+  render();
+}
+async function removeItems(ids) {
+  const rows = S.items.filter(i => ids.includes(i.id));
+  if (!rows.length) return;
+  const kit = S.kits.find(k => k.id === rows[0].kitId);
+  try { await Promise.all(rows.map(r => delDoc("items", r.id))); }
+  catch (_) { render(); return; }
+  for (const r of rows) S.sel.delete(r.id);
+  render();
+  const what = rows.length === 1 ? rows[0].name : `${rows.length} items`;
+  toast(`Removed ${what} from ${kit?.name || "the kit"}`, {
+    label: "Undo",
+    run: async () => {
+      try { await Promise.all(rows.map(r => setDoc("items", r.id, strip(r)))); toast(`Put back ${what}`); } catch (_) {}
+    },
+  });
+}
+function setPath(o, path, val) {
+  const ks = path.split("."); let cur = o;
+  for (let i = 0; i < ks.length - 1; i++) cur = cur[ks[i]] ??= (/^\d+$/.test(ks[i + 1]) ? [] : {});
+  cur[ks.at(-1)] = val;
+}
+
+/* ---------- events ---------- */
+const ACT = {
+  tab: b => { S.view = b.dataset.v; try { history.replaceState(null, "", "#" + S.view); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
+  openKit: b => { if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.confirm = null; render(); },
+  gotoKit: b => { S.view = "kits"; if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; try { history.replaceState(null, "", "#kits"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
+  removeSel: () => removeItems([...S.sel]),
+  clearSel: () => { S.sel.clear(); render(); },
+  sortItems: b => { S.itemSort = b.dataset.k; render(); },
+  planMedAdd: () => {
+    const meds = Array.isArray(S.plan?.meds) ? S.plan.meds : [];
+    const who = household().members.map((m, i) => [m, personName(m, i)]).find(([m, n]) => (m.conditions || []).some(c => c === "meds" || c === "diabetes") && !meds.some(x => x.who === n));
+    savePlan({ ...(S.plan || {}), meds: [...meds, { who: who ? who[1] : "", name: "", refill: "" }] });
+  },
+  planMedDel: b => savePlan({ ...(S.plan || {}), meds: (S.plan?.meds || []).filter((_, i) => i !== +b.dataset.i) }),
+  toggleOff: () => { S.showOff = !S.showOff; render(); },
+  toggleHz: b => { const id = b.dataset.id; S.openHz.has(id) ? S.openHz.delete(id) : S.openHz.add(id); render(); },
+  askConfirm: b => { S.confirm = b.dataset.k; render(); },
+  cancelConfirm: () => { S.confirm = null; render(); },
+  pickPhotos: () => { const i = $("#photo-input"); i.value = ""; i.click(); },
+  stopScan: () => S.scan?.ctl?.abort(),
+  draftDrop: b => { S.draft.rows.splice(+b.dataset.i, 1); render(); },
+  draftCancel: () => { for (const id of S.draft?.photoIds || []) assets?.delete(id).catch(() => {}); S.draft = null; render(); },
+  draftSave: saveDraft,
+  delItem: b => removeItems([b.dataset.id]),
+  addItem: async () => {
+    const name = $("#add-name").value.trim();
+    if (!name) { $("#add-name").focus(); return; }
+    const row = { kitId: S.openKit, name, category: $("#add-cat").value, qty: Math.max(1, Math.round(num($("#add-qty").value) || 1)), liters: num($("#add-l").value), kcal: num($("#add-k").value), expires: $("#add-exp").value || "", note: "", source: "manual", addedAt: Date.now() };
+    $("#add-name").value = "";
+    await setDoc("items", uid(), row).catch(() => {});
+    $("#add-name")?.focus();
+  },
+  delKit: async b => {
+    const id = b.dataset.id; const kit = S.kits.find(k => k.id === id);
+    S.confirm = null;
+    const items = S.items.filter(i => i.kitId === id);
+    try {
+      await Promise.all(items.map(i => delDoc("items", i.id)));
+      for (const p of kit?.photos || []) assets?.delete(p).catch(() => {});
+      await delDoc("kits", id);
+      S.openKit = null; toast(`Deleted ${kit?.name || "kit"}`);
+    } catch (_) {}
+    render();
+  },
+  hhAdd: b => { const k = b.dataset.k; S.hhDraft[k] = [...(S.hhDraft[k] || []), k === "members" ? { label: "", age: "adult", needs: "" } : { kind: "", count: 1 }]; S.hhDirty = true; render(); },
+  hhDel: b => { const k = b.dataset.k; S.hhDraft[k].splice(+b.dataset.i, 1); S.hhDirty = true; render(); },
+  condToggle: b => {
+    const k = b.dataset.k, ms = S.hhDraft.members || [];
+    const has = ms.filter(m => (m.conditions || []).includes(k));
+    if (has.length) { has.forEach(m => { m.conditions = m.conditions.filter(c => c !== k); }); S.condOpen.delete(k); S.hhDirty = true; }
+    else if (ms.length === 1) { ms[0].conditions = [...(ms[0].conditions || []), k]; S.hhDirty = true; }
+    else S.condOpen.has(k) ? S.condOpen.delete(k) : S.condOpen.add(k);
+    render();
+  },
+  startWizard: () => { S.view = "household"; S.wiz = 0; try { history.replaceState(null, "", "#household"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
+  wizBack: () => { S.wiz = Math.max(0, S.wiz - 1); render(); },
+  wizClose: () => { S.wiz = null; render(); },
+  wizNext: () => wizStep(),
+  shopAdd: b => {
+    const M = model(), g = M.gaps.find(x => x.cat === b.dataset.cat); if (!g) return;
+    saveShop([...shopItems(), shopFromGap(g, M.h)]);
+    toast(`Added ${catLabel(g.cat).toLowerCase()} to your shopping list`);
+  },
+  shopAddAll: () => {
+    const M = model(), have = new Set(shopItems().filter(x => !x.done).map(x => x.cat));
+    const add = M.gaps.filter(g => !have.has(g.cat)).map(g => shopFromGap(g, M.h));
+    if (!add.length) { toast("Every gap is already on your list"); return; }
+    saveShop([...shopItems(), ...add]);
+    toast(`Added ${add.length} item${add.length === 1 ? "" : "s"} to your shopping list`);
+  },
+  shopAddTop: () => {
+    const M = model(), have = new Set(shopItems().filter(x => !x.done).map(x => x.cat));
+    const add = M.gaps.filter(g => !have.has(g.cat)).map(g => ({ g, gain: M.overall == null ? 0 : scoreIfFilled(M, [g]) - M.overall }))
+      .sort((a, b) => b.gain - a.gain || b.g.imp - a.g.imp).slice(0, 5).map(x => shopFromGap(x.g, M.h));
+    if (!add.length) return;
+    saveShop([...shopItems(), ...add]);
+    toast(`Added the top ${add.length} to your shopping list`);
+  },
+  budgetClear: () => { S.budget = ""; render(); },
+  shopDel: b => saveShop(shopItems().filter(x => x.id !== b.dataset.id)),
+  shopClear: () => saveShop(shopItems().filter(x => !x.done)),
+  shopShare: () => shareShop(),
+  hzCheck: runHazardCheck,
+  rvRun: runReview,
+  rvStop: () => S.rv?.ctl?.abort(),
+  clearExamples: async () => {
+    S.confirm = null;
+    try {
+      await Promise.all(S.items.filter(i => i.example).map(i => delDoc("items", i.id)));
+      await Promise.all(S.kits.filter(k => k.example).map(k => delDoc("kits", k.id)));
+      if (S.profile?.example) { await delDoc("household", "profile"); S.hhDraft = { members: [{ label: "", age: "adult", needs: "" }], pets: [], vehicles: 0, home: "House" }; S.hhDirty = false; }
+      S.openKit = null; toast("Examples removed");
+    } catch (_) {}
+    render();
+  },
+};
+document.addEventListener("click", e => { const b = e.target.closest("[data-act]"); if (b && !b.disabled && ACT[b.dataset.act]) { e.preventDefault(); ACT[b.dataset.act](b); } });
+document.addEventListener("input", e => {
+  const t = e.target;
+  if (t.dataset.input === "draft") {
+    const r = S.draft?.rows[+t.dataset.i]; if (r) r[t.dataset.f] = t.value;
+  } else if (t.dataset.input === "hh") {
+    setPath(S.hhDraft, t.dataset.p, t.type === "number" ? (t.value === "" && t.dataset.blank ? "" : num(t.value)) : t.value);
+    if (t.dataset.blank) { S.hhDirty = true; render(); return; }
+    if (!S.hhDirty) { S.hhDirty = true; const btn = $('form[data-submit="saveHH"] button[type=submit]'); if (btn) btn.disabled = false; }
+  }
+});
+document.addEventListener("change", async e => {
+  const t = e.target;
+  if (t.dataset.change === "item") {
+    const it = S.items.find(i => i.id === t.dataset.id); if (!it) return;
+    const f = t.dataset.f;
+    let v = t.value;
+    if (f === "qty") v = Math.max(1, Math.round(num(v) || 1)); else if (f === "liters" || f === "kcal") v = num(v); else if (f === "name") { v = v.trim(); if (!v) { t.value = it.name; return; } }
+    if (it[f] === v) return;
+    await setDoc("items", it.id, { ...strip(it), [f]: v }).catch(() => {});
+  } else if (t.dataset.change === "serves") {
+    const kit = S.kits.find(k => k.id === t.dataset.id); if (!kit) return;
+    const v = Math.min(50, Math.round(num(t.value)));
+    if (!v) { t.value = num(kit.serves) || household().people; return; }
+    if (v === num(kit.serves)) return;
+    await setDoc("kits", kit.id, { ...strip(kit), serves: v }).catch(() => {});
+  } else if (t.dataset.change === "sel") {
+    t.checked ? S.sel.add(t.dataset.id) : S.sel.delete(t.dataset.id);
+    render();
+  } else if (t.dataset.change === "selAll") {
+    const ids = S.items.filter(i => i.kitId === S.openKit).map(i => i.id);
+    if (t.checked) ids.forEach(id => S.sel.add(id)); else S.sel.clear();
+    render();
+  } else if (t.dataset.change === "hhCond") {
+    const m = S.hhDraft.members?.[+t.dataset.i]; if (!m) return;
+    const cs = new Set(m.conditions || []);
+    t.checked ? cs.add(t.dataset.k) : cs.delete(t.dataset.k);
+    m.conditions = [...cs];
+    S.hhDirty = true; render();
+  } else if (t.dataset.change === "shopTick") {
+    shopTick(t.dataset.id, t.checked);
+  } else if (t.dataset.change === "shopKit") {
+    saveShop(shopItems().map(x => x.id === t.dataset.id ? { ...x, kitId: t.value } : x));
+  } else if (t.dataset.change === "plan") {
+    const v = t.value.trim().slice(0, 120);
+    if ((S.plan?.[t.dataset.f] || "") === v) return;
+    await savePlan({ ...(S.plan || {}), [t.dataset.f]: v });
+  } else if (t.dataset.change === "planMed") {
+    const meds = clone(S.plan?.meds || []);
+    if (!meds[+t.dataset.i]) return;
+    meds[+t.dataset.i][t.dataset.f] = t.value.trim().slice(0, 80);
+    await savePlan({ ...(S.plan || {}), meds });
+  } else if (t.dataset.change === "shopSort") {
+    S.shopSort = t.value; render();
+  } else if (t.dataset.change === "budget") {
+    S.budget = Math.max(0, Math.round(num(t.value))) || ""; render();
+  } else if (t.dataset.change === "importance") {
+    const importance = { ...(S.hazards?.importance || {}), [t.dataset.id]: t.value };
+    if (t.value === "normal") delete importance[t.dataset.id];
+    await setDoc("household", "hazards", { ...(S.hazards || {}), importance }).catch(() => {});
+  } else if (t.dataset.change === "level") {
+    const levels = { ...(S.hazards?.levels || {}), [t.dataset.id]: t.value };
+    await setDoc("household", "hazards", { ...(S.hazards || {}), levels }).catch(() => {});
+  } else if (t.id === "photo-input") {
+    scanPhotos([...t.files]);
+  }
+});
+document.addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.dataset.submit === "newKit") {
+    const name = $("#nk-name").value.trim(); if (!name) return;
+    const type = KIT_TYPES[$("#nk-type").value] ? $("#nk-type").value : "go";
+    const id = uid();
+    await setDoc("kits", id, { name, type, where: $("#nk-where").value.trim(), photos: [], createdAt: Date.now() }).catch(() => {});
+    S.openKit = id; f.reset(); render();
+  } else if (f.dataset.submit === "saveHH") {
+    await saveHousehold();
+  } else if (f.dataset.submit === "wizNext") {
+    await wizStep();
+  } else if (f.dataset.submit === "shopNew") {
+    const text = $("#shop-new").value.trim(); if (!text) return;
+    $("#shop-new").value = "";
+    await saveShop([...shopItems(), { id: uid(), cat: "", text: text.slice(0, 80), done: false, at: Date.now() }]);
+    $("#shop-new")?.focus();
+  }
+});
+async function saveHousehold() {
+  const d = clone(S.hhDraft);
+  d.members = (d.members || []).map(m => ({ label: String(m.label || "").trim(), years: yearsOf(m) == null ? null : Math.floor(yearsOf(m)), age: groupOf(m), needs: String(m.needs || "").trim(), conditions: (m.conditions || []).filter(c => CONDITIONS[c]) }));
+  if (!d.members.length) d.members = [{ label: "", age: "adult", needs: "" }];
+  d.pets = (d.pets || []).filter(p => num(p.count)).map(p => ({ kind: String(p.kind || "").trim(), count: num(p.count) }));
+  d.location = String(d.location || "").trim();
+  const data = { ...d, example: false, updatedAt: Date.now() };
+  try { await setDoc("household", "profile", data); } catch (_) { return false; }
+  if (db) S.profile = clone(data);
+  S.hhDirty = false; S.hhDraft = d; S.condOpen.clear(); toast("Household saved"); render();
+  return true;
+}
+/* Last step saves, then shows the next steps; a new location gets its hazards checked straight away. */
+async function wizStep() {
+  if (S.wiz < WIZ.length - 1) { S.wiz++; render(); window.scrollTo({ top: 0 }); return; }
+  if (!(await saveHousehold())) return;
+  S.wiz = null; S.view = "overview";
+  try { history.replaceState(null, "", "#overview"); } catch (_) {}
+  render(); window.scrollTo({ top: 0 });
+  if (S.profile?.location && S.hazards?.location !== S.profile.location && sample) runHazardCheck();
+}
+/* Ticking an item puts it in its kit (so the gap closes); unticking takes that item back out. */
+async function shopTick(id, on) {
+  const items = clone(shopItems()), e = items.find(x => x.id === id); if (!e) return;
+  if (on) {
+    const kit = S.kits.find(k => k.id === shopKit(e));
+    if (kit && CATS[e.cat]) {
+      const before = model().overall, itemId = uid();
+      try {
+        await setDoc("items", itemId, { ...itemFromShop(e, kit.id), addedAt: Date.now() });
+      } catch (_) { render(); return; }
+      e.itemId = itemId; e.inKit = kit.id;
+      const after = model().overall;
+      toast(`Put in ${kit.name}${after > before ? `. Readiness ${before} → ${after}` : ""}`);
+    }
+    e.done = true;
+    S.flash = e.id; clearTimeout(S.flashT); S.flashT = setTimeout(() => { S.flash = null; }, 1400);
+  } else {
+    if (e.itemId && S.items.some(i => i.id === e.itemId)) await delDoc("items", e.itemId).catch(() => {});
+    e.done = false; delete e.itemId; delete e.inKit;
+  }
+  await saveShop(items);
+}
+async function shareShop() {
+  const left = shopItems().filter(x => !x.done);
+  if (!left.length) return;
+  const M = model();
+  const text = "Emergency kit shopping list\n" + left.map(x => { const i = shopInfo(x, M); return `- ${i.line}${i.sub && i.sub !== i.line ? ` (${i.sub})` : ""}`; }).join("\n");
+  try { if (navigator.share) { await navigator.share({ title: "Emergency kit shopping list", text }); return; } }
+  catch (e) { if (e?.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(text); toast("List copied. Paste it into a message or your notes."); }
+  catch (_) { toast("This view can't copy. Select the list and copy it instead."); }
+}
+
+/* ---------- boot ---------- */
+function syncDraft() { if (!S.hhDirty) S.hhDraft = clone(S.profile) || { members: [{ label: "", age: "adult", needs: "" }], pets: [], vehicles: 0, home: "House", location: "" }; }
+syncDraft();
+render();
+(async () => {
+  const use = n => window.claude?.use ? window.claude.use(n).catch(() => null) : Promise.resolve(null);
+  const [d, a, s, u] = await Promise.all([use("db"), use("assets"), use("sample"), use("user")]);
+  db = d; assets = a; sample = s;
+  if (u) { try { const ok = await u.canEdit(); if (ok === false) S.canWrite = false; } catch (_) {} }
+  document.body.classList.toggle("ro", !S.canWrite);
+  if (!db) {
+    S.loaded = true; render(); return;
+  }
+  S.live = true;
+  const timer = setTimeout(() => { S.slow = true; render(); }, 10000);
+  const seen = new Set();
+  const done = (k, snap) => { if (!snap.metadata?.fromCache) seen.add(k); if (seen.size >= 7) { S.loaded = true; S.slow = false; clearTimeout(timer); } };
+  const fail = () => { clearTimeout(timer); S.loaded = true; render(); };
+  db.collection("kits").onSnapshot(snap => { S.kits = snap.docs.map(x => ({ id: x.id, ...x.data() })); done("kits", snap); render(); }, fail);
+  db.collection("items").onSnapshot(snap => { S.items = snap.docs.map(x => ({ id: x.id, ...x.data() })); done("items", snap); render(); }, fail);
+  for (const key of ["profile", "hazards", "review", "shopping", "plan"]) {
+    db.doc("household/" + key).onSnapshot(snap => {
+      S[key] = snap.exists ? clone(snap.data()) : null;
+      if (key === "profile") syncDraft();
+      done(key, snap); render();
+    }, fail);
+  }
+})();
+</script>

@@ -1,0 +1,31 @@
+{
+  "about": "The standard made-up household for tests: two adults, three kids of different ages, a dog and a car. One adult takes daily medication; one child has a severe allergy. Location hazards have been checked but left at their defaults.",
+  "profile": {
+    "location": "Springfield, OR",
+    "members": [
+      { "label": "Alex", "years": 41 },
+      { "label": "Sam", "years": 39, "conditions": ["meds"] },
+      { "label": "Jordan", "years": 9 },
+      { "label": "Riley", "years": 6, "conditions": ["allergy"] },
+      { "label": "Casey", "years": 2 }
+    ],
+    "pets": [{ "kind": "Dog", "count": 1 }],
+    "vehicles": 1,
+    "home": "House"
+  },
+  "hazards": { "assessedAt": 1, "levels": {}, "reasons": {} },
+  "kits": [
+    { "id": "go", "name": "Hall closet go-bag", "type": "go", "createdAt": 1 },
+    { "id": "home", "name": "Basement bin", "type": "home", "createdAt": 2 },
+    { "id": "car", "name": "Trunk bag", "type": "car", "createdAt": 3 }
+  ],
+  "items": [
+    { "id": "i1", "kitId": "home", "name": "Water jugs", "category": "water", "qty": 4, "liters": 15 },
+    { "id": "i2", "kitId": "home", "name": "Canned soup", "category": "food", "qty": 12, "kcal": 3600 },
+    { "id": "i3", "kitId": "home", "name": "Fire extinguisher", "category": "fire_safety", "qty": 1 },
+    { "id": "i4", "kitId": "go", "name": "First-aid kit", "category": "first_aid", "qty": 1 },
+    { "id": "i5", "kitId": "go", "name": "Headlamp", "category": "light", "qty": 2 },
+    { "id": "i6", "kitId": "car", "name": "Jumper cables", "category": "car", "qty": 1 },
+    { "id": "i7", "kitId": "go", "name": "Old ibuprofen", "category": "medications", "qty": 1, "expires": "2020-01" }
+  ]
+}

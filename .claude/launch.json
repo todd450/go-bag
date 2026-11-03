@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "go-bag", "runtimeExecutable": "sh", "runtimeArgs": ["preview.sh"], "port": 8765 }
+  ]
+}

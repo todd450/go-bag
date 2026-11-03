@@ -1,0 +1,6 @@
+{
+  "about": "One adult, no pets, no car, one go-bag holding one item.",
+  "profile": { "location": "Duluth, MN", "members": [{ "label": "Pat", "years": 30 }], "pets": [], "vehicles": 0 },
+  "kits": [{ "id": "k", "name": "Bag", "type": "go", "createdAt": 1 }],
+  "items": [{ "id": "i", "kitId": "k", "name": "Water bottle", "category": "water", "qty": 1, "liters": 1 }]
+}

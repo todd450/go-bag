@@ -1,0 +1,17 @@
+{
+  "about": "Data that didn't come from this version's forms: missing ages, text where numbers go, unknown kit types and categories, an item in a deleted kit, and a hazard doc from before importance existed.",
+  "profile": {
+    "members": [{}, { "years": "" }, { "years": "abc", "age": "teen" }, { "years": -4 }, { "age": "nonsense", "conditions": ["unknown"] }],
+    "pets": [{ "kind": "Dog", "count": "2" }, { "count": -1 }],
+    "vehicles": "1"
+  },
+  "hazards": { "levels": { "earthquake": "extreme", "cuts": "none", "gone-hazard": "high" } },
+  "plan": { "meds": [{ "who": "", "name": "", "refill": "not a date" }] },
+  "shopping": { "items": [{ "id": "s1", "cat": "retired-category", "text": "Old entry", "qty": "two" }] },
+  "kits": [{ "id": "k", "name": "", "type": "boat" }],
+  "items": [
+    { "id": "a", "kitId": "k", "category": "telepathy", "qty": "3" },
+    { "id": "b", "kitId": "deleted-kit", "category": "water", "liters": 50 },
+    { "id": "c", "kitId": "k", "category": "food", "kcal": -500, "expires": "soon" }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "about": "The most the app should expect: 12 people of every age, 6 pets, 3 cars, a kit of each type stocked past its needs.",
+  "profile": {
+    "location": "Houston, TX",
+    "members": [
+      { "years": 0 }, { "years": 1 }, { "years": 4 }, { "years": 8 }, { "years": 13 }, { "years": 17 },
+      { "years": 25, "conditions": ["meds", "allergy"] }, { "years": 44, "conditions": ["diabetes"] }, { "years": 50 },
+      { "years": 66, "conditions": ["heart"] }, { "years": 80, "conditions": ["device", "mobility"] }, { "years": 101 }
+    ],
+    "pets": [{ "kind": "Dog", "count": 2 }, { "kind": "Cat", "count": 3 }, { "kind": "Rabbit", "count": 1 }],
+    "vehicles": 3
+  },
+  "hazards": { "assessedAt": 1, "levels": { "hurricane": "high", "flood": "high", "heat": "high" }, "importance": { "flood": "most", "burns": "more" } },
+  "kits": [
+    { "id": "g", "name": "Go-bag", "type": "go", "createdAt": 1 },
+    { "id": "h", "name": "Garage shelves", "type": "home", "createdAt": 2 },
+    { "id": "c", "name": "Van", "type": "car", "createdAt": 3 }
+  ],
+  "items": [
+    { "id": "1", "kitId": "h", "category": "water", "qty": 40, "liters": 2000 },
+    { "id": "2", "kitId": "h", "category": "food", "qty": 100, "kcal": 900000 },
+    { "id": "3", "kitId": "g", "category": "water", "qty": 200, "liters": 200 },
+    { "id": "4", "kitId": "c", "category": "comfort", "qty": 50 }
+  ]
+}
