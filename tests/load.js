@@ -19,7 +19,7 @@ function appScript() {
 
 function load({ fixture } = {}) {
   const el = () => ({
-    addEventListener() {}, querySelectorAll: () => [], querySelector: () => null, setAttribute() {},
+    addEventListener() {}, querySelectorAll: () => [], querySelector: () => null, setAttribute() {}, focus() {},
     hidden: false, innerHTML: "", textContent: "", style: {}, dataset: {},
     classList: { toggle() {}, add() {}, remove() {} },
   });

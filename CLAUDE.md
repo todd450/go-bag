@@ -43,8 +43,9 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
     in memory, which is how the tests and the preview run it.
   - No real household's data goes in this repo or a test: fixtures use made-up people. Never
     write to the founder's live household data from a session without their yes for that change.
-  - The score is a weighted average of emergencies, weight = likelihood × importance
-    (`LEVELS`, `IMPORTANCE`). Next steps, "Add the top 5" and the shopping list all price a
+  - The score is a weighted average of emergencies, weight = likelihood × severity × importance
+    (`LEVELS`, `SEVERITY`, `IMPORTANCE`). Severity is fixed per emergency (how bad it is to face
+    unprepared) and is never re-rated by the household or the location check. Next steps, "Add the top 5" and the shopping list all price a
     gap with `scoreIfShopped`, so the points shown are the points ticking adds
     (`tests/shopping.test.js`).
   - Health and everyday emergencies are rated from who lives here, never by the location check
