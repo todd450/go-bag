@@ -114,6 +114,7 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; }
 .score { display: flex; align-items: baseline; gap: 6px; }
 .score .num { font-family: var(--f-display); font-size: 3.2rem; font-weight: 700; line-height: .9; }
 .score .of { color: var(--ink-2); }
+.score .band { margin-left: 8px; }
 .gaps { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); column-gap: 20px; }
 .gaps li { display: grid; grid-template-columns: minmax(0, 7.5em) auto minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 3px 0; border-bottom: 1px solid var(--rule); font-size: .88rem; }
 .gaps li b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -137,6 +138,8 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; }
 .mode { font-size: .78rem; color: var(--ink-2); }
 .bar { height: 7px; background: var(--rule); border-radius: 2px; overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--c); }
+.band { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.band i { width: 9px; height: 9px; border-radius: 2px; }
 .pct { font-family: var(--f-mono); font-size: .82rem; text-align: right; font-weight: 500; }
 .hz-row .x { padding: 2px 6px; font-size: 1rem; }
 .hz-detail { grid-column: 1 / -1; display: grid; gap: 6px; padding: 2px 0 8px; }
@@ -486,8 +489,12 @@ const strip = ({ id, ...rest }) => rest;
 // An example kit stops being an example once it holds anything you added yourself.
 const isExampleKit = k => !!k.example && !S.items.some(i => i.kitId === k.id && !i.example);
 /* Bars are neutral until a score is in good shape; red is kept for real problems (expired, overdue, a likely health emergency you can't handle). */
-const statusColor = s => s >= 75 ? "var(--good)" : "var(--meter)";
-const statusInk = s => s >= 75 ? "var(--good)" : "var(--ink)";
+// Readiness bands, so 4% and 67% don't look alike: a colour for bars and big numbers, and a word so it never rests on colour alone
+const BANDS = [[75, "Ready", "var(--good)"], [40, "Partway", "var(--meter)"], [0, "Low", "var(--warn)"]];
+const band = s => BANDS.find(b => s >= b[0]);
+const statusColor = s => band(s)[2];
+const statusInk = s => s >= 40 && s < 75 ? "var(--ink)" : band(s)[2];
+const bandTag = s => `<span class="band"><i style="background:${statusColor(s)}"></i>${band(s)[1]}</span>`;
 const catLabel = c => (CATS[c] || CATS.other)[0];
 const D = () => S.canWrite ? "" : "disabled";
 const when = t => t ? new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
@@ -1041,7 +1048,7 @@ function viewOverview(M) {
     </div>
     <div class="sum-score">
       <p class="eyebrow">Household readiness</p>
-      <div class="score"><span class="num">${overall ?? "–"}</span><span class="of">/ 100</span></div>
+      <div class="score"><span class="num" style="color:${overall == null ? "var(--ink)" : statusInk(sc)}">${overall ?? "–"}</span><span class="of">/ 100</span>${overall == null ? "" : bandTag(sc)}</div>
       <div class="bar" style="--c:${c}" role="img" aria-label="Readiness ${sc} out of 100"><span style="width:${sc}%"></span></div>
       <p class="mono small muted">${h.people} people · ${h.pets} pet${h.pets === 1 ? "" : "s"} · ${S.kits.length} kit${S.kits.length === 1 ? "" : "s"} · ${S.items.length} items${exp.length ? ` · <span style="color:var(--warn)">${exp.length} expiring</span>` : ""}</p>
       <p class="small muted">Averaged across the emergencies that apply to you, weighted by how likely each one is and how much it matters to you. ${hzNote}</p>
@@ -1082,7 +1089,7 @@ function kitReadyPanel(kit, r) {
   return `<div class="panel stack">
     <div class="row" style="justify-content:space-between;align-items:flex-end">
       <div><p class="eyebrow">Kit readiness</p>
-        <div class="row" style="gap:10px;align-items:baseline"><span class="kit-pct" style="color:${statusInk(r.score)}">${r.score}%</span><span class="small muted">as a ${esc(r.std.label)} for ${esc(servesLine(r))}</span></div></div>
+        <div class="row" style="gap:10px;align-items:baseline"><span class="kit-pct" style="color:${statusInk(r.score)}">${r.score}%</span>${bandTag(r.score)}<span class="small muted">as a ${esc(r.std.label)} for ${esc(servesLine(r))}</span></div></div>
       ${S.canWrite ? `<label class="f">People this kit is for<input type="number" min="1" max="50" id="kit-serves-${esc(kit.id)}" value="${r.serves}" data-change="serves" data-id="${esc(kit.id)}" style="width:110px"></label>` : ""}
     </div>
     <div class="bar" style="--c:${c}"><span style="width:${r.score}%"></span></div>
