@@ -123,3 +123,19 @@ test("low, partway and ready scores look different and say so in words", () => {
   run(`S.openKit = "go"`);
   assert.match(run("viewKits(model())"), /class="kit-pct"[^>]*>\d+%<\/span><span class="band">/);
 });
+
+test("each tab opens with one short line, and the full explanation sits behind How this works", () => {
+  const { run } = load({ fixture: "tests/household" });
+  run(`syncDraft(); S.openKit = "go"`);
+  const words = html => html.replace(/<[^>]*>/g, " ").trim().split(/\s+/).length;
+  const pages = { score: "viewOverview(model())", "kit-table": "viewKits(model())", household: "viewHousehold()", shop: "viewShop(model())", plan: "viewPlan(model())", review: "viewPlan(model())" };
+  for (const [id, view] of Object.entries(pages)) {
+    const html = run(view);
+    assert.match(html, new RegExp(`<details class="how" data-how="${id}" ><summary>How this works</summary><p>[^<]{60,}`), id);
+    const intro = html.match(new RegExp(`<p class="(?:small )?muted"[^>]*>((?:(?!</p>)[\\s\\S])*)</p>\\s*<details class="how" data-how="${id}"`));
+    assert.ok(intro, `${id} has a line right before it`);
+    assert.ok(words(intro[1]) <= 15, `${id} intro is ${words(intro[1])} words`);
+  }
+  run(`S.how.add("shop")`);
+  assert.match(run("viewShop(model())"), /data-how="shop" open>/, "an opened explanation stays open on re-render");
+});
