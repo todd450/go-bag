@@ -27,6 +27,7 @@ function load({ fixture } = {}) {
   const ctx = vm.createContext({
     console,
     crypto: globalThis.crypto,
+    AbortController,
     navigator: {},
     document: { querySelector: el, querySelectorAll: () => [], addEventListener() {}, getElementById: el, createElement: el, body: el() },
     location: { hash: "" },

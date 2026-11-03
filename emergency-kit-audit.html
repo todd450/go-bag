@@ -127,7 +127,7 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; }
 .grp + .grp { margin-top: 10px; }
 .grp-h { display: grid; gap: 2px; }
 
-.hz { display: grid; border-top: 1px solid var(--rule); }
+.hz { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--rule); }
 .hz-row { display: grid; grid-template-columns: minmax(0, 1fr) 104px 56px 36px 24px; gap: 10px; align-items: center; padding: 3px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
 .hz-row.off { opacity: .55; }
 .hz-name, .kit-name { display: flex; gap: 8px; align-items: baseline; background: none; border: 0; padding: 2px 0; text-align: left; cursor: pointer; }
@@ -173,6 +173,11 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; }
 .tag .mono { font-size: .68rem; opacity: .85; }
 .photos { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
 .photos img { width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid var(--rule); flex: none; background: var(--rule); }
+.tray { display: flex; flex-wrap: wrap; gap: 8px; }
+.tray-ph { position: relative; margin: 0; }
+.tray-ph img { display: block; width: 72px; height: 72px; object-fit: cover; border-radius: 4px; border: 1px solid var(--rule); background: var(--rule); }
+.tray-ph .x { position: absolute; top: 2px; right: 2px; background: var(--card); padding: 1px 6px; font-size: 1rem; }
+.drop-on { outline: 2px dashed var(--accent); outline-offset: 2px; }
 .tbl-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); }
 table { border-collapse: collapse; width: 100%; min-width: 960px; font-size: .85rem; }
 th { text-align: left; font-weight: 600; font-size: .78rem; color: var(--ink-2); padding: 5px 6px; border-bottom: 1px solid var(--rule); }
@@ -188,6 +193,8 @@ td.val { padding-right: 8px; }
 .vbar { flex: 1; height: 6px; background: var(--rule); border-radius: 2px; overflow: hidden; }
 .vbar i { display: block; height: 100%; background: var(--accent); }
 .val-in b { width: 2.2em; text-align: right; font-weight: 500; }
+.buy { display: inline-block; padding: 0 6px 2px; text-decoration: none; }
+.buy:hover { text-decoration: underline; }
 .val-note { display: block; font-size: .7rem; line-height: 1.2; color: var(--ink-2); padding-bottom: 2px; }
 .th-sort { white-space: nowrap; background: none; border: 0; padding: 0; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
 .th-sort[aria-pressed="true"] { color: var(--ink); }
@@ -464,7 +471,7 @@ const S = {
   live: false, loaded: false, slow: false, canWrite: true,
   openKit: null, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(),
-  scan: null, draft: null, hzCheck: null, rv: null, packEst: null,
+  scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null,
 };
 let db = null, assets = null, sample = null;
 
@@ -484,6 +491,15 @@ const statusInk = s => s >= 75 ? "var(--good)" : "var(--ink)";
 const catLabel = c => (CATS[c] || CATS.other)[0];
 const D = () => S.canWrite ? "" : "disabled";
 const when = t => t ? new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+/* Where to buy an item on Amazon: a saved product page when one was found (only a plain amazon.com/dp/ link counts),
+   else the search Claude wrote while reading the photo. Nothing searches from the page: Amazon refuses AI agents. */
+function amazonLink(it) {
+  const url = typeof it?.amazonUrl === "string" ? it.amazonUrl.trim() : "";
+  if (/^https:\/\/www\.amazon\.com\/dp\/[A-Z0-9]{10}$/.test(url)) return { href: url, exact: true };
+  const q = typeof it?.shopQuery === "string" ? it.shopQuery.trim() : "";
+  return q ? { href: "https://www.amazon.com/s?k=" + encodeURIComponent(q.slice(0, 120)), exact: false } : null;
+}
+const amazonA = it => { const l = amazonLink(it); return l ? `<a class="buy small" href="${esc(l.href)}" target="_blank" rel="noopener noreferrer" title="${l.exact ? "This product on Amazon" : "Search Amazon for this item"}">${l.exact ? "On Amazon ↗" : "Find on Amazon ↗"}</a>` : ""; };
 
 let toastTimer, toastAction = null;
 function toast(msg, action) {
@@ -1174,6 +1190,8 @@ function kitDetail(kit, ready) {
   const photos = Array.isArray(kit.photos) ? kit.photos : [];
   const scanning = S.scan?.kitId === kit.id ? S.scan : null;
   const draft = S.draft?.kitId === kit.id ? S.draft : null;
+  const tray = S.tray?.kitId === kit.id ? S.tray.photos : [];
+  const working = scanning?.state === "working";
   return `
   <div class="row" style="justify-content:space-between;align-items:flex-end">
     <div><p class="eyebrow">${esc(KIT_TYPES[kit.type] || "Kit")}${kit.where ? " · " + esc(kit.where) : ""}</p><h2>${esc(kit.name)}</h2></div>
@@ -1184,12 +1202,14 @@ function kitDetail(kit, ready) {
   ${kitReadyPanel(kit, ready)}
   ${packPanel(kit, ready)}
   ${photos.length ? `<div class="photos">${photos.map(id => `<img src="/_blob/${esc(id)}" alt="Photo of ${esc(kit.name)}" loading="lazy">`).join("")}</div>` : ""}
-  ${S.canWrite ? `<div class="panel stack">
+  ${S.canWrite ? `<div class="panel stack" data-drop="photos">
     <div class="row" style="justify-content:space-between">
-      <div><b>Photograph the contents</b><p class="small muted">Lay items out so labels face up. Claude lists what it sees, then you check the list before anything is saved.</p></div>
-      ${scanning?.state === "working" ? `<button class="btn ghost" data-act="stopScan">Stop</button>` : `<button class="btn" data-act="pickPhotos" ${draft ? "disabled" : ""}>Add photos</button>`}
+      <div><b>Photograph the contents</b><p class="small muted">Lay items out so labels face up. Add as many photos as you need, from the camera or your library, or drop them here. Claude reads them together, then you check the list before anything is saved.</p></div>
+      ${working ? `<button class="btn ghost" data-act="stopScan">Stop</button>` : tray.length ? "" : `<button class="btn" data-act="pickPhotos">Add photos</button>`}
     </div>
-    ${scanning ? (scanning.state === "working" ? `<div class="working"><span class="pulse"></span><span>${esc(scanning.msg)}</span></div>` : `<p class="small" style="color:var(--bad)">${esc(scanning.msg)}</p>`) : ""}
+    ${tray.length ? `<div class="tray">${tray.map((p, i) => `<figure class="tray-ph"><img src="${esc(p.url)}" alt="Photo ${i + 1}">${working ? "" : `<button class="x" data-act="trayDrop" data-k="${esc(p.key)}" aria-label="Remove photo ${i + 1}">×</button>`}</figure>`).join("")}</div>
+    ${working ? "" : `<div class="row"><button class="btn" data-act="readTray">Read ${tray.length} photo${tray.length === 1 ? "" : "s"}</button><button class="btn ghost" data-act="pickPhotos">Add more</button><button class="btn ghost" data-act="trayClear">Clear</button></div>`}` : ""}
+    ${scanning ? (working ? `<div class="working"><span class="pulse"></span><span>${esc(scanning.msg)}</span></div>` : `<p class="small" style="color:var(--bad)">${esc(scanning.msg)}</p>`) : ""}
   </div>` : ""}
   ${draft ? draftTable(draft) : ""}
   ${S.canWrite && S.sel.size ? `<div class="selbar">
@@ -1202,7 +1222,7 @@ function kitDetail(kit, ready) {
     <tbody>
       ${items.map(it => { const st = expState(it); const on = S.sel.has(it.id); const ld = itemLoad(it); return `<tr class="${on ? "picked" : ""}">
         ${S.canWrite ? `<td class="sel"><input type="checkbox" id="sel-${esc(it.id)}" data-change="sel" data-id="${esc(it.id)}" aria-label="Select ${esc(it.name)}" ${on ? "checked" : ""}></td>` : ""}
-        <td><input type="text" id="it-${esc(it.id)}-name" value="${esc(it.name)}" data-change="item" data-id="${esc(it.id)}" data-f="name" aria-label="Item name" ${D()}>${it.note ? `<div class="small muted" style="padding:0 6px">${esc(it.note)}</div>` : ""}</td>
+        <td><input type="text" id="it-${esc(it.id)}-name" value="${esc(it.name)}" data-change="item" data-id="${esc(it.id)}" data-f="name" aria-label="Item name" ${D()}>${it.note ? `<div class="small muted" style="padding:0 6px">${esc(it.note)}</div>` : ""}${amazonA(it)}</td>
         <td class="cat-td">${icon(it.category)}<select id="it-${esc(it.id)}-cat" data-change="item" data-id="${esc(it.id)}" data-f="category" aria-label="Category" ${D()}>${catOptions(it.category)}</select></td>
         <td class="num"><input type="number" min="1" id="it-${esc(it.id)}-qty" value="${esc(Math.max(1, num(it.qty)))}" data-change="item" data-id="${esc(it.id)}" data-f="qty" aria-label="Quantity" ${D()}></td>
         <td class="num"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-l" value="${num(it.liters) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="liters" aria-label="Litres of water" ${D()}></td>
@@ -1240,7 +1260,7 @@ function draftTable(d) {
     <div class="tbl-wrap"><table>
       <thead><tr><th style="width:30%">Item</th><th>Category</th><th style="width:70px">Qty</th><th style="width:90px">Water L</th><th style="width:100px">Food kcal</th><th style="width:76px">kg</th><th style="width:76px">Size L</th><th style="width:150px">Expires</th><th style="width:36px"></th></tr></thead>
       <tbody>${d.rows.map((r, i) => `<tr>
-        <td><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted" style="padding:0 6px">${esc(r.note)}</div>` : ""}</td>
+        <td><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted" style="padding:0 6px">${esc(r.note)}</div>` : ""}${amazonA({ shopQuery: r.shop })}</td>
         <td><select id="d-${r.key}-cat" data-input="draft" data-i="${i}" data-f="category" aria-label="Category">${catOptions(r.category)}</select></td>
         <td class="num"><input type="number" min="1" id="d-${r.key}-qty" value="${r.qty}" data-input="draft" data-i="${i}" data-f="qty" aria-label="Quantity"></td>
         <td class="num"><input type="number" min="0" step="0.1" id="d-${r.key}-l" value="${r.liters || ""}" data-input="draft" data-i="${i}" data-f="liters" aria-label="Litres"></td>
@@ -1584,12 +1604,12 @@ function profileText() {
   ].join("\n");
 }
 function photoPrompt(kit) {
-  return `These photos show the contents of an emergency kit called "${kit.name}" (${KIT_TYPES[kit.type] || "kit"}). List every distinct supply item you can see. Combine identical units into one line with a quantity. If an item is partly hidden or you are unsure what it is, still list it and say so in the note.
+  return `These photos show the contents of an emergency kit called "${kit.name}" (${KIT_TYPES[kit.type] || "kit"}). List every distinct supply item you can see. Combine identical units into one line with a quantity. Several photos may show the same item from different angles or distances: count each physical item once. If an item is partly hidden or you are unsure what it is, still list it and say so in the note.
 
 Reply with only a JSON array. Each element:
-{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "grams": estimated total weight of the whole line in grams including packaging, "ml": estimated total packed volume of the whole line in millilitres, "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or ""}
+{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "grams": estimated total weight of the whole line in grams including packaging, "ml": estimated total packed volume of the whole line in millilitres, "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or "", "shop": an Amazon search query for this exact product, with the brand, product name and size as printed on the label (a short generic query when there is no brand), or "" for a prescription medicine or anything you can't identify}
 
-Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"grams":12500,"ml":13500,"expires":"2027-06","note":""}]
+Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"grams":12500,"ml":13500,"expires":"2027-06","note":"","shop":"Poland Spring 500 ml water bottles 24 pack"}]
 
 Category ids:
 ${catGuide()}`;
@@ -1676,11 +1696,36 @@ function cleanRows(out) {
     L: Math.round(num(x.ml) / 100) / 10,
     expires: /^\d{4}-\d{2}$/.test(x.expires || "") ? x.expires : "",
     note: String(x.note || "").slice(0, 120),
+    shop: typeof x.shop === "string" ? x.shop.trim().slice(0, 120) : "",
   }));
+}
+/* Photos wait in a tray until you read them, so a kit can be shot one photo at a time (a phone
+   camera takes one per pick) and Claude still sees them all together. The tray lives in memory only. */
+const TRAY_MAX = 20;
+const photoKey = f => [f.name, f.size, f.lastModified].join("|");
+function addToTray(files) {
+  const kit = S.kits.find(k => k.id === S.openKit);
+  const imgs = files.filter(f => /^image\//.test(f?.type || ""));
+  if (!kit || !imgs.length) return;
+  if (S.tray?.kitId !== kit.id) clearTray();
+  S.tray ||= { kitId: kit.id, photos: [] };
+  const have = new Set(S.tray.photos.map(p => photoKey(p.file)));
+  const fresh = imgs.filter(f => !have.has(photoKey(f)) && have.add(photoKey(f)));
+  const room = TRAY_MAX - S.tray.photos.length;
+  for (const f of fresh.slice(0, room)) {
+    let url = ""; try { url = URL.createObjectURL(f); } catch (_) {}
+    S.tray.photos.push({ key: uid(), file: f, url });
+  }
+  if (fresh.length > room) toast(`Up to ${TRAY_MAX} photos at a time. Read these, then add the rest.`);
+  render();
+}
+function clearTray() {
+  for (const p of S.tray?.photos || []) try { URL.revokeObjectURL(p.url); } catch (_) {}
+  S.tray = null;
 }
 async function scanPhotos(files) {
   const kit = S.kits.find(k => k.id === S.openKit);
-  if (!kit || !files.length) return;
+  if (!kit || !files.length || S.scan?.state === "working") return;
   if (!sample) { toast("Reading photos needs Claude, which this view can't reach. Add items by hand instead."); return; }
   const lim = await sample.limits().catch(() => null);
   if (!lim?.images) { toast("This view can't send photos to Claude. Add items by hand instead."); return; }
@@ -1702,8 +1747,11 @@ async function scanPhotos(files) {
       render();
       rows = rows.concat(cleanRows(await sample.json(photoPrompt(kit), { images: blobs.slice(i, i + max), signal: ctl.signal })));
     }
-    S.draft = { kitId: kit.id, rows, photoIds };
+    // Photos read while you're still checking an earlier list add to that list.
+    const prev = S.draft?.kitId === kit.id ? S.draft : null;
+    S.draft = { kitId: kit.id, rows: [...(prev?.rows || []), ...rows], photoIds: [...(prev?.photoIds || []), ...photoIds] };
     S.scan = null;
+    if (S.tray?.kitId === kit.id) clearTray();
   } catch (e) {
     for (const id of photoIds) assets?.delete(id).catch(() => {});
     S.scan = e?.code === "cancelled" ? null : { kitId: kit.id, state: "error", msg: sampleErr(e) };
@@ -1716,7 +1764,7 @@ async function saveDraft() {
   const now = Date.now();
   const rows = d.rows.filter(r => String(r.name).trim());
   try {
-    await Promise.all(rows.map(r => setDoc("items", uid(), { kitId: kit.id, name: r.name.trim(), category: r.category, qty: Math.max(1, Math.round(num(r.qty) || 1)), liters: num(r.liters), kcal: num(r.kcal), grams: Math.round(num(r.kg) * 1000), ml: Math.round(num(r.L) * 1000), expires: r.expires || "", note: r.note || "", source: "photo", addedAt: now })));
+    await Promise.all(rows.map(r => setDoc("items", uid(), { kitId: kit.id, name: r.name.trim(), category: r.category, qty: Math.max(1, Math.round(num(r.qty) || 1)), liters: num(r.liters), kcal: num(r.kcal), grams: Math.round(num(r.kg) * 1000), ml: Math.round(num(r.L) * 1000), expires: r.expires || "", note: r.note || "", ...(r.shop ? { shopQuery: r.shop } : {}), source: "photo", addedAt: now })));
     if (d.photoIds.length) await setDoc("kits", kit.id, { ...strip(kit), photos: [...(kit.photos || []), ...d.photoIds], updatedAt: now });
     S.draft = null;
     toast(`Added ${rows.length} item${rows.length === 1 ? "" : "s"} to ${kit.name}`);
@@ -1798,6 +1846,16 @@ const ACT = {
   cancelConfirm: () => { S.confirm = null; render(); },
   pickPhotos: () => { const i = $("#photo-input"); i.value = ""; i.click(); },
   stopScan: () => S.scan?.ctl?.abort(),
+  readTray: () => S.tray?.photos.length ? scanPhotos(S.tray.photos.map(p => p.file)) : undefined,
+  trayDrop: b => {
+    const p = S.tray?.photos.find(x => x.key === b.dataset.k);
+    if (!p) return;
+    try { URL.revokeObjectURL(p.url); } catch (_) {}
+    S.tray.photos = S.tray.photos.filter(x => x !== p);
+    if (!S.tray.photos.length) S.tray = null;
+    render();
+  },
+  trayClear: () => { clearTray(); render(); },
   draftDrop: b => { S.draft.rows.splice(+b.dataset.i, 1); render(); },
   draftCancel: () => { for (const id of S.draft?.photoIds || []) assets?.delete(id).catch(() => {}); S.draft = null; render(); },
   draftSave: saveDraft,
@@ -1961,8 +2019,25 @@ document.addEventListener("change", async e => {
     const levels = { ...(S.hazards?.levels || {}), [t.dataset.id]: t.value };
     await setDoc("household", "hazards", { ...(S.hazards || {}), levels }).catch(() => {});
   } else if (t.id === "photo-input") {
-    scanPhotos([...t.files]);
+    addToTray([...t.files]);
   }
+});
+/* Dropping photos on the photo panel adds them to the tray. A file dropped anywhere else is ignored
+   rather than opened, which would navigate away from the page. */
+const dropZone = e => S.canWrite && e.target.closest?.("[data-drop]");
+document.addEventListener("dragover", e => {
+  if (!e.dataTransfer?.types?.includes("Files")) return;
+  e.preventDefault();
+  const z = dropZone(e);
+  e.dataTransfer.dropEffect = z ? "copy" : "none";
+  z?.classList.add("drop-on");
+});
+document.addEventListener("dragleave", e => { const z = dropZone(e); if (z && !z.contains(e.relatedTarget)) z.classList.remove("drop-on"); });
+document.addEventListener("drop", e => {
+  if (!e.dataTransfer?.types?.includes("Files")) return;
+  e.preventDefault();
+  const z = dropZone(e);
+  if (z) { z.classList.remove("drop-on"); addToTray([...e.dataTransfer.files]); }
 });
 document.addEventListener("submit", async e => {
   e.preventDefault();
