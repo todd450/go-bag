@@ -174,7 +174,7 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; }
 .photos { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
 .photos img { width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid var(--rule); flex: none; background: var(--rule); }
 .tbl-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); }
-table { border-collapse: collapse; width: 100%; min-width: 820px; font-size: .85rem; }
+table { border-collapse: collapse; width: 100%; min-width: 960px; font-size: .85rem; }
 th { text-align: left; font-weight: 600; font-size: .78rem; color: var(--ink-2); padding: 5px 6px; border-bottom: 1px solid var(--rule); }
 td { padding: 1px 4px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
 tr:last-child td { border-bottom: 0; }
@@ -197,6 +197,13 @@ tr.addrow td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite; flex: none; }
 @keyframes pulse { 50% { opacity: .25; } }
 @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+
+.pack-ms { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px 24px; }
+.pack-m { display: grid; gap: 4px; }
+.pack-lim { display: inline-flex; align-items: center; gap: 6px; }
+.pack-lim input { width: 72px; }
+.pack-over { color: var(--bad); font-weight: 600; }
+.pack-l { margin: 0; padding-left: 1.1em; display: grid; gap: 3px; font-size: .88rem; }
 
 /* Household */
 .hh-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
@@ -457,7 +464,7 @@ const S = {
   live: false, loaded: false, slow: false, canWrite: true,
   openKit: null, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(),
-  scan: null, draft: null, hzCheck: null, rv: null,
+  scan: null, draft: null, hzCheck: null, rv: null, packEst: null,
 };
 let db = null, assets = null, sample = null;
 
@@ -615,12 +622,14 @@ function model() {
   const kitRes = Object.fromEntries(S.kits.map(k => [k.id, kitReadiness(k, h, active)]));
   return { h, stocks, results, active, overall, gaps, exp, kitRes };
 }
+const haveOf = (cat, st) => cat === "water" ? st.liters : cat === "food" ? st.kcal : (st.count[cat] || 0);
 function needRow(cat, hz, h, st) {
   const { need, unit } = needFor(cat, hz, h);
-  const have = cat === "water" ? st.liters : cat === "food" ? st.kcal : (st.count[cat] || 0);
+  const have = haveOf(cat, st);
   return { cat, need, have, unit, cov: need > 0 ? Math.min(1, have / need) : 1, w: cat === "water" || cat === "food" || cat === "comfort" && hz.mode === "vehicle" ? 2 : 1 };
 }
-const scoreRows = rows => rows.length ? Math.round(100 * rows.reduce((a, r) => a + r.w * r.cov, 0) / rows.reduce((a, r) => a + r.w, 0)) : 0;
+const rawScore = rows => rows.length ? 100 * rows.reduce((a, r) => a + r.w * r.cov, 0) / rows.reduce((a, r) => a + r.w, 0) : 0;
+const scoreRows = rows => Math.round(rawScore(rows));
 /* The household score if these categories were fully stocked: what closing a gap is worth. */
 function overallIf(M, cats) {
   const tw = M.active.reduce((a, r) => a + r.wt, 0);
@@ -782,7 +791,7 @@ const KIT_STD = {
   home: { label: "2-week home supply", mode: "shelter", days: 14, needs: ["water", "food", "first_aid", "medications", "light", "power", "communication", "hygiene", "sanitation", "tools", "shelter", "fire_safety"] },
   car: { label: "24-hour car kit", mode: "vehicle", days: 1, needs: ["water", "food", "shelter", "light", "car", "first_aid", "communication", "tools", "comfort"] },
 };
-function kitReadiness(kit, h, active) {
+function kitReadiness(kit, h, active, items = S.items.filter(i => i.kitId === kit.id)) {
   const std = KIT_STD[kit.type] || KIT_STD.go;
   const serves = Math.min(50, Math.round(num(kit.serves))) || h.people;
   const whole = serves >= h.people;
@@ -795,9 +804,129 @@ function kitReadiness(kit, h, active) {
   if (std.mode !== "vehicle" && kh.infants) needs.add("baby");
   if (std.mode !== "vehicle" && kh.kids) needs.add("kids");
   if (std.mode !== "shelter") needs.delete("fire_safety");
-  const st = stockItems(S.items.filter(i => i.kitId === kit.id));
+  const st = stockItems(items);
   const rows = [...needs].map(cat => needRow(cat, { mode: std.mode, days: std.days, qty }, kh, st));
-  return { std, serves, whole, kh, rows, score: scoreRows(rows), drivers };
+  return { std, serves, whole, h, kh, rows, score: scoreRows(rows), drivers };
+}
+
+/* ---------- weight and space ---------- */
+/* One unit of each category weighs about `g` grams and takes `ml` of bag space; an item with its own
+   grams or ml uses those. Water and food are estimated from their litres and calories. `lite` is a
+   lighter kind of the same thing that counts the same on the checklist, offered as a swap. */
+const PACK = {
+  water: { g: 100, ml: 300 }, food: { g: 300, ml: 400 },
+  first_aid: { g: 400, ml: 1500, lite: { name: "compact first-aid pouch", g: 150, ml: 500, trade: "covers everyday cuts; keep bleeding control separate" } },
+  wound: { g: 150, ml: 400 }, trauma: { g: 150, ml: 350 }, burns: { g: 100, ml: 300 }, splint: { g: 150, ml: 600 },
+  cpr: { g: 60, ml: 150 }, allergy: { g: 60, ml: 150 }, bites: { g: 60, ml: 150 }, poison: { g: 50, ml: 100 },
+  diagnostics: { g: 150, ml: 400 }, medications: { g: 100, ml: 200 },
+  light: { g: 300, ml: 800, lite: { name: "headlamp", g: 90, ml: 200, trade: "hands-free, though it lights less of a room than a lantern" } },
+  power: { g: 250, ml: 300 }, communication: { g: 350, ml: 1000 }, documents: { g: 150, ml: 300 },
+  shelter: { g: 900, ml: 3000, lite: { name: "emergency bivvy", many: "emergency bivvies", g: 110, ml: 250, trade: "far lighter, but less warm than a sleeping bag" } },
+  clothing: { g: 600, ml: 2500 }, hygiene: { g: 150, ml: 300 }, sanitation: { g: 400, ml: 1200 },
+  tools: { g: 400, ml: 700, lite: { name: "multi-tool", g: 250, ml: 150, trade: "one tool for most small jobs" } },
+  masks: { g: 15, ml: 100 }, fire_safety: { g: 1500, ml: 3000 }, car: { g: 1500, ml: 3000 },
+  comfort: { g: 150, ml: 400 }, pets: { g: 500, ml: 1500 }, baby: { g: 400, ml: 1500 }, kids: { g: 200, ml: 600 }, other: { g: 300, ml: 600 },
+};
+const WATER_G = 1040, WATER_ML = 1100, FOOD_KCAL_G = 2.5, BAR_KCAL_G = 4.8, BAR_KCAL = 3600;
+/* An item's weight and size for the whole line and per unit; `est` when either is a guess. */
+function itemLoad(it) {
+  const c = CATS[it.category] ? it.category : "other", q = Math.max(1, num(it.qty)), p = PACK[c] || PACK.other;
+  const L = c === "water" ? num(it.liters) : 0, kc = c === "food" ? num(it.kcal) : 0;
+  const estG = L ? L * WATER_G : kc ? kc / FOOD_KCAL_G : p.g * q;
+  const estMl = L ? L * WATER_ML : kc ? kc / FOOD_KCAL_G * 1.6 : p.ml * q;
+  const g = num(it.grams) || estG, ml = num(it.ml) || estMl;
+  return { g, ml, q, unitG: g / q, unitMl: ml / q, est: !num(it.grams) || !num(it.ml), estG, estMl };
+}
+/* Who can carry what: about a fifth of body weight for an adult, less for teens, children 5 and up,
+   seniors or anyone with limited mobility, nothing for children under 5. One bag is one person's load. */
+const bodyKg = m => { const y = yearsOf(m); return y == null ? { infant: 10, child: 25, teen: 55, adult: 75, senior: 70 }[groupOf(m)] : y < 13 ? 2 * y + 8 : y < 18 ? 55 : y < 65 ? 75 : 70; };
+const carryShare = m => { const y = yearsOf(m), g = groupOf(m); return g === "infant" || y != null && y < 5 ? 0 : hasCond("mobility")(m) || g === "senior" || g === "child" ? .1 : g === "teen" ? .15 : .2; };
+const carryKg = m => Math.round(bodyKg(m) * carryShare(m) * 2) / 2;
+const PACK_L = { go: 40, car: 60 };
+/* Go-bags are limited by what their strongest carrier can lift and by the bag's litres; car kits by
+   the space they get in the trunk. Home supplies have no limits. */
+function kitLimits(kit, h) {
+  if (!PACK_L[kit.type]) return null;
+  const carriers = h.members.map((m, i) => ({ name: personName(m, i), kg: carryKg(m) })).filter(c => c.kg > 0).sort((a, b) => b.kg - a.kg);
+  const suggestedKg = kit.type === "go" ? carriers[0]?.kg || null : null;
+  return { kg: kit.type === "go" ? num(kit.carryKg) || suggestedKg : null, L: num(kit.bagL) || PACK_L[kit.type], suggestedKg, suggestedL: PACK_L[kit.type],
+    carrier: carriers[0]?.name || "", totalKg: carriers.reduce((a, c) => a + c.kg, 0), carriers: carriers.length };
+}
+/* What to pack within a kit's limits. Each line splits into steps of whole units (at most 12 per
+   line); the search adds the step that gains the most readiness for its share of the tighter limit,
+   then tries one-for-one swaps, refilling after each. The score is capped at need per checklist line,
+   so each extra unit is worth less than the last, and this lands at or near the best possible pack.
+   Water filters and tablets add no litres but are always kept. Points come from kitReadiness on the
+   chosen items, so they are the points the kit would really score. */
+function packPlan(kit, ready, lim) {
+  const lines = S.items.filter(i => i.kitId === kit.id).map(it => ({ it, ...itemLoad(it) }));
+  const limG = lim.kg ? lim.kg * 1000 : Infinity, limMl = lim.L * 1000;
+  const pick = keep => lines.flatMap((l, i) => keep[i] ? [{ ...l.it, qty: keep[i], liters: num(l.it.liters) * keep[i] / l.q, kcal: num(l.it.kcal) * keep[i] / l.q }] : []);
+  const raw = keep => rawScore(ready.rows.map(r => { const have = haveOf(r.cat, stockItems(pick(keep))); return { ...r, have, cov: r.need > 0 ? Math.min(1, have / r.need) : 1 }; }));
+  const sumG = keep => lines.reduce((a, l, i) => a + l.unitG * keep[i], 0), sumMl = keep => lines.reduce((a, l, i) => a + l.unitMl * keep[i], 0);
+  const fitsIn = keep => sumG(keep) <= limG + 1e-6 && sumMl(keep) <= limMl + 1e-6;
+  const step = (i, keep, dir) => dir > 0 ? Math.min(lines[i].q - keep[i], Math.ceil(lines[i].q / 12)) : Math.min(keep[i], Math.ceil(lines[i].q / 12));
+  const full = lines.map(l => l.q), fullRaw = raw(full);
+  const fits = fitsIn(full);
+  let best = null;
+  if (!fits) {
+    let keep = lines.map(l => l.it.category === "water" && !num(l.it.liters) ? l.q : 0), cur = raw(keep);
+    const fill = () => {
+      for (;;) {
+        let pickI = -1, pickR = 0, pickS = 0, pickN = null;
+        lines.forEach((l, i) => {
+          const n = step(i, keep, 1); if (!n) return;
+          const next = keep.slice(); next[i] += n;
+          if (!fitsIn(next)) return;
+          const s = raw(next), gain = s - cur; if (gain <= 1e-9) return;
+          const r = gain / (Math.max(l.unitG * n / limG, l.unitMl * n / limMl) || 1e-9);
+          if (r > pickR) { pickI = i; pickR = r; pickS = s; pickN = next; }
+        });
+        if (pickI < 0) return;
+        keep = pickN; cur = pickS;
+      }
+    };
+    const swap = () => {
+      for (let a = 0; a < lines.length; a++) if (keep[a]) for (let b = 0; b < lines.length; b++) {
+        if (a === b || !step(b, keep, 1)) continue;
+        const next = keep.slice(); next[a] -= step(a, keep, -1); next[b] += step(b, keep, 1);
+        if (!fitsIn(next)) continue;
+        const s = raw(next); if (s > cur + 1e-9) { keep = next; cur = s; return true; }
+      }
+      return false;
+    };
+    let rounds = 0;
+    do fill(); while (swap() && ++rounds < 60);
+    const chosen = pick(keep);
+    best = { keep, items: chosen, score: kitReadiness(kit, ready.h, ready.drivers, chosen).score, g: sumG(keep), ml: sumMl(keep),
+      leave: lines.map((l, i) => ({ it: l.it, n: l.q - keep[i], g: l.unitG * (l.q - keep[i]) })).filter(x => x.n > 0).sort((a, b) => b.g - a.g) };
+  }
+  /* Units that add nothing: taken out heaviest first, each only if the kit keeps every point. */
+  const lean = full.slice(), onList = new Set(ready.rows.map(r => r.cat));
+  for (const i of lines.map((l, i) => i).sort((a, b) => lines[b].unitG - lines[a].unitG)) {
+    const l = lines[i];
+    if (l.it.category === "water" && !num(l.it.liters) || l.it.category === "food" && !num(l.it.kcal)) continue;
+    let lo = 0, hi = lean[i];
+    while (lo < hi) { const mid = Math.ceil((lo + hi) / 2), t = lean.slice(); t[i] -= mid; if (raw(t) >= fullRaw - 1e-9) lo = mid; else hi = mid - 1; }
+    lean[i] -= lo;
+  }
+  const takeOut = lines.map((l, i) => ({ it: l.it, n: l.q - lean[i], g: l.unitG * (l.q - lean[i]),
+    why: expState(l.it) === "expired" ? "Expired, so it adds nothing" : onList.has(CATS[l.it.category] ? l.it.category : "other") ? "More than this kit needs" : "Not on this kit's checklist" }))
+    .filter(x => x.n > 0).sort((a, b) => b.g - a.g);
+  /* Lighter kinds of the same thing: same count on the checklist (same calories for food). */
+  const swaps = lines.flatMap(l => {
+    const c = CATS[l.it.category] ? l.it.category : "other", lite = PACK[c]?.lite, name = String(l.it.name || "");
+    if (c === "food" && num(l.it.kcal) && !/ration|\bbars?\b|freeze|mre/i.test(name)) {
+      const g2 = num(l.it.kcal) / BAR_KCAL_G;
+      return l.g - g2 >= 200 ? [{ it: l.it, to: `${pl(Math.ceil(num(l.it.kcal) / BAR_KCAL), "ration bar")} (3,600 kcal each)`, saveG: l.g - g2, trade: "same calories, no cooking or water needed", est: !num(l.it.grams) }] : [];
+    }
+    if (!lite || new RegExp(lite.name.split(" ").at(-1), "i").test(name) || l.unitG < 1.5 * lite.g) return [];
+    return [{ it: l.it, to: pl(l.q, lite.name, lite.many), saveG: (l.unitG - lite.g) * l.q, trade: lite.trade, est: !num(l.it.grams) }];
+  }).sort((a, b) => b.saveG - a.saveG).slice(0, 5);
+  const waterG = lines.filter(l => l.it.category === "water").reduce((a, l) => a + l.g, 0);
+  const waterRow = ready.rows.find(r => r.cat === "water");
+  return { lines, fits, g: sumG(full), ml: sumMl(full), score: ready.score, best, takeOut, swaps, waterG,
+    waterNeedG: waterRow ? waterRow.need * WATER_G : 0, estN: lines.filter(l => l.est).length };
 }
 /* Splits a kit's score across its items: each checklist row's points go to the items filling it,
    in proportion to what each supplies, so an item's points add up with the rest to the kit score. */
@@ -945,6 +1074,47 @@ function kitReadyPanel(kit, r) {
     <p class="small muted">${r.drivers.length ? `Checklist covers ${esc(r.drivers.map(d => d.hz.name.toLowerCase()).join(", "))}. ` : ""}${r.whole ? "" : "Pet, baby and kids' supplies are expected only in kits for the whole household. "}Expired items don't count.</p>
   </div>`;
 }
+const kgText = g => f1(g / 1000);
+function packPanel(kit, ready) {
+  const lim = kitLimits(kit, ready.h);
+  if (!lim || !S.items.some(i => i.kitId === kit.id)) return "";
+  const P = packPlan(kit, ready, lim);
+  const est = S.packEst?.kitId === kit.id ? S.packEst : null;
+  const input = (f, sugg, unit, label) => S.canWrite ? `<label class="small muted pack-lim">${label}<input type="number" min="0" step="0.5" id="pk-${f}-${esc(kit.id)}" value="${num(kit[f]) || ""}" placeholder="${sugg}" data-change="packLim" data-id="${esc(kit.id)}" data-f="${f}" aria-label="${label} in ${unit}">${unit}</label>` : "";
+  const meter = (label, have, max, unit, field, sugg, fieldLabel) => {
+    const over = max != null && have > max;
+    return `<div class="pack-m">
+      <div class="row" style="justify-content:space-between"><span><b>${label}</b> <span class="mono ${over ? "pack-over" : ""}">${f1(have)}${max != null ? ` of ${f1(max)}` : ""} ${unit}</span></span>${field ? input(field, sugg, unit, fieldLabel) : ""}</div>
+      ${max != null ? `<div class="bar" style="--c:${over ? "var(--bad)" : "var(--good)"}" role="img" aria-label="${label}: ${f1(have)} of ${f1(max)} ${unit}"><span style="width:${Math.min(100, Math.round(100 * have / max))}%"></span></div>` : ""}
+    </div>`;
+  };
+  const li = (it, what, note) => `<li><b>${esc(it.name)}</b> <span>${what}</span>${note ? ` <span class="muted">· ${note}</span>` : ""}</li>`;
+  const go = kit.type === "go";
+  const notes = [];
+  if (go && lim.kg && P.waterNeedG > lim.kg * 1000) notes.push(`Water for ${esc(servesLine(ready))} over 3 days weighs about ${kgText(P.waterNeedG)} kg, more than one person can carry. ${lim.carriers > 1 ? `Your household can carry about ${f1(lim.totalKg)} kg across ${lim.carriers} people, so split it into more bags.` : ""}`);
+  if (go && lim.kg && P.waterG > lim.kg * 500) notes.push(`Water is ${kgText(P.waterG)} kg of this bag. A filter or purification tablets with one day of water is far lighter, but only stored water counts on the checklist, so the score would drop.`);
+  return `<div class="panel stack">
+    <div class="row" style="justify-content:space-between;align-items:baseline">
+      <p class="eyebrow">Weight and space</p>
+      <span class="small muted">${P.estN ? `${P.estN} of ${P.lines.length} item${P.lines.length === 1 ? "" : "s"} estimated` : "Every item has its own weight and size"}${P.estN && sample && S.canWrite ? ` <button class="btn ghost sm" data-act="packEstimate" data-id="${esc(kit.id)}" ${est?.state === "working" ? "disabled" : ""}>${est?.state === "working" ? "Estimating…" : "Estimate with Claude"}</button>` : ""}</span>
+    </div>
+    ${est?.state === "error" ? `<p class="small" style="color:var(--bad)">${esc(est.msg)}</p>` : ""}
+    <div class="pack-ms">
+      ${meter("Weight", P.g / 1000, lim.kg, "kg", go ? "carryKg" : "", lim.suggestedKg, "Carry limit")}
+      ${meter("Space", P.ml / 1000, lim.L, "L", "bagL", lim.suggestedL, go ? "Bag size" : "Trunk space")}
+    </div>
+    <p class="small muted">${go ? (lim.suggestedKg ? `Suggested carry limit ${f1(lim.suggestedKg)} kg, about what ${esc(lim.carrier)} can carry (a fifth of body weight for an adult, less for children and seniors). ` : "") + `Suggested bag ${lim.suggestedL} L, a typical hiking pack.` : `Suggested ${lim.suggestedL} L, a typical trunk bin.`}</p>
+    ${notes.map(n => `<p class="small">${n}</p>`).join("")}
+    ${P.best ? `<div class="stack"><b>Best pack within your limits</b>
+      <p class="small">Leave these out and the kit scores <b>${P.best.score}%</b> (now ${P.score}%) at ${kgText(P.best.g)} kg and ${f1(P.best.ml / 1000)} L.</p>
+      <ul class="pack-l">${P.best.leave.map(x => li(x.it, `leave out ${x.n === Math.max(1, num(x.it.qty)) ? "all" : x.n}`, `${kgText(x.g)} kg`)).join("")}</ul></div>` : ""}
+    ${P.takeOut.length ? `<div class="stack"><b>Take out</b><p class="small muted">These earn no points, so the kit keeps its ${P.score}% without them.</p>
+      <ul class="pack-l">${P.takeOut.map(x => li(x.it, x.n === Math.max(1, num(x.it.qty)) ? "" : `× ${x.n}`, `${esc(x.why)} · saves ${kgText(x.g)} kg`)).join("")}</ul></div>` : ""}
+    ${P.swaps.length ? `<div class="stack"><b>Lighter swaps</b><p class="small muted">Same points, less weight.</p>
+      <ul class="pack-l">${P.swaps.map(x => li(x.it, `→ ${esc(x.to)}`, `saves ${x.est ? "about " : ""}${kgText(x.saveG)} kg · ${esc(x.trade)}`)).join("")}</ul></div>` : ""}
+    ${P.fits && !P.takeOut.length && !P.swaps.length ? `<p class="small">Fits, and every item earns its place.</p>` : ""}
+  </div>`;
+}
 const RISK = { high: "High risk", moderate: "Moderate risk", low: "Low risk", none: "Doesn't apply" };
 function hzRow(r, h) {
   const open = S.openHz.has(r.hz.id);
@@ -1012,6 +1182,7 @@ function kitDetail(kit, ready) {
       : `<button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button>`) : ""}
   </div>
   ${kitReadyPanel(kit, ready)}
+  ${packPanel(kit, ready)}
   ${photos.length ? `<div class="photos">${photos.map(id => `<img src="/_blob/${esc(id)}" alt="Photo of ${esc(kit.name)}" loading="lazy">`).join("")}</div>` : ""}
   ${S.canWrite ? `<div class="panel stack">
     <div class="row" style="justify-content:space-between">
@@ -1027,15 +1198,17 @@ function kitDetail(kit, ready) {
     <button class="btn ghost sm" data-act="clearSel">Cancel</button>
   </div>` : ""}
   <div class="tbl-wrap"><table>
-    <thead><tr>${S.canWrite ? `<th class="sel"><input type="checkbox" id="sel-all" data-change="selAll" aria-label="Select all items" ${items.length && items.every(i => S.sel.has(i.id)) ? "checked" : ""} ${items.length ? "" : "disabled"}></th>` : ""}<th style="width:28%">Item</th><th>${sortTh("cat", "Category")}</th><th style="width:60px">Qty</th><th style="width:76px">Water L</th><th style="width:86px">Food kcal</th><th style="width:140px">Expires</th><th style="width:118px" title="Kit readiness points this item earns. Every item's points add up to the kit's score.">${sortTh("value", "Value")}</th><th style="width:32px"></th></tr></thead>
+    <thead><tr>${S.canWrite ? `<th class="sel"><input type="checkbox" id="sel-all" data-change="selAll" aria-label="Select all items" ${items.length && items.every(i => S.sel.has(i.id)) ? "checked" : ""} ${items.length ? "" : "disabled"}></th>` : ""}<th style="width:28%">Item</th><th>${sortTh("cat", "Category")}</th><th style="width:60px">Qty</th><th style="width:76px">Water L</th><th style="width:86px">Food kcal</th><th style="width:68px" title="Weight of the whole line. Grey numbers are estimates.">kg</th><th style="width:68px" title="Packed size of the whole line. Grey numbers are estimates.">Size L</th><th style="width:140px">Expires</th><th style="width:118px" title="Kit readiness points this item earns. Every item's points add up to the kit's score.">${sortTh("value", "Value")}</th><th style="width:32px"></th></tr></thead>
     <tbody>
-      ${items.map(it => { const st = expState(it); const on = S.sel.has(it.id); return `<tr class="${on ? "picked" : ""}">
+      ${items.map(it => { const st = expState(it); const on = S.sel.has(it.id); const ld = itemLoad(it); return `<tr class="${on ? "picked" : ""}">
         ${S.canWrite ? `<td class="sel"><input type="checkbox" id="sel-${esc(it.id)}" data-change="sel" data-id="${esc(it.id)}" aria-label="Select ${esc(it.name)}" ${on ? "checked" : ""}></td>` : ""}
         <td><input type="text" id="it-${esc(it.id)}-name" value="${esc(it.name)}" data-change="item" data-id="${esc(it.id)}" data-f="name" aria-label="Item name" ${D()}>${it.note ? `<div class="small muted" style="padding:0 6px">${esc(it.note)}</div>` : ""}</td>
         <td class="cat-td">${icon(it.category)}<select id="it-${esc(it.id)}-cat" data-change="item" data-id="${esc(it.id)}" data-f="category" aria-label="Category" ${D()}>${catOptions(it.category)}</select></td>
         <td class="num"><input type="number" min="1" id="it-${esc(it.id)}-qty" value="${esc(Math.max(1, num(it.qty)))}" data-change="item" data-id="${esc(it.id)}" data-f="qty" aria-label="Quantity" ${D()}></td>
         <td class="num"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-l" value="${num(it.liters) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="liters" aria-label="Litres of water" ${D()}></td>
         <td class="num"><input type="number" min="0" step="50" id="it-${esc(it.id)}-k" value="${num(it.kcal) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="kcal" aria-label="Food calories" ${D()}></td>
+        <td class="num"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-g" value="${num(it.grams) ? num(it.grams) / 1000 : ""}" placeholder="${Math.round(ld.estG / 100) / 10}" data-change="item" data-id="${esc(it.id)}" data-f="grams" aria-label="Weight in kg" ${D()}></td>
+        <td class="num"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-ml" value="${num(it.ml) ? num(it.ml) / 1000 : ""}" placeholder="${Math.round(ld.estMl / 100) / 10}" data-change="item" data-id="${esc(it.id)}" data-f="ml" aria-label="Size in litres" ${D()}></td>
         <td><input type="month" id="it-${esc(it.id)}-exp" value="${esc(it.expires || "")}" data-change="item" data-id="${esc(it.id)}" data-f="expires" aria-label="Expiry month" ${D()}>${st ? `<span class="flag ${st}">${st === "expired" ? "expired" : "expiring soon"}</span>` : ""}</td>
         <td class="val" title="${esc(val[it.id].note || `Earns ${ptsLabel(val[it.id].pts)} of this kit's ${ready.score} points`)}"><div class="val-in"><span class="vbar"><i style="width:${Math.round(100 * val[it.id].pts / maxPts)}%"></i></span><b class="mono">${ptsLabel(val[it.id].pts)}</b></div>${val[it.id].note ? `<span class="val-note">${esc(val[it.id].note)}</span>` : ""}</td>
         <td>${S.canWrite ? `<button class="x" data-act="delItem" data-id="${esc(it.id)}" aria-label="Remove ${esc(it.name)}">×</button>` : ""}</td>
@@ -1047,13 +1220,15 @@ function kitDetail(kit, ready) {
         <td class="num"><input type="number" id="add-qty" min="1" value="1" aria-label="New item quantity"></td>
         <td class="num"><input type="number" id="add-l" min="0" step="0.1" aria-label="New item litres"></td>
         <td class="num"><input type="number" id="add-k" min="0" step="50" aria-label="New item calories"></td>
+        <td class="num"><input type="number" id="add-g" min="0" step="0.1" aria-label="New item weight in kg"></td>
+        <td class="num"><input type="number" id="add-ml" min="0" step="0.1" aria-label="New item size in litres"></td>
         <td><input type="month" id="add-exp" aria-label="New item expiry"></td>
         <td></td>
         <td><button class="btn sm" data-act="addItem" aria-label="Add item">+</button></td>
       </tr>` : ""}
     </tbody>
   </table></div>
-  <p class="small muted">${S.canWrite && items.length ? "Tick anything that's no longer in this kit, then remove it. " : ""}Water L and Food kcal are totals for the whole line (a 24-pack of 500 ml bottles is 12 L). Only these two columns count toward water and food needs. Value is how many of the kit's ${ready.score} readiness points each item earns: a checklist line's points are shared by the items that fill it, so a lone tourniquet is worth more than one of twenty water bottles.</p>`;
+  <p class="small muted">${S.canWrite && items.length ? "Tick anything that's no longer in this kit, then remove it. " : ""}Water L, Food kcal, kg and Size L are totals for the whole line (a 24-pack of 500 ml bottles is 12 L). Grey kg and Size L numbers are estimates until you type your own. Only these two columns count toward water and food needs. Value is how many of the kit's ${ready.score} readiness points each item earns: a checklist line's points are shared by the items that fill it, so a lone tourniquet is worth more than one of twenty water bottles.</p>`;
 }
 function catOptions(sel) { return Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${k === sel ? "selected" : ""}>${v[0]}</option>`).join(""); }
 function draftTable(d) {
@@ -1063,13 +1238,15 @@ function draftTable(d) {
       <div class="row"><button class="btn" data-act="draftSave" ${d.rows.length ? "" : "disabled"}>Add ${d.rows.length} to kit</button><button class="btn ghost" data-act="draftCancel">Discard</button></div>
     </div>
     <div class="tbl-wrap"><table>
-      <thead><tr><th style="width:30%">Item</th><th>Category</th><th style="width:70px">Qty</th><th style="width:90px">Water L</th><th style="width:100px">Food kcal</th><th style="width:150px">Expires</th><th style="width:36px"></th></tr></thead>
+      <thead><tr><th style="width:30%">Item</th><th>Category</th><th style="width:70px">Qty</th><th style="width:90px">Water L</th><th style="width:100px">Food kcal</th><th style="width:76px">kg</th><th style="width:76px">Size L</th><th style="width:150px">Expires</th><th style="width:36px"></th></tr></thead>
       <tbody>${d.rows.map((r, i) => `<tr>
         <td><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted" style="padding:0 6px">${esc(r.note)}</div>` : ""}</td>
         <td><select id="d-${r.key}-cat" data-input="draft" data-i="${i}" data-f="category" aria-label="Category">${catOptions(r.category)}</select></td>
         <td class="num"><input type="number" min="1" id="d-${r.key}-qty" value="${r.qty}" data-input="draft" data-i="${i}" data-f="qty" aria-label="Quantity"></td>
         <td class="num"><input type="number" min="0" step="0.1" id="d-${r.key}-l" value="${r.liters || ""}" data-input="draft" data-i="${i}" data-f="liters" aria-label="Litres"></td>
         <td class="num"><input type="number" min="0" step="50" id="d-${r.key}-k" value="${r.kcal || ""}" data-input="draft" data-i="${i}" data-f="kcal" aria-label="Calories"></td>
+        <td class="num"><input type="number" min="0" step="0.1" id="d-${r.key}-g" value="${r.kg || ""}" data-input="draft" data-i="${i}" data-f="kg" aria-label="Weight in kg"></td>
+        <td class="num"><input type="number" min="0" step="0.1" id="d-${r.key}-ml" value="${r.L || ""}" data-input="draft" data-i="${i}" data-f="L" aria-label="Size in litres"></td>
         <td><input type="month" id="d-${r.key}-exp" value="${esc(r.expires)}" data-input="draft" data-i="${i}" data-f="expires" aria-label="Expiry"></td>
         <td><button class="x" data-act="draftDrop" data-i="${i}" aria-label="Remove ${esc(r.name)}">×</button></td>
       </tr>`).join("")}</tbody>
@@ -1410,12 +1587,18 @@ function photoPrompt(kit) {
   return `These photos show the contents of an emergency kit called "${kit.name}" (${KIT_TYPES[kit.type] || "kit"}). List every distinct supply item you can see. Combine identical units into one line with a quantity. If an item is partly hidden or you are unsure what it is, still list it and say so in the note.
 
 Reply with only a JSON array. Each element:
-{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or ""}
+{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "grams": estimated total weight of the whole line in grams including packaging, "ml": estimated total packed volume of the whole line in millilitres, "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or ""}
 
-Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"expires":"2027-06","note":""}]
+Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"grams":12500,"ml":13500,"expires":"2027-06","note":""}]
 
 Category ids:
 ${catGuide()}`;
+}
+function packPrompt(items) {
+  return `Estimate the weight and packed size of these emergency-kit items. Each line is: id | name | category | quantity | litres of water | food calories.
+${items.map(i => [i.id, String(i.name).replace(/[|\n]/g, " "), catLabel(i.category), Math.max(1, num(i.qty)), num(i.liters), num(i.kcal)].join(" | ")).join("\n")}
+
+Reply with only a JSON array, one element per line: {"id": the id exactly as given, "grams": total weight of the whole line in grams including packaging, "ml": total packed volume of the whole line in millilitres}. When a name is vague, assume a typical retail product.`;
 }
 function hazardPrompt() {
   return `Rate how likely each emergency below is for this household over roughly the next ten years, using what you know about the climate, geology, infrastructure and history of where they live, plus their circumstances.
@@ -1489,6 +1672,8 @@ function cleanRows(out) {
     qty: Math.max(1, Math.round(num(x.qty) || 1)),
     liters: Math.round(num(x.liters) * 10) / 10,
     kcal: Math.round(num(x.kcal)),
+    kg: Math.round(num(x.grams) / 100) / 10,
+    L: Math.round(num(x.ml) / 100) / 10,
     expires: /^\d{4}-\d{2}$/.test(x.expires || "") ? x.expires : "",
     note: String(x.note || "").slice(0, 120),
   }));
@@ -1531,7 +1716,7 @@ async function saveDraft() {
   const now = Date.now();
   const rows = d.rows.filter(r => String(r.name).trim());
   try {
-    await Promise.all(rows.map(r => setDoc("items", uid(), { kitId: kit.id, name: r.name.trim(), category: r.category, qty: Math.max(1, Math.round(num(r.qty) || 1)), liters: num(r.liters), kcal: num(r.kcal), expires: r.expires || "", note: r.note || "", source: "photo", addedAt: now })));
+    await Promise.all(rows.map(r => setDoc("items", uid(), { kitId: kit.id, name: r.name.trim(), category: r.category, qty: Math.max(1, Math.round(num(r.qty) || 1)), liters: num(r.liters), kcal: num(r.kcal), grams: Math.round(num(r.kg) * 1000), ml: Math.round(num(r.L) * 1000), expires: r.expires || "", note: r.note || "", source: "photo", addedAt: now })));
     if (d.photoIds.length) await setDoc("kits", kit.id, { ...strip(kit), photos: [...(kit.photos || []), ...d.photoIds], updatedAt: now });
     S.draft = null;
     toast(`Added ${rows.length} item${rows.length === 1 ? "" : "s"} to ${kit.name}`);
@@ -1616,11 +1801,26 @@ const ACT = {
   draftDrop: b => { S.draft.rows.splice(+b.dataset.i, 1); render(); },
   draftCancel: () => { for (const id of S.draft?.photoIds || []) assets?.delete(id).catch(() => {}); S.draft = null; render(); },
   draftSave: saveDraft,
+  packEstimate: async b => {
+    const kit = S.kits.find(k => k.id === b.dataset.id);
+    const todo = S.items.filter(i => i.kitId === kit?.id && (!num(i.grams) || !num(i.ml)));
+    if (!kit || !sample || !todo.length) return;
+    S.packEst = { kitId: kit.id, state: "working" }; render();
+    try {
+      const out = await sample.json(packPrompt(todo), { modelTier: "quick" });
+      const byId = new Map((Array.isArray(out) ? out : []).map(x => [String(x?.id), x]));
+      const done = todo.filter(i => byId.has(i.id) && (num(byId.get(i.id).grams) || num(byId.get(i.id).ml)));
+      await Promise.all(done.map(i => { const x = byId.get(i.id); return setDoc("items", i.id, { ...strip(i), grams: num(i.grams) || Math.round(num(x.grams)), ml: num(i.ml) || Math.round(num(x.ml)) }); }));
+      S.packEst = null;
+      toast(`Estimated ${pl(done.length, "item")}. Change any in the kg and Size L columns.`);
+    } catch (e) { S.packEst = { kitId: kit.id, state: "error", msg: sampleErr(e) }; }
+    render();
+  },
   delItem: b => removeItems([b.dataset.id]),
   addItem: async () => {
     const name = $("#add-name").value.trim();
     if (!name) { $("#add-name").focus(); return; }
-    const row = { kitId: S.openKit, name, category: $("#add-cat").value, qty: Math.max(1, Math.round(num($("#add-qty").value) || 1)), liters: num($("#add-l").value), kcal: num($("#add-k").value), expires: $("#add-exp").value || "", note: "", source: "manual", addedAt: Date.now() };
+    const row = { kitId: S.openKit, name, category: $("#add-cat").value, qty: Math.max(1, Math.round(num($("#add-qty").value) || 1)), liters: num($("#add-l").value), kcal: num($("#add-k").value), grams: Math.round(num($("#add-g").value) * 1000), ml: Math.round(num($("#add-ml").value) * 1000), expires: $("#add-exp").value || "", note: "", source: "manual", addedAt: Date.now() };
     $("#add-name").value = "";
     await setDoc("items", uid(), row).catch(() => {});
     $("#add-name")?.focus();
@@ -1708,9 +1908,15 @@ document.addEventListener("change", async e => {
     const it = S.items.find(i => i.id === t.dataset.id); if (!it) return;
     const f = t.dataset.f;
     let v = t.value;
-    if (f === "qty") v = Math.max(1, Math.round(num(v) || 1)); else if (f === "liters" || f === "kcal") v = num(v); else if (f === "name") { v = v.trim(); if (!v) { t.value = it.name; return; } }
+    if (f === "qty") v = Math.max(1, Math.round(num(v) || 1)); else if (f === "liters" || f === "kcal") v = num(v); else if (f === "grams" || f === "ml") v = Math.round(num(v) * 1000); else if (f === "name") { v = v.trim(); if (!v) { t.value = it.name; return; } }
     if (it[f] === v) return;
     await setDoc("items", it.id, { ...strip(it), [f]: v }).catch(() => {});
+  } else if (t.dataset.change === "packLim") {
+    const kit = S.kits.find(k => k.id === t.dataset.id); if (!kit) return;
+    const f = t.dataset.f, v = Math.round(num(t.value) * 2) / 2;
+    if (v === num(kit[f])) return;
+    const { [f]: _, ...rest } = strip(kit);
+    await setDoc("kits", kit.id, v ? { ...rest, [f]: v } : rest).catch(() => {});
   } else if (t.dataset.change === "serves") {
     const kit = S.kits.find(k => k.id === t.dataset.id); if (!kit) return;
     const v = Math.min(50, Math.round(num(t.value)));
