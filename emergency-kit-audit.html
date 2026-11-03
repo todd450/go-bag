@@ -469,6 +469,8 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : M
 const f1 = n => (Math.round(n * 10) / 10).toLocaleString();
 const clone = o => JSON.parse(JSON.stringify(o ?? null));
 const strip = ({ id, ...rest }) => rest;
+// An example kit stops being an example once it holds anything you added yourself.
+const isExampleKit = k => !!k.example && !S.items.some(i => i.kitId === k.id && !i.example);
 /* Bars are neutral until a score is in good shape; red is kept for real problems (expired, overdue, a likely health emergency you can't handle). */
 const statusColor = s => s >= 75 ? "var(--good)" : "var(--meter)";
 const statusInk = s => s >= 75 ? "var(--good)" : "var(--ink)";
@@ -835,7 +837,7 @@ const modeLine = hz => hz.when || `${MODES[hz.mode].label} · ${hz.days === 1 ? 
 
 /* ---------- views ---------- */
 function viewBanner() {
-  const ex = S.profile?.example || S.kits.some(k => k.example);
+  const ex = S.profile?.example || S.kits.some(isExampleKit);
   const parts = [];
   if (!S.live && S.loaded) parts.push(`<div class="notice"><p><b>Not saving.</b> This view can't reach storage, so changes last only until you close the page.</p></div>`);
   if (S.slow && !S.loaded) parts.push(`<div class="notice"><p>Your saved kits can't be reached yet. They'll appear when the connection returns.</p></div>`);
@@ -979,7 +981,7 @@ function viewKits(M) {
     <div class="stack">
       <h2>Your kits</h2>
       <div class="tags">${list.map(k => `<button class="tag" data-act="openKit" data-id="${esc(k.id)}" aria-pressed="${k.id === S.openKit}">
-        <span class="mono">${esc(KIT_TYPES[k.type] || "Kit")}${k.example ? " · EXAMPLE" : ""}</span><b>${esc(k.name)}</b>
+        <span class="mono">${esc(KIT_TYPES[k.type] || "Kit")}${isExampleKit(k) ? " · EXAMPLE" : ""}</span><b>${esc(k.name)}</b>
         <span class="small">${counts[k.id] || 0} items${k.where ? " · " + esc(k.where) : ""}</span>
         <span class="tag-pct" style="color:${statusInk(M.kitRes[k.id].score)}" aria-label="Readiness ${M.kitRes[k.id].score} percent">${M.kitRes[k.id].score}%</span></button>`).join("") || `<p class="muted">No kits yet. Add the first one below: a go-bag, a home supply bin or a car kit.</p>`}</div>
       ${S.canWrite ? `<form class="panel stack" data-submit="newKit">
@@ -1679,8 +1681,10 @@ const ACT = {
   clearExamples: async () => {
     S.confirm = null;
     try {
+      const drop = S.kits.filter(isExampleKit), keep = S.kits.filter(k => k.example && !isExampleKit(k));
       await Promise.all(S.items.filter(i => i.example).map(i => delDoc("items", i.id)));
-      await Promise.all(S.kits.filter(k => k.example).map(k => delDoc("kits", k.id)));
+      await Promise.all(drop.map(k => delDoc("kits", k.id)));
+      await Promise.all(keep.map(k => setDoc("kits", k.id, { ...strip(k), example: false })));
       if (S.profile?.example) { await delDoc("household", "profile"); S.hhDraft = { members: [{ label: "", age: "adult", needs: "" }], pets: [], vehicles: 0, home: "House" }; S.hhDirty = false; }
       S.openKit = null; toast("Examples removed");
     } catch (_) {}
