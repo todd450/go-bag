@@ -50,3 +50,6 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
   - Health and everyday emergencies are rated from who lives here, never by the location check
     (`tests/health.test.js`), and a location re-check keeps the household's own levels and
     importance (`tests/scoring.test.js`).
+  - The weight and space panel scores every pack it suggests with `kitReadiness` on that set
+    of items, so its points are the points the kit would really score. Saved `grams`/`ml`
+    always win over estimates (`tests/pack.test.js`).
