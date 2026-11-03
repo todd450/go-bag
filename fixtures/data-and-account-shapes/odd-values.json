@@ -1,5 +1,5 @@
 {
-  "about": "Data that didn't come from this version's forms: missing ages, text where numbers go, unknown kit types and categories, an item in a deleted kit, a hazard doc from before importance existed, and a go-bag with text and negative weights, sizes and limits.",
+  "about": "Data that didn't come from this version's forms: missing ages, text where numbers go, unknown kit types and categories, an item in a deleted kit, a hazard doc from before importance existed, a go-bag with text and negative weights, sizes and limits, and Amazon links that are not product pages or not text.",
   "profile": {
     "members": [{}, { "years": "" }, { "years": "abc", "age": "teen" }, { "years": -4 }, { "age": "nonsense", "conditions": ["unknown"] }],
     "pets": [{ "kind": "Dog", "count": "2" }, { "count": -1 }],
@@ -10,9 +10,9 @@
   "shopping": { "items": [{ "id": "s1", "cat": "retired-category", "text": "Old entry", "qty": "two" }] },
   "kits": [{ "id": "k", "name": "", "type": "boat" }, { "id": "g", "name": "Odd bag", "type": "go", "carryKg": "heavy", "bagL": -5 }],
   "items": [
-    { "id": "a", "kitId": "k", "category": "telepathy", "qty": "3" },
+    { "id": "a", "kitId": "k", "category": "telepathy", "qty": "3", "amazonUrl": "javascript:alert(1)", "shopQuery": ["not", "text"] },
     { "id": "b", "kitId": "deleted-kit", "category": "water", "liters": 50 },
-    { "id": "c", "kitId": "k", "category": "food", "kcal": -500, "expires": "soon" },
+    { "id": "c", "kitId": "k", "category": "food", "kcal": -500, "expires": "soon", "amazonUrl": "https://www.amazon.com/dp/b001cux6n0", "shopQuery": "<b>bold</b> & more" },
     { "id": "d", "kitId": "g", "name": "Rock", "category": "tools", "qty": "0", "grams": "lots", "ml": -3 },
     { "id": "e", "kitId": "g", "name": "Water", "category": "water", "qty": 2, "liters": "6", "grams": -1 }
   ]

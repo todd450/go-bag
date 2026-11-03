@@ -193,6 +193,8 @@ td.val { padding-right: 8px; }
 .vbar { flex: 1; height: 6px; background: var(--rule); border-radius: 2px; overflow: hidden; }
 .vbar i { display: block; height: 100%; background: var(--accent); }
 .val-in b { width: 2.2em; text-align: right; font-weight: 500; }
+.buy { display: inline-block; padding: 0 6px 2px; text-decoration: none; }
+.buy:hover { text-decoration: underline; }
 .val-note { display: block; font-size: .7rem; line-height: 1.2; color: var(--ink-2); padding-bottom: 2px; }
 .th-sort { white-space: nowrap; background: none; border: 0; padding: 0; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
 .th-sort[aria-pressed="true"] { color: var(--ink); }
@@ -489,6 +491,15 @@ const statusInk = s => s >= 75 ? "var(--good)" : "var(--ink)";
 const catLabel = c => (CATS[c] || CATS.other)[0];
 const D = () => S.canWrite ? "" : "disabled";
 const when = t => t ? new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+/* Where to buy an item on Amazon: a saved product page when one was found (only a plain amazon.com/dp/ link counts),
+   else the search Claude wrote while reading the photo. Nothing searches from the page: Amazon refuses AI agents. */
+function amazonLink(it) {
+  const url = typeof it?.amazonUrl === "string" ? it.amazonUrl.trim() : "";
+  if (/^https:\/\/www\.amazon\.com\/dp\/[A-Z0-9]{10}$/.test(url)) return { href: url, exact: true };
+  const q = typeof it?.shopQuery === "string" ? it.shopQuery.trim() : "";
+  return q ? { href: "https://www.amazon.com/s?k=" + encodeURIComponent(q.slice(0, 120)), exact: false } : null;
+}
+const amazonA = it => { const l = amazonLink(it); return l ? `<a class="buy small" href="${esc(l.href)}" target="_blank" rel="noopener noreferrer" title="${l.exact ? "This product on Amazon" : "Search Amazon for this item"}">${l.exact ? "On Amazon ↗" : "Find on Amazon ↗"}</a>` : ""; };
 
 let toastTimer, toastAction = null;
 function toast(msg, action) {
@@ -1211,7 +1222,7 @@ function kitDetail(kit, ready) {
     <tbody>
       ${items.map(it => { const st = expState(it); const on = S.sel.has(it.id); const ld = itemLoad(it); return `<tr class="${on ? "picked" : ""}">
         ${S.canWrite ? `<td class="sel"><input type="checkbox" id="sel-${esc(it.id)}" data-change="sel" data-id="${esc(it.id)}" aria-label="Select ${esc(it.name)}" ${on ? "checked" : ""}></td>` : ""}
-        <td><input type="text" id="it-${esc(it.id)}-name" value="${esc(it.name)}" data-change="item" data-id="${esc(it.id)}" data-f="name" aria-label="Item name" ${D()}>${it.note ? `<div class="small muted" style="padding:0 6px">${esc(it.note)}</div>` : ""}</td>
+        <td><input type="text" id="it-${esc(it.id)}-name" value="${esc(it.name)}" data-change="item" data-id="${esc(it.id)}" data-f="name" aria-label="Item name" ${D()}>${it.note ? `<div class="small muted" style="padding:0 6px">${esc(it.note)}</div>` : ""}${amazonA(it)}</td>
         <td class="cat-td">${icon(it.category)}<select id="it-${esc(it.id)}-cat" data-change="item" data-id="${esc(it.id)}" data-f="category" aria-label="Category" ${D()}>${catOptions(it.category)}</select></td>
         <td class="num"><input type="number" min="1" id="it-${esc(it.id)}-qty" value="${esc(Math.max(1, num(it.qty)))}" data-change="item" data-id="${esc(it.id)}" data-f="qty" aria-label="Quantity" ${D()}></td>
         <td class="num"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-l" value="${num(it.liters) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="liters" aria-label="Litres of water" ${D()}></td>
@@ -1249,7 +1260,7 @@ function draftTable(d) {
     <div class="tbl-wrap"><table>
       <thead><tr><th style="width:30%">Item</th><th>Category</th><th style="width:70px">Qty</th><th style="width:90px">Water L</th><th style="width:100px">Food kcal</th><th style="width:76px">kg</th><th style="width:76px">Size L</th><th style="width:150px">Expires</th><th style="width:36px"></th></tr></thead>
       <tbody>${d.rows.map((r, i) => `<tr>
-        <td><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted" style="padding:0 6px">${esc(r.note)}</div>` : ""}</td>
+        <td><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted" style="padding:0 6px">${esc(r.note)}</div>` : ""}${amazonA({ shopQuery: r.shop })}</td>
         <td><select id="d-${r.key}-cat" data-input="draft" data-i="${i}" data-f="category" aria-label="Category">${catOptions(r.category)}</select></td>
         <td class="num"><input type="number" min="1" id="d-${r.key}-qty" value="${r.qty}" data-input="draft" data-i="${i}" data-f="qty" aria-label="Quantity"></td>
         <td class="num"><input type="number" min="0" step="0.1" id="d-${r.key}-l" value="${r.liters || ""}" data-input="draft" data-i="${i}" data-f="liters" aria-label="Litres"></td>
@@ -1596,9 +1607,9 @@ function photoPrompt(kit) {
   return `These photos show the contents of an emergency kit called "${kit.name}" (${KIT_TYPES[kit.type] || "kit"}). List every distinct supply item you can see. Combine identical units into one line with a quantity. Several photos may show the same item from different angles or distances: count each physical item once. If an item is partly hidden or you are unsure what it is, still list it and say so in the note.
 
 Reply with only a JSON array. Each element:
-{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "grams": estimated total weight of the whole line in grams including packaging, "ml": estimated total packed volume of the whole line in millilitres, "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or ""}
+{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "grams": estimated total weight of the whole line in grams including packaging, "ml": estimated total packed volume of the whole line in millilitres, "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or "", "shop": an Amazon search query for this exact product, with the brand, product name and size as printed on the label (a short generic query when there is no brand), or "" for a prescription medicine or anything you can't identify}
 
-Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"grams":12500,"ml":13500,"expires":"2027-06","note":""}]
+Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"grams":12500,"ml":13500,"expires":"2027-06","note":"","shop":"Poland Spring 500 ml water bottles 24 pack"}]
 
 Category ids:
 ${catGuide()}`;
@@ -1685,6 +1696,7 @@ function cleanRows(out) {
     L: Math.round(num(x.ml) / 100) / 10,
     expires: /^\d{4}-\d{2}$/.test(x.expires || "") ? x.expires : "",
     note: String(x.note || "").slice(0, 120),
+    shop: typeof x.shop === "string" ? x.shop.trim().slice(0, 120) : "",
   }));
 }
 /* Photos wait in a tray until you read them, so a kit can be shot one photo at a time (a phone
@@ -1752,7 +1764,7 @@ async function saveDraft() {
   const now = Date.now();
   const rows = d.rows.filter(r => String(r.name).trim());
   try {
-    await Promise.all(rows.map(r => setDoc("items", uid(), { kitId: kit.id, name: r.name.trim(), category: r.category, qty: Math.max(1, Math.round(num(r.qty) || 1)), liters: num(r.liters), kcal: num(r.kcal), grams: Math.round(num(r.kg) * 1000), ml: Math.round(num(r.L) * 1000), expires: r.expires || "", note: r.note || "", source: "photo", addedAt: now })));
+    await Promise.all(rows.map(r => setDoc("items", uid(), { kitId: kit.id, name: r.name.trim(), category: r.category, qty: Math.max(1, Math.round(num(r.qty) || 1)), liters: num(r.liters), kcal: num(r.kcal), grams: Math.round(num(r.kg) * 1000), ml: Math.round(num(r.L) * 1000), expires: r.expires || "", note: r.note || "", ...(r.shop ? { shopQuery: r.shop } : {}), source: "photo", addedAt: now })));
     if (d.photoIds.length) await setDoc("kits", kit.id, { ...strip(kit), photos: [...(kit.photos || []), ...d.photoIds], updatedAt: now });
     S.draft = null;
     toast(`Added ${rows.length} item${rows.length === 1 ? "" : "s"} to ${kit.name}`);
