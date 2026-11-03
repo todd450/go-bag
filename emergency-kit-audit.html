@@ -356,6 +356,7 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 .selbar b { font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .hdr-score.up b { color: var(--good); transition: color .2s; }
+.fly { position: fixed; z-index: 30; pointer-events: none; font-family: var(--f-display); font-weight: 700; font-size: 1.15rem; color: var(--good); background: var(--card); border: 1px solid var(--good); border-radius: 4px; padding: 0 6px; }
 .hdr-score b { transition: color .8s; }
 .shop-row.flash { animation: flash 1.4s ease-out; }
 @keyframes flash { from { background: color-mix(in srgb, var(--good) 18%, transparent); } to { background: transparent; } }
@@ -1677,14 +1678,29 @@ function celebrate(M) {
     : go ? `Milestone: your go-bags and car kits now cover ${days(go)} on the move.` : "";
   if (msg) setTimeout(() => { if (!toastAction) toast(msg); }, 1600);
 }
+// A "+N" chip rises from the ticked row into the header score, which counts up as it lands
+function flyPoints(from, n) {
+  const to = $("#hdr-score");
+  if (calm() || !from || !(n > 0) || typeof to?.animate !== "function") return;
+  const b = to.getBoundingClientRect(), chip = document.createElement("span");
+  chip.className = "fly"; chip.textContent = `+${n}`; chip.setAttribute("aria-hidden", "true");
+  document.body.append(chip);
+  const x = Math.min(from.right - 80, window.innerWidth - 60), y = from.top + from.height / 2 - chip.offsetHeight / 2;
+  chip.style.left = `${x}px`; chip.style.top = `${y}px`;
+  const dx = b.left + b.width / 2 - chip.offsetWidth / 2 - x, dy = b.top + b.height / 2 - chip.offsetHeight / 2 - y;
+  chip.animate([{ transform: "translate(0, 0)", opacity: 0 }, { transform: "translate(0, -8px)", opacity: 1, offset: .15 },
+    { transform: `translate(${dx}px, ${dy}px) scale(.7)`, opacity: 1, offset: .9 }, { transform: `translate(${dx}px, ${dy}px) scale(.6)`, opacity: 0 }],
+    { duration: 700, easing: "cubic-bezier(.4, 0, .2, 1)" }).onfinish = () => chip.remove();
+  S.flyUntil = performance.now() + 630;
+}
 function countUp(from, to) {
   const hdr = $("#hdr-score");
   hdr.classList.remove("up"); void hdr.offsetWidth; hdr.classList.add("up");
   clearTimeout(S.upT); S.upT = setTimeout(() => hdr.classList.remove("up"), 1300);
   if (calm()) return;
-  const t0 = performance.now();
+  const t0 = Math.max(performance.now(), S.flyUntil || 0);
   const step = t => {
-    const k = Math.min(1, (t - t0) / 700), v = Math.round(from + (to - from) * (1 - (1 - k) ** 3));
+    const k = Math.min(1, Math.max(0, t - t0) / 700), v = Math.round(from + (to - from) * (1 - (1 - k) ** 3));
     document.querySelectorAll("#hdr-score b, .sum-score .num").forEach(n => { n.textContent = v; });
     if (k < 1) S.upRaf = requestAnimationFrame(step);
   };
@@ -2100,7 +2116,7 @@ document.addEventListener("change", async e => {
     m.conditions = [...cs];
     S.hhDirty = true; render();
   } else if (t.dataset.change === "shopTick") {
-    shopTick(t.dataset.id, t.checked);
+    shopTick(t.dataset.id, t.checked, t.closest(".shop-row"));
   } else if (t.dataset.change === "shopKit") {
     saveShop(shopItems().map(x => x.id === t.dataset.id ? { ...x, kitId: t.value } : x));
   } else if (t.dataset.change === "plan") {
@@ -2186,12 +2202,14 @@ async function wizStep() {
   if (S.profile?.location && S.hazards?.location !== S.profile.location && sample) runHazardCheck();
 }
 /* Ticking an item puts it in its kit (so the gap closes); unticking takes that item back out. */
-async function shopTick(id, on) {
+async function shopTick(id, on, rowEl) {
   const items = clone(shopItems()), e = items.find(x => x.id === id); if (!e) return;
+  const from = rowEl?.getBoundingClientRect?.(); // measured now: saving re-renders the list
   if (on) {
     const kit = S.kits.find(k => k.id === shopKit(e));
     if (kit && CATS[e.cat]) {
       const before = model().overall, itemId = uid();
+      flyPoints(from, shopInfo(e, model()).gain); // the row's points are exactly what the tick adds (tests/shopping.test.js)
       try {
         await setDoc("items", itemId, { ...itemFromShop(e, kit.id), addedAt: Date.now() });
       } catch (_) { render(); return; }

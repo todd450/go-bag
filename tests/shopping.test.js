@@ -78,3 +78,13 @@ test("a budget keeps the list to what it can buy, best value first", () => {
   const html = run("viewShop(model())");
   assert.match(html, /Over your budget/);
 });
+
+test("ticking with a row to fly from still works where there's no animation", async () => {
+  const { run } = load({ fixture: "tests/household" });
+  run("ACT.shopAddAll()");
+  const id = run(`shopItems().find(e => shopKit(e) && shopInfo(e, model()).gain > 0).id`);
+  const before = run("model().overall"), gain = run(`shopInfo(shopItems().find(e => e.id === "${id}"), model()).gain`);
+  const row = `{ getBoundingClientRect: () => ({ top: 300, right: 700, height: 40 }) }`;
+  await run(`shopTick("${id}", true, ${row})`);
+  assert.equal(run("model().overall"), before + gain);
+});
