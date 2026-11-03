@@ -157,7 +157,7 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .grp + .grp { margin-top: 14px; }
 .grp-h { display: grid; gap: 2px; }
 
-.hz { display: grid; border-top: 1px solid var(--rule); }
+.hz { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--rule); }
 .hz-row { display: grid; grid-template-columns: minmax(0, 1fr) 104px 56px 36px 24px; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
 .hz-row.off { opacity: .5; }
 .hz-name, .kit-name { display: flex; gap: 8px; align-items: baseline; background: none; border: 0; padding: 2px 0; text-align: left; cursor: pointer; }
