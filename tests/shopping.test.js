@@ -11,8 +11,29 @@ test("Next steps and the shopping list give every gap the same points", () => {
 
 test("Next steps' 'from X to Y' is the score with all shown gaps bought together", () => {
   const { run } = load({ fixture: "tests/household" });
-  assert.ok(run(`(() => { const M = model(), N = nextActions(M), shown = N.acts.filter(a => a.kind === "gap");
-    return shown.length > 0 && N.after === scoreIfFilled(M, shown.map(a => a.g)); })()`));
+  const check = () => run(`(() => { const M = model(), N = nextActions(M);
+    const shown = N.acts.flatMap(a => a.kind === "gap" ? [a.g] : a.kind === "shop" ? a.gs : []);
+    return shown.length > 0 && N.after === scoreIfFilled(M, shown); })()`);
+  assert.ok(check(), "nothing listed");
+  run(`ACT.shopAdd({ dataset: { cat: nextActions(model()).acts.find(a => a.kind === "gap").g.cat } })`);
+  assert.ok(check(), "one gap listed");
+});
+
+test("gaps already on the list fold into one step, and new gaps take the freed slots", () => {
+  const { run, json } = load({ fixture: "tests/household" });
+  const before = json(`nextActions(model()).acts.filter(a => a.kind === "gap").map(a => a.g.cat)`);
+  for (const cat of before.slice(0, 2)) run(`ACT.shopAdd({ dataset: { cat: "${cat}" } })`);
+  const N = json(`(() => { const N = nextActions(model()); return { acts: N.acts.map(a => [a.kind, a.kind === "gap" ? a.g.cat : a.kind === "shop" ? a.gs.map(g => g.cat) : a.title]), more: N.more, total: model().gaps.length }; })()`);
+  const shop = N.acts.filter(([k]) => k === "shop");
+  assert.equal(shop.length, 1, "one shopping step");
+  assert.deepEqual(shop[0][1].sort(), before.slice(0, 2).sort());
+  const gapCats = N.acts.filter(([k]) => k === "gap").map(([, c]) => c);
+  for (const cat of before.slice(0, 2)) assert.ok(!gapCats.includes(cat), `${cat} isn't also its own step`);
+  assert.equal(N.more, N.total - 2 - gapCats.length);
+  const html = run("viewOverview(model())");
+  assert.match(html, /Buy the 2 things on your list/);
+  assert.match(html, /data-act="tab" data-v="shop">Open list</);
+  assert.doesNotMatch(html, /On your list ✓/);
 });
 
 test("ticking an item puts it in a kit and adds exactly the points its row showed", async () => {

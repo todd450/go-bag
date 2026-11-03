@@ -387,9 +387,10 @@ const ICONS = {
   pin: '<path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/>',
   person: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
   flag: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
+  list: '<path d="M10 6h10M10 12h10M10 18h10"/><path d="m3.5 6 1.5 1.5 2.5-2.5M3.5 12l1.5 1.5 2.5-2.5M3.5 18l1.5 1.5 2.5-2.5"/>',
 };
 const icon = (k, cls = "ic") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ICONS.other}</svg>`;
-const KIND_ICON = { setup: "home", hazards: "pin", refill: "medications", ages: "person", plan: "flag" };
+const KIND_ICON = { setup: "home", hazards: "pin", refill: "medications", ages: "person", plan: "flag", shop: "list" };
 const AGE = { adult: ["Adult", 2000], teen: ["Teen (13–17)", 2200], child: ["Child (3–12)", 1600], infant: ["Under 3", 1000], senior: ["Senior (65+)", 1800] };
 /* An exact age, when given, decides the group and the calories (roughly the USDA estimates for a
    moderately active person); without one the saved group is used. */
@@ -692,11 +693,18 @@ function nextActions(M) {
   if (p && !p.example && !String(plan.meetNear || "").trim() && !String(plan.contactName || "").trim() && out.length < 2)
     out.push({ kind: "plan", title: "Pick a meeting place and an out-of-area contact", detail: "Two minutes now saves a frantic search later. They go on your family plan." });
   const base = M.overall;
-  const gaps = M.gaps.map(g => ({ kind: "gap", g, ...gapPlan(g, M.h), gain: base == null ? 0 : Math.max(0, scoreIfFilled(M, [g]) - base) }))
-    .sort((a, b) => b.gain - a.gain || b.g.imp - a.g.imp);
+  const gain = gs => base == null ? 0 : Math.max(0, scoreIfFilled(M, gs) - base);
+  // Gaps already on the shopping list fold into one step, so a listed gap doesn't hold a slot with nothing left to do
+  const listed = new Set(shopItems().filter(x => !x.done).map(x => x.cat));
+  const onList = M.gaps.filter(g => listed.has(g.cat));
+  const gaps = M.gaps.filter(g => !listed.has(g.cat)).map(g => ({ kind: "gap", g, ...gapPlan(g, M.h), gain: gain([g]) }));
+  if (onList.length) gaps.push({ kind: "shop", gs: onList, gain: gain(onList),
+    title: `Buy the ${onList.length === 1 ? "thing" : onList.length + " things"} on your list`,
+    detail: `${(onList.length > 3 ? onList.slice(0, 3).map(g => catLabel(g.cat).toLowerCase()).join(", ") + ` and ${onList.length - 3} more` : orList(onList.map(g => catLabel(g.cat).toLowerCase()), "and")).replace(/^./, c => c.toUpperCase())}. Tick each one off as you buy it and it goes straight into a kit.` });
+  gaps.sort((a, b) => b.gain - a.gain || (b.g?.imp ?? 0) - (a.g?.imp ?? 0));
   const acts = [...out, ...gaps].slice(0, 3);
-  const shown = acts.filter(a => a.kind === "gap");
-  return { acts, more: gaps.length - shown.length, after: base == null ? null : scoreIfFilled(M, shown.map(a => a.g)) };
+  const filled = acts.flatMap(a => a.kind === "gap" ? [a.g] : a.kind === "shop" ? a.gs : []);
+  return { acts, filled, more: M.gaps.length - filled.length, after: base == null ? null : scoreIfFilled(M, filled) };
 }
 
 /* ---------- shopping list ---------- */
@@ -999,9 +1007,8 @@ function actBtn(a) {
   if (a.kind === "hazards") return S.hzCheck?.state === "working" ? `<span class="working small"><span class="pulse"></span>Checking…</span>` : `<button class="btn sm" data-act="hzCheck" ${D()}>Check now</button>`;
   if (a.kind === "ages") return `<button class="btn sm" data-act="tab" data-v="household">Add ages</button>`;
   if (a.kind === "refill" || a.kind === "plan") return `<button class="btn sm" data-act="tab" data-v="plan">Open plan</button>`;
-  return shopItems().some(x => !x.done && x.cat === a.g.cat)
-    ? `<button class="btn ghost sm" data-act="tab" data-v="shop">On your list ✓</button>`
-    : `<button class="btn sm" data-act="shopAdd" data-cat="${a.g.cat}" ${D()}>Add to list</button>`;
+  if (a.kind === "shop") return `<button class="btn sm" data-act="tab" data-v="shop">Open list</button>`;
+  return `<button class="btn sm" data-act="shopAdd" data-cat="${a.g.cat}" ${D()}>Add to list</button>`;
 }
 const actRow = (a, i) => `<li class="act">
   <span class="act-n" title="Step ${i + 1}">${icon(a.kind === "gap" ? a.g.cat : KIND_ICON[a.kind])}</span>
@@ -1011,7 +1018,7 @@ const actRow = (a, i) => `<li class="act">
 function viewOverview(M) {
   const { h, results, overall, gaps, exp } = M;
   const N = nextActions(M);
-  const nGap = N.acts.filter(a => a.kind === "gap").length;
+  const nGap = N.filled.length;
   const listed = new Set(shopItems().filter(x => !x.done).map(x => x.cat));
   const unlisted = gaps.filter(g => !listed.has(g.cat)).length;
   const sc = overall ?? 0;
