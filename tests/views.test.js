@@ -35,6 +35,59 @@ test("a refill due within a week becomes a next step", () => {
   assert.ok(!run(`nextActions(model()).acts.some(a => a.kind === "refill")`));
 });
 
+// Every scenario and the standard household, with each kit open in turn and its delete confirmation showing.
+const fs = require("node:fs");
+const path = require("node:path");
+const { ROOT } = require("./load");
+const countFixtures = ["tests/household", ...fs.readdirSync(path.join(ROOT, "fixtures"), { recursive: true })
+  .filter(f => f.endsWith(".json")).map(f => path.join("fixtures", f.slice(0, -5)))];
+
+test("a count of one is never followed by a plural", () => {
+  const plural = /\b1 (people|persons|items|kits|pets|photos|gaps|steps|supplies)\b/;
+  for (const fixture of countFixtures) {
+    const { run, json } = load({ fixture });
+    run("syncDraft(); for (const k of S.kits) k.photos = ['p1'];");
+    const text = html => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+    const pages = [run("viewOverview(model())")];
+    for (const id of json("S.kits.map(k => k.id)")) pages.push(run(`S.openKit = ${JSON.stringify(id)}; S.confirm = "kit:" + S.openKit; viewKits(model())`));
+    for (const page of pages) assert.doesNotMatch(text(page), plural, fixture);
+  }
+});
+
+test("next steps that mix setup and supplies count only the supplies", () => {
+  const { run, json } = load({ fixture: "tests/household" });
+  const kinds = json("nextActions(model()).acts.map(a => a.kind)");
+  assert.deepEqual(kinds, ["plan", "gap", "gap"]);
+  const html = run("viewOverview(model())");
+  assert.match(html, /Your next 3 steps/);
+  assert.match(html, /Adding the 2 supplies below takes readiness from \d+ to \d+\./);
+  assert.doesNotMatch(html, /these 2 gaps/);
+});
+
+test("the add-a-kit form folds into a button once there is a kit", () => {
+  const empty = load().run("viewKits(model())");
+  assert.match(empty, /data-submit="newKit"/, "no kits: the form is open");
+  assert.doesNotMatch(empty, /data-act="cancelKit"|data-act="addKit"/, "no kits: nothing to cancel back to");
+
+  const { run } = load({ fixture: "tests/household" });
+  let html = run("viewKits(model())");
+  assert.match(html, /data-act="addKit"/);
+  assert.doesNotMatch(html, /data-submit="newKit"/);
+
+  run("ACT.addKit()");
+  html = run("viewKits(model())");
+  assert.match(html, /data-submit="newKit"/);
+  assert.match(html, /data-act="cancelKit"/);
+  assert.doesNotMatch(html, /data-act="addKit"/);
+
+  run("ACT.cancelKit()");
+  assert.match(run("viewKits(model())"), /data-act="addKit"/);
+
+  run("S.canWrite = false; S.addKit = true");
+  html = run("viewKits(model())");
+  assert.doesNotMatch(html, /data-act="addKit"|data-submit="newKit"/, "read-only: neither");
+});
+
 test("every inventory cell with something in it is labelled for the card layout", () => {
   const { run } = load({ fixture: "tests/household" });
   const tables = [];
