@@ -194,6 +194,7 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .kits-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 24px; align-items: start; }
 @media (max-width: 860px) { .kits-grid { grid-template-columns: 1fr; } }
 .tags { display: grid; gap: 8px; }
+.add-kit { justify-content: center; border-style: dashed; }
 .tag { position: relative; text-align: left; background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 14px; padding: 10px 60px 10px 10px; cursor: pointer; display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 0 12px; width: 100%; line-height: 1.3; box-shadow: var(--shadow); transition: border-color .15s, box-shadow .15s; }
 .tag:hover { border-color: var(--rule-2); }
 .tag[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
@@ -509,7 +510,7 @@ const S = {
   view: VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : location.hash === "#review" ? "plan" : "overview",
   profile: null, hazards: null, review: null, shopping: null, plan: null, kits: [], items: [],
   live: false, loaded: false, slow: false, canWrite: true,
-  openKit: null, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
+  openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(),
   scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null,
 };
@@ -1073,7 +1074,7 @@ function viewOverview(M) {
       <div class="stack" style="gap:2px">
         <p class="eyebrow">Next steps</p>
         <h2>${N.acts.length ? (N.acts.length === 1 ? "Your next step" : `Your next ${N.acts.length} steps`) : "Nothing urgent"}</h2>
-        <p class="small muted">${nGap && overall != null && N.after > overall ? `Filling ${nGap === 1 ? "this gap" : `these ${nGap} gaps`} takes readiness from ${overall} to ${N.after}.`
+        <p class="small muted">${nGap && overall != null && N.after > overall ? `${nGap === N.acts.length ? `Filling ${nGap === 1 ? "this gap" : `these ${nGap} gaps`}` : `Adding ${nGap === 1 ? "the supply" : `the ${nGap} supplies`} below`} takes readiness from ${overall} to ${N.after}.`
           : N.acts.length ? "Start here. These shape every number the app works out."
           : "No gaps against the emergencies you've marked as relevant. Keep an eye on expiry dates."}</p>
       </div>
@@ -1086,7 +1087,7 @@ function viewOverview(M) {
         <svg viewBox="0 0 132 132" aria-hidden="true"><circle class="trk" cx="66" cy="66" r="56"/><circle class="val" cx="66" cy="66" r="56" pathLength="100" stroke-dasharray="${sc} 100"/></svg>
         <div class="score"><span class="num">${overall ?? "–"}</span><span class="of">of 100</span></div>
       </div>
-      <p class="mono small muted">${h.people} people · ${h.pets} pet${h.pets === 1 ? "" : "s"} · ${S.kits.length} kit${S.kits.length === 1 ? "" : "s"} · ${S.items.length} items${exp.length ? ` · <span style="color:var(--warn)">${exp.length} expiring</span>` : ""}</p>
+      <p class="mono small muted">${pl(h.people, "person", "people")} · ${pl(h.pets, "pet")} · ${pl(S.kits.length, "kit")} · ${pl(S.items.length, "item")}${exp.length ? ` · <span style="color:var(--warn)">${exp.length} expiring</span>` : ""}</p>
       <p class="small muted">Averaged across the emergencies that apply to you, weighted by how likely each one is and how much it matters to you. ${hzNote}</p>
     </div>
   </div>
@@ -1212,15 +1213,15 @@ function viewKits(M) {
       <div class="tags">${list.map(k => `<button class="tag" data-act="openKit" data-id="${esc(k.id)}" aria-pressed="${k.id === S.openKit}">
         <span class="tag-img">${k.photos?.length ? `<img src="/_blob/${esc(k.photos[0])}" alt="" loading="lazy">` : icon(KIT_ICON[k.type])}</span>
         <span class="mono">${esc(KIT_TYPES[k.type] || "Kit")}${isExampleKit(k) ? " · EXAMPLE" : ""}</span><b>${esc(k.name)}</b>
-        <span class="small">${counts[k.id] || 0} items${k.where ? " · " + esc(k.where) : ""}</span>
+        <span class="small">${pl(counts[k.id] || 0, "item")}${k.where ? " · " + esc(k.where) : ""}</span>
         <span class="tag-pct" style="color:${statusInk(M.kitRes[k.id].score)}" aria-label="Readiness ${M.kitRes[k.id].score} percent">${M.kitRes[k.id].score}%</span></button>`).join("") || `<p class="muted">No kits yet. Add the first one below: a go-bag, a home supply bin or a car kit.</p>`}</div>
-      ${S.canWrite ? `<form class="panel stack" data-submit="newKit">
+      ${!S.canWrite ? "" : S.kits.length && !S.addKit ? `<button class="btn ghost add-kit" data-act="addKit">+ Add a kit</button>` : `<form class="panel stack" data-submit="newKit">
         <p class="eyebrow">Add a kit</p>
         <label class="f">Name<input type="text" id="nk-name" name="name" required placeholder="Hall closet go-bag" maxlength="60"></label>
         <label class="f">Type<select id="nk-type" name="type">${Object.entries(KIT_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>
         <label class="f">Where it's kept<input type="text" id="nk-where" name="where" placeholder="Garage shelf" maxlength="60"></label>
-        <button class="btn" type="submit">Add kit</button>
-      </form>` : ""}
+        <div class="row"><button class="btn" type="submit">Add kit</button>${S.kits.length ? `<button class="btn ghost" type="button" data-act="cancelKit">Cancel</button>` : ""}</div>
+      </form>`}
     </div>
     <div class="stack">${kit ? kitDetail(kit, M.kitRes[kit.id]) : `<div class="panel"><p class="muted">Pick a kit to see its contents, or add one.</p></div>`}</div>
   </div>`;
@@ -1240,7 +1241,7 @@ function kitDetail(kit, ready) {
   <div class="row" style="justify-content:space-between;align-items:flex-end">
     <div><p class="eyebrow">${esc(KIT_TYPES[kit.type] || "Kit")}${kit.where ? " · " + esc(kit.where) : ""}</p><h2>${esc(kit.name)}</h2></div>
     ${S.canWrite ? (S.confirm === "kit:" + kit.id
-      ? `<div class="row"><span class="small">Delete this kit, its ${items.length} items and ${photos.length} photos?</span><button class="btn danger sm" data-act="delKit" data-id="${esc(kit.id)}">Delete</button><button class="btn ghost sm" data-act="cancelConfirm">Cancel</button></div>`
+      ? `<div class="row"><span class="small">Delete this kit, its ${pl(items.length, "item")} and ${pl(photos.length, "photo")}?</span><button class="btn danger sm" data-act="delKit" data-id="${esc(kit.id)}">Delete</button><button class="btn ghost sm" data-act="cancelConfirm">Cancel</button></div>`
       : `<button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button>`) : ""}
   </div>
   ${kitReadyPanel(kit, ready)}
@@ -1873,6 +1874,8 @@ function setPath(o, path, val) {
 /* ---------- events ---------- */
 const ACT = {
   tab: b => { S.view = b.dataset.v; try { history.replaceState(null, "", "#" + S.view); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
+  addKit: () => { S.addKit = true; render(); $("#nk-name")?.focus(); },
+  cancelKit: () => { S.addKit = false; render(); $(".add-kit")?.focus(); },
   openKit: b => { if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.confirm = null; render(); },
   gotoKit: b => { S.view = "kits"; if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; try { history.replaceState(null, "", "#kits"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   removeSel: () => removeItems([...S.sel]),
@@ -2091,7 +2094,7 @@ document.addEventListener("submit", async e => {
     const type = KIT_TYPES[$("#nk-type").value] ? $("#nk-type").value : "go";
     const id = uid();
     await setDoc("kits", id, { name, type, where: $("#nk-where").value.trim(), photos: [], createdAt: Date.now() }).catch(() => {});
-    S.openKit = id; f.reset(); render();
+    S.openKit = id; S.addKit = false; f.reset(); render();
   } else if (f.dataset.submit === "saveHH") {
     await saveHousehold();
   } else if (f.dataset.submit === "wizNext") {
