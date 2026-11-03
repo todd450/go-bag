@@ -428,37 +428,46 @@ const LEVELS = { high: ["High", 3], moderate: ["Moderate", 2], low: ["Low", 1], 
 /* How much an emergency matters to this household, on top of how likely it is: multiplies its weight in the score. */
 const IMPORTANCE = { normal: ["As much as the others", 1], more: ["More than most", 2], most: ["One of our top priorities", 3] };
 const importanceOf = id => (IMPORTANCE[S.hazards?.importance?.[id]] || IMPORTANCE.normal)[1];
+/* How bad it is to face an emergency unprepared. Fixed per emergency, never re-rated: multiplies its weight in the score.
+   Doubling per step keeps a life-threatening gap ahead of a minor one, however much likelier the minor one is. */
+const SEVERITY = {
+  minor: ["Minor", 1, "uncomfortable, and it can be put right later"],
+  serious: ["Serious", 2, "real harm or a big loss, with hours to respond"],
+  critical: ["Life-threatening", 4, "minutes matter"],
+};
+const severityOf = hz => SEVERITY[hz.severity][1];
+const weightOf = (hz, rel) => LEVELS[rel][1] * severityOf(hz) * importanceOf(hz.id);
 const HAZARDS = [
-  { id: "outage", name: "Extended power outage", mode: "shelter", days: 7, base: "moderate", needs: ["water", "food", "light", "power", "communication", "first_aid", "medications", "hygiene", "sanitation"] },
-  { id: "evacuation", name: "Short-notice evacuation", mode: "evacuate", days: 3, base: "moderate", needs: ["water", "food", "first_aid", "medications", "documents", "light", "power", "communication", "clothing", "hygiene", "shelter"] },
-  { id: "housefire", name: "House fire", mode: "evacuate", days: 1, base: "moderate", needs: ["fire_safety", "documents", "medications", "light", "clothing"] },
-  { id: "stranded", name: "Stranded on the road", mode: "vehicle", days: 1, base: "moderate", vehicle: true, needs: ["water", "food", "shelter", "light", "car", "first_aid", "communication"] },
-  { id: "earthquake", name: "Earthquake", mode: "shelter", days: 14, needs: ["water", "food", "first_aid", "tools", "light", "sanitation", "shelter", "clothing", "communication"] },
-  { id: "wildfire", name: "Wildfire & smoke", mode: "evacuate", days: 3, needs: ["masks", "documents", "water", "food", "medications", "communication", "first_aid", "clothing", "light"] },
-  { id: "hurricane", name: "Hurricane", mode: "shelter", days: 14, needs: ["water", "food", "light", "power", "communication", "first_aid", "tools", "sanitation", "documents"] },
-  { id: "flood", name: "Flooding", mode: "evacuate", days: 3, needs: ["water", "food", "documents", "communication", "light", "first_aid", "clothing", "hygiene"] },
-  { id: "tornado", name: "Tornado", mode: "shelter", days: 1, needs: ["light", "communication", "first_aid", "clothing", "tools"] },
-  { id: "winter", name: "Winter storm", mode: "shelter", days: 7, needs: ["shelter", "water", "food", "light", "power", "communication", "first_aid"] },
-  { id: "heat", name: "Extreme heat", mode: "shelter", days: 3, needs: ["water", "first_aid", "power", "communication", "medications"] },
-  { id: "pandemic", name: "Pandemic or quarantine", mode: "shelter", days: 14, needs: ["water", "food", "masks", "medications", "hygiene", "first_aid"] },
-  { id: "chemical", name: "Hazmat shelter-in-place", mode: "shelter", days: 1, needs: ["tools", "masks", "communication", "water", "light"] },
-  { id: "tsunami", name: "Tsunami", mode: "evacuate", days: 3, needs: ["water", "food", "documents", "communication", "first_aid", "clothing", "light"] },
+  { id: "outage", name: "Extended power outage", severity: "serious", mode: "shelter", days: 7, base: "moderate", needs: ["water", "food", "light", "power", "communication", "first_aid", "medications", "hygiene", "sanitation"] },
+  { id: "evacuation", name: "Short-notice evacuation", severity: "critical", mode: "evacuate", days: 3, base: "moderate", needs: ["water", "food", "first_aid", "medications", "documents", "light", "power", "communication", "clothing", "hygiene", "shelter"] },
+  { id: "housefire", name: "House fire", severity: "critical", mode: "evacuate", days: 1, base: "moderate", needs: ["fire_safety", "documents", "medications", "light", "clothing"] },
+  { id: "stranded", name: "Stranded on the road", severity: "serious", mode: "vehicle", days: 1, base: "moderate", vehicle: true, needs: ["water", "food", "shelter", "light", "car", "first_aid", "communication"] },
+  { id: "earthquake", name: "Earthquake", severity: "critical", mode: "shelter", days: 14, needs: ["water", "food", "first_aid", "tools", "light", "sanitation", "shelter", "clothing", "communication"] },
+  { id: "wildfire", name: "Wildfire & smoke", severity: "critical", mode: "evacuate", days: 3, needs: ["masks", "documents", "water", "food", "medications", "communication", "first_aid", "clothing", "light"] },
+  { id: "hurricane", name: "Hurricane", severity: "critical", mode: "shelter", days: 14, needs: ["water", "food", "light", "power", "communication", "first_aid", "tools", "sanitation", "documents"] },
+  { id: "flood", name: "Flooding", severity: "critical", mode: "evacuate", days: 3, needs: ["water", "food", "documents", "communication", "light", "first_aid", "clothing", "hygiene"] },
+  { id: "tornado", name: "Tornado", severity: "critical", mode: "shelter", days: 1, needs: ["light", "communication", "first_aid", "clothing", "tools"] },
+  { id: "winter", name: "Winter storm", severity: "serious", mode: "shelter", days: 7, needs: ["shelter", "water", "food", "light", "power", "communication", "first_aid"] },
+  { id: "heat", name: "Extreme heat", severity: "serious", mode: "shelter", days: 3, needs: ["water", "first_aid", "power", "communication", "medications"] },
+  { id: "pandemic", name: "Pandemic or quarantine", severity: "serious", mode: "shelter", days: 14, needs: ["water", "food", "masks", "medications", "hygiene", "first_aid"] },
+  { id: "chemical", name: "Hazmat shelter-in-place", severity: "critical", mode: "shelter", days: 1, needs: ["tools", "masks", "communication", "water", "light"] },
+  { id: "tsunami", name: "Tsunami", severity: "critical", mode: "evacuate", days: 3, needs: ["water", "food", "documents", "communication", "first_aid", "clothing", "light"] },
   /* Everyday: small things that go wrong often. A kit that handles them gets opened, so it gets kept up. */
-  { id: "mishap", group: "everyday", name: "Small mishaps on the road", mode: "vehicle", vehicle: true, days: 1, when: "Spills, delays, a dead phone, a forgotten jacket", base: () => "moderate", needs: ["comfort", "power", "hygiene", "clothing"], kidsToo: true },
+  { id: "mishap", group: "everyday", name: "Small mishaps on the road", severity: "minor", mode: "vehicle", vehicle: true, days: 1, when: "Spills, delays, a dead phone, a forgotten jacket", base: () => "moderate", needs: ["comfort", "power", "hygiene", "clothing"], kidsToo: true },
   /* Health emergencies: likelihood comes from who lives here; `kits` says which kits are within reach. */
-  { id: "cuts", group: "health", name: "Cuts, scrapes and splinters", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · most weeks", base: h => h.kids || h.infants ? "high" : "moderate", needs: ["wound", "first_aid"] },
-  { id: "injury", group: "health", name: "Heavy bleeding", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: () => "moderate", needs: ["trauma", "first_aid", "communication"] },
-  { id: "fall", group: "health", name: "Falls, sprains and broken bones", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first hour", base: h => h.kids || h.seniors || h.mobility ? "moderate" : "low", needs: ["splint", "first_aid", "light", "communication"] },
-  { id: "burns", group: "health", name: "Burns and scalds", mode: "anywhere", kits: ["home", "go"], days: 1, when: "Mostly the kitchen · first minutes", base: h => h.kids || h.infants ? "moderate" : "low", needs: ["burns", "first_aid", "fire_safety"] },
-  { id: "choking", group: "health", name: "Choking", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Mealtimes, small toys · first minutes", base: h => h.kids || h.infants || h.seniors ? "moderate" : "low", needs: ["cpr", "communication"] },
-  { id: "cardiac", group: "health", name: "Cardiac arrest", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.heart || h.seniors ? "moderate" : "low", needs: ["cpr", "communication"] },
-  { id: "poison", group: "health", name: "Poisoning or overdose", mode: "anywhere", kits: ["home"], days: 1, when: "Mostly at home · call Poison Control first", base: h => h.kids || h.infants ? "moderate" : "low", needs: ["poison", "communication"] },
-  { id: "bites", group: "health", name: "Bites and stings", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Pets, outdoors · first hour", base: h => h.pets || h.kids ? "moderate" : "low", needs: ["bites", "wound", "medications"] },
-  { id: "anaphylaxis", group: "health", name: "Severe allergic reaction", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.allergic ? "high" : "none", needs: ["allergy", "communication", "first_aid"] },
-  { id: "illness", group: "health", name: "Serious illness at home", mode: "shelter", days: 3, when: "At home · 72 h", base: () => "moderate", needs: ["diagnostics", "medications", "hygiene", "masks", "water", "food"] },
-  { id: "meds", group: "health", name: "Medication supply cut off", mode: "anywhere", kits: ["home", "go"], days: 14, when: "Pharmacy closed or evacuated · 2 weeks", base: h => h.dailyMeds ? "high" : "none", needs: ["medications", "diagnostics"], qty: { medications: h => Math.max(1, h.dailyMeds) } },
-  { id: "lowsugar", group: "health", name: "Low blood sugar", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.diabetes ? "high" : "none", needs: ["diagnostics"] },
-  { id: "device", group: "health", name: "Power loss for a medical device", mode: "shelter", days: 3, when: "At home · 72 h", base: h => h.devices ? "high" : "none", needs: ["power", "light", "communication"], qty: { power: h => 2 + 2 * h.devices } },
+  { id: "cuts", group: "health", name: "Cuts, scrapes and splinters", severity: "minor", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · most weeks", base: h => h.kids || h.infants ? "high" : "moderate", needs: ["wound", "first_aid"] },
+  { id: "injury", group: "health", name: "Heavy bleeding", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: () => "moderate", needs: ["trauma", "first_aid", "communication"] },
+  { id: "fall", group: "health", name: "Falls, sprains and broken bones", severity: "serious", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first hour", base: h => h.kids || h.seniors || h.mobility ? "moderate" : "low", needs: ["splint", "first_aid", "light", "communication"] },
+  { id: "burns", group: "health", name: "Burns and scalds", severity: "serious", mode: "anywhere", kits: ["home", "go"], days: 1, when: "Mostly the kitchen · first minutes", base: h => h.kids || h.infants ? "moderate" : "low", needs: ["burns", "first_aid", "fire_safety"] },
+  { id: "choking", group: "health", name: "Choking", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Mealtimes, small toys · first minutes", base: h => h.kids || h.infants || h.seniors ? "moderate" : "low", needs: ["cpr", "communication"] },
+  { id: "cardiac", group: "health", name: "Cardiac arrest", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.heart || h.seniors ? "moderate" : "low", needs: ["cpr", "communication"] },
+  { id: "poison", group: "health", name: "Poisoning or overdose", severity: "serious", mode: "anywhere", kits: ["home"], days: 1, when: "Mostly at home · call Poison Control first", base: h => h.kids || h.infants ? "moderate" : "low", needs: ["poison", "communication"] },
+  { id: "bites", group: "health", name: "Bites and stings", severity: "minor", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Pets, outdoors · first hour", base: h => h.pets || h.kids ? "moderate" : "low", needs: ["bites", "wound", "medications"] },
+  { id: "anaphylaxis", group: "health", name: "Severe allergic reaction", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.allergic ? "high" : "none", needs: ["allergy", "communication", "first_aid"] },
+  { id: "illness", group: "health", name: "Serious illness at home", severity: "serious", mode: "shelter", days: 3, when: "At home · 72 h", base: () => "moderate", needs: ["diagnostics", "medications", "hygiene", "masks", "water", "food"] },
+  { id: "meds", group: "health", name: "Medication supply cut off", severity: "serious", mode: "anywhere", kits: ["home", "go"], days: 14, when: "Pharmacy closed or evacuated · 2 weeks", base: h => h.dailyMeds ? "high" : "none", needs: ["medications", "diagnostics"], qty: { medications: h => Math.max(1, h.dailyMeds) } },
+  { id: "lowsugar", group: "health", name: "Low blood sugar", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.diabetes ? "high" : "none", needs: ["diagnostics"] },
+  { id: "device", group: "health", name: "Power loss for a medical device", severity: "critical", mode: "shelter", days: 3, when: "At home · 72 h", base: h => h.devices ? "high" : "none", needs: ["power", "light", "communication"], qty: { power: h => 2 + 2 * h.devices } },
 ];
 const kitsFor = hz => hz.kits || MODES[hz.mode].kits;
 const HZ = Object.fromEntries(HAZARDS.map(h => [h.id, h]));
@@ -618,7 +627,7 @@ function model() {
     if ((!hz.group && hz.mode !== "vehicle" || hz.kidsToo) && h.kids) needs.push("kids");
     const st = stocks[hz.mode] || stock(kitsFor(hz));
     const rows = needs.map(cat => needRow(cat, hz, h, st));
-    return { hz, rel, wt: LEVELS[rel][1] * importanceOf(hz.id), rows, score: scoreRows(rows) };
+    return { hz, rel, wt: weightOf(hz, rel), rows, score: scoreRows(rows) };
   });
   const active = results.filter(r => r.wt > 0);
   const tw = active.reduce((a, r) => a + r.wt, 0);
@@ -1044,7 +1053,7 @@ function viewOverview(M) {
       <div class="score"><span class="num">${overall ?? "–"}</span><span class="of">/ 100</span></div>
       <div class="bar" style="--c:${c}" role="img" aria-label="Readiness ${sc} out of 100"><span style="width:${sc}%"></span></div>
       <p class="mono small muted">${h.people} people · ${h.pets} pet${h.pets === 1 ? "" : "s"} · ${S.kits.length} kit${S.kits.length === 1 ? "" : "s"} · ${S.items.length} items${exp.length ? ` · <span style="color:var(--warn)">${exp.length} expiring</span>` : ""}</p>
-      <p class="small muted">Averaged across the emergencies that apply to you, weighted by how likely each one is and how much it matters to you. ${hzNote}</p>
+      <p class="small muted">Averaged across the emergencies that apply to you, weighted by how likely each one is, how bad it is to face unprepared and how much it matters to you. ${hzNote}</p>
     </div>
   </div>
 
@@ -1147,6 +1156,7 @@ function hzRow(r, h) {
     <div class="pct" ${alarm ? `style="color:var(--bad)"` : ""}>${r.score}%</div>
     <button class="x" data-act="toggleHz" data-id="${r.hz.id}" aria-expanded="${open}" aria-label="Details for ${esc(r.hz.name)}">${open ? "−" : "+"}</button>
     ${open ? `<div class="hz-detail">
+      <p class="small"><b>${SEVERITY[r.hz.severity][0]} if you're unprepared:</b> ${SEVERITY[r.hz.severity][2]}.${severityOf(r.hz) > 1 ? ` Counts ${severityOf(r.hz)}× in your score.` : ""}</p>
       ${why ? `<p class="small">${esc(why)}</p>` : ""}
       ${lockedOff ? "" : `<label class="hz-like small">How likely is this for you?
         <select class="lvl" data-change="level" data-id="${r.hz.id}" aria-label="Likelihood of ${esc(r.hz.name)}" ${D()}>${Object.entries(LEVELS).map(([k, v]) => `<option value="${k}" ${k === r.rel ? "selected" : ""}>${v[0]}</option>`).join("")}</select></label>
@@ -1640,7 +1650,7 @@ function reviewPrompt(M) {
   for (const it of S.items) (byKit[it.kitId] ||= []).push(`${it.name} ×${Math.max(1, num(it.qty))}${num(it.liters) ? `, ${num(it.liters)} L` : ""}${num(it.kcal) ? `, ${num(it.kcal)} kcal` : ""}${it.expires ? `, exp ${it.expires}${expState(it) === "expired" ? " (EXPIRED)" : ""}` : ""}`);
   let inv = S.kits.map(k => `${kitName[k.id]}:\n${(byKit[k.id] || ["(empty)"]).map(x => "  - " + x).join("\n")}`).join("\n");
   if (inv.length > 12000) inv = inv.slice(0, 12000) + "\n(…inventory truncated)";
-  const scores = M.active.map(r => `${r.hz.name} — likelihood ${LEVELS[r.rel][0]}${importanceOf(r.hz.id) > 1 ? `, the household rates it "${IMPORTANCE[S.hazards.importance[r.hz.id]][0].toLowerCase()}"` : ""}, ${modeLine(r.hz)}, readiness ${r.score}%. Short: ${r.rows.filter(x => x.cov < 1).map(x => `${catLabel(x.cat)} ${x.unit === "L" ? f1(x.have) + "/" + x.need + " L" : x.unit === "kcal" ? f1(x.have / h.kcalDay) + "/" + f1(x.need / h.kcalDay) + " household-days" : x.have + "/" + x.need}`).join(", ") || "nothing"}`).join("\n");
+  const scores = M.active.map(r => `${r.hz.name} — likelihood ${LEVELS[r.rel][0]}, ${SEVERITY[r.hz.severity][0].toLowerCase()} if unprepared${importanceOf(r.hz.id) > 1 ? `, the household rates it "${IMPORTANCE[S.hazards.importance[r.hz.id]][0].toLowerCase()}"` : ""}, ${modeLine(r.hz)}, readiness ${r.score}%. Short: ${r.rows.filter(x => x.cov < 1).map(x => `${catLabel(x.cat)} ${x.unit === "L" ? f1(x.have) + "/" + x.need + " L" : x.unit === "kcal" ? f1(x.have / h.kcalDay) + "/" + f1(x.need / h.kcalDay) + " household-days" : x.have + "/" + x.need}`).join(", ") || "nothing"}`).join("\n");
   return `You are reviewing a household's emergency preparedness. Today is ${new Date().toISOString().slice(0, 10)}.
 
 HOUSEHOLD
