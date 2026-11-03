@@ -127,7 +127,7 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; }
 .grp + .grp { margin-top: 10px; }
 .grp-h { display: grid; gap: 2px; }
 
-.hz { display: grid; border-top: 1px solid var(--rule); }
+.hz { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--rule); }
 .hz-row { display: grid; grid-template-columns: minmax(0, 1fr) 104px 56px 36px 24px; gap: 10px; align-items: center; padding: 3px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
 .hz-row.off { opacity: .55; }
 .hz-name, .kit-name { display: flex; gap: 8px; align-items: baseline; background: none; border: 0; padding: 2px 0; text-align: left; cursor: pointer; }
@@ -1033,7 +1033,7 @@ function viewOverview(M) {
       <div class="stack" style="gap:2px">
         <p class="eyebrow">Next steps</p>
         <h2>${N.acts.length ? (N.acts.length === 1 ? "Your next step" : `Your next ${N.acts.length} steps`) : "Nothing urgent"}</h2>
-        <p class="small muted">${nGap && overall != null && N.after > overall ? `Filling ${nGap === 1 ? "this gap" : `these ${nGap} gaps`} takes readiness from ${overall} to ${N.after}.`
+        <p class="small muted">${nGap && overall != null && N.after > overall ? `${nGap === N.acts.length ? `Filling ${nGap === 1 ? "this gap" : `these ${nGap} gaps`}` : `Adding ${nGap === 1 ? "the supply" : `the ${nGap} supplies`} below`} takes readiness from ${overall} to ${N.after}.`
           : N.acts.length ? "Start here. These shape every number the app works out."
           : "No gaps against the emergencies you've marked as relevant. Keep an eye on expiry dates."}</p>
       </div>
@@ -1044,7 +1044,7 @@ function viewOverview(M) {
       <p class="eyebrow">Household readiness</p>
       <div class="score"><span class="num">${overall ?? "–"}</span><span class="of">/ 100</span></div>
       <div class="bar" style="--c:${c}" role="img" aria-label="Readiness ${sc} out of 100"><span style="width:${sc}%"></span></div>
-      <p class="mono small muted">${h.people} people · ${h.pets} pet${h.pets === 1 ? "" : "s"} · ${S.kits.length} kit${S.kits.length === 1 ? "" : "s"} · ${S.items.length} items${exp.length ? ` · <span style="color:var(--warn)">${exp.length} expiring</span>` : ""}</p>
+      <p class="mono small muted">${pl(h.people, "person", "people")} · ${pl(h.pets, "pet")} · ${pl(S.kits.length, "kit")} · ${pl(S.items.length, "item")}${exp.length ? ` · <span style="color:var(--warn)">${exp.length} expiring</span>` : ""}</p>
       <p class="small muted">Averaged across the emergencies that apply to you, weighted by how likely each one is and how much it matters to you. ${hzNote}</p>
     </div>
   </div>
@@ -1169,7 +1169,7 @@ function viewKits(M) {
       <h2>Your kits</h2>
       <div class="tags">${list.map(k => `<button class="tag" data-act="openKit" data-id="${esc(k.id)}" aria-pressed="${k.id === S.openKit}">
         <span class="mono">${esc(KIT_TYPES[k.type] || "Kit")}${isExampleKit(k) ? " · EXAMPLE" : ""}</span><b>${esc(k.name)}</b>
-        <span class="small">${counts[k.id] || 0} items${k.where ? " · " + esc(k.where) : ""}</span>
+        <span class="small">${pl(counts[k.id] || 0, "item")}${k.where ? " · " + esc(k.where) : ""}</span>
         <span class="tag-pct" style="color:${statusInk(M.kitRes[k.id].score)}" aria-label="Readiness ${M.kitRes[k.id].score} percent">${M.kitRes[k.id].score}%</span></button>`).join("") || `<p class="muted">No kits yet. Add the first one below: a go-bag, a home supply bin or a car kit.</p>`}</div>
       ${!S.canWrite ? "" : S.kits.length && !S.addKit ? `<button class="btn ghost add-kit" data-act="addKit">+ Add a kit</button>` : `<form class="panel stack" data-submit="newKit">
         <p class="eyebrow">Add a kit</p>
@@ -1197,7 +1197,7 @@ function kitDetail(kit, ready) {
   <div class="row" style="justify-content:space-between;align-items:flex-end">
     <div><p class="eyebrow">${esc(KIT_TYPES[kit.type] || "Kit")}${kit.where ? " · " + esc(kit.where) : ""}</p><h2>${esc(kit.name)}</h2></div>
     ${S.canWrite ? (S.confirm === "kit:" + kit.id
-      ? `<div class="row"><span class="small">Delete this kit, its ${items.length} items and ${photos.length} photos?</span><button class="btn danger sm" data-act="delKit" data-id="${esc(kit.id)}">Delete</button><button class="btn ghost sm" data-act="cancelConfirm">Cancel</button></div>`
+      ? `<div class="row"><span class="small">Delete this kit, its ${pl(items.length, "item")} and ${pl(photos.length, "photo")}?</span><button class="btn danger sm" data-act="delKit" data-id="${esc(kit.id)}">Delete</button><button class="btn ghost sm" data-act="cancelConfirm">Cancel</button></div>`
       : `<button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button>`) : ""}
   </div>
   ${kitReadyPanel(kit, ready)}
