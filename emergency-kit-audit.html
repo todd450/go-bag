@@ -52,6 +52,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .mono { font-variant-numeric: tabular-nums; }
 .muted { color: var(--ink-2); }
 .small { font-size: .85rem; }
+.how { font-size: .85rem; color: var(--ink-2); }
+.how summary { cursor: pointer; width: fit-content; text-decoration: underline dotted; text-underline-offset: 3px; }
+.how p { max-width: 70ch; margin-top: 4px; }
 .eyebrow { font-size: .78rem; font-weight: 600; color: var(--ink-2); }
 
 .top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper); border-bottom: 1px solid var(--rule); }
@@ -470,7 +473,7 @@ const S = {
   profile: null, hazards: null, review: null, shopping: null, plan: null, kits: [], items: [],
   live: false, loaded: false, slow: false, canWrite: true,
   openKit: null, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
-  hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(),
+  hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
   scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null,
 };
 let db = null, assets = null, sample = null;
@@ -702,6 +705,8 @@ function nextActions(M) {
 /* ---------- shopping list ---------- */
 /* What to put in the cart for a gap: store-sized packs, a ballpark US price for comparing and budgeting
    (null means prescription only, 0 means you likely have it at home), and a tip for the aisle. */
+// One line up front and the full explanation a tap away; the ones you open stay open when the page re-renders
+const how = (id, body) => `<details class="how" data-how="${id}" ${S.how.has(id) ? "open" : ""}><summary>How this works</summary><p>${body}</p></details>`;
 const pl = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
 const whoIs = (h, f) => h.members.map((m, i) => [m, personName(m, i)]).filter(([m]) => f(m)).map(([, n]) => n);
 const hasCond = c => m => (m.conditions || []).includes(c);
@@ -1044,7 +1049,8 @@ function viewOverview(M) {
       <div class="score"><span class="num">${overall ?? "–"}</span><span class="of">/ 100</span></div>
       <div class="bar" style="--c:${c}" role="img" aria-label="Readiness ${sc} out of 100"><span style="width:${sc}%"></span></div>
       <p class="mono small muted">${h.people} people · ${h.pets} pet${h.pets === 1 ? "" : "s"} · ${S.kits.length} kit${S.kits.length === 1 ? "" : "s"} · ${S.items.length} items${exp.length ? ` · <span style="color:var(--warn)">${exp.length} expiring</span>` : ""}</p>
-      <p class="small muted">Averaged across the emergencies that apply to you, weighted by how likely each one is and how much it matters to you. ${hzNote}</p>
+      <p class="small muted">${hzNote}</p>
+      ${how("score", "Your score is averaged across the emergencies that apply to you, weighted by how likely each one is and how much it matters to you.")}
     </div>
   </div>
 
@@ -1248,7 +1254,8 @@ function kitDetail(kit, ready) {
       </tr>` : ""}
     </tbody>
   </table></div>
-  <p class="small muted">${S.canWrite && items.length ? "Tick anything that's no longer in this kit, then remove it. " : ""}Water L, Food kcal, kg and Size L are totals for the whole line (a 24-pack of 500 ml bottles is 12 L). Grey kg and Size L numbers are estimates until you type your own. Only these two columns count toward water and food needs. Value is how many of the kit's ${ready.score} readiness points each item earns: a checklist line's points are shared by the items that fill it, so a lone tourniquet is worth more than one of twenty water bottles.</p>`;
+  ${S.canWrite && items.length ? `<p class="small muted">Tick anything that's no longer in this kit, then remove it.</p>` : ""}
+  ${how("kit-table", `Water L, Food kcal, kg and Size L are totals for the whole line (a 24-pack of 500 ml bottles is 12 L). Grey kg and Size L numbers are estimates until you type your own. Only Water L and Food kcal count toward water and food needs. Value is how many of the kit's ${ready.score} readiness points each item earns: a checklist line's points are shared by the items that fill it, so a lone tourniquet is worth more than one of twenty water bottles.`)}`;
 }
 function catOptions(sel) { return Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${k === sel ? "selected" : ""}>${v[0]}</option>`).join(""); }
 function draftTable(d) {
@@ -1341,7 +1348,8 @@ function viewHousehold() {
   return `
   <div class="stack">
     <div class="row" style="justify-content:space-between"><h2>Household</h2>${S.canWrite && S.wiz == null ? `<button class="btn ${fresh ? "" : "ghost "}sm" data-act="startWizard">${fresh ? "Set up in 4 quick steps" : "Walk me through it"}</button>` : ""}</div>
-    <p class="muted" style="max-width:70ch">Needs are sized from this: 3.8 L of water per person per day, food calories by each person's age, masks and blankets per person, and baby, kids' and pet supplies when they apply. Health needs switch on the health emergencies that follow from them, like a medication supply running out or a powered device losing power. Your location is what Claude uses to judge which emergencies are likely.</p>
+    <p class="muted" style="max-width:70ch">Who lives here and where sets every amount the app suggests.</p>
+    ${how("household", "Needs are sized from this: 3.8 L of water per person per day, food calories by each person's age, masks and blankets per person, and baby, kids' and pet supplies when they apply. Health needs switch on the health emergencies that follow from them, like a medication supply running out or a powered device losing power. Your location is what Claude uses to judge which emergencies are likely.")}
   </div>
   ${S.wiz != null ? viewWizard(d) : `<form class="panel stack" data-submit="saveHH">
     ${hhWhere(d)}
@@ -1402,7 +1410,8 @@ function viewShop(M) {
   return `
   <div class="stack">
     <h2>Shopping list</h2>
-    <p class="muted" style="max-width:70ch">Tick things off as you buy them. Each ticked item goes straight into the kit shown beside it, so your readiness rises as you shop. Untick to take it back out. Prices are rough US store prices, to help you plan.</p>
+    <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
+    ${how("shop", "Each ticked item goes into the kit shown beside it, so your readiness rises as you shop. Untick to take it back out. Prices are rough US store prices, to help you plan.")}
   </div>
   <div class="panel stack">
     <div class="row" style="justify-content:space-between">
@@ -1484,7 +1493,8 @@ function viewPlan(M) {
   return `
   <div class="stack">
     <h2>Family plan</h2>
-    <p class="muted" style="max-width:70ch">The parts of being ready that a kit can't hold. Everything saves as you go, and Claude's review below builds on it. <span class="mono">${filled} of ${fields.length}</span> filled in.</p>
+    <p class="muted" style="max-width:70ch">The parts of being ready that a kit can't hold. <span class="mono">${filled} of ${fields.length}</span> filled in.</p>
+    ${how("plan", "Everything saves as you go, and Claude's review further down this tab builds on what you write here.")}
   </div>
   <div class="plan-grid">
     ${PLAN.map(([title, fs]) => `<div class="panel stack"><p class="eyebrow">${title}</p>${fs.map(field).join("")}</div>`).join("")}
@@ -1505,7 +1515,8 @@ function viewReview() {
   return `
   <div class="stack">
     <h2>Claude's review</h2>
-    <p class="muted" style="max-width:70ch">Claude reads your household, hazards, scores and full inventory, then writes a short plan: what to buy next with quantities, what to rotate, and the plans and skills a kit can't cover.</p>
+    <p class="muted" style="max-width:70ch">Claude writes a short plan from everything you've entered.</p>
+    ${how("review", "Claude reads your household, hazards, scores and full inventory, then covers what to buy next with quantities, what to rotate, and the plans and skills a kit can't cover.")}
     <div class="row">
       ${rv?.state === "working" ? `<button class="btn ghost" data-act="rvStop">Stop</button><div class="working"><span class="pulse"></span><span>${rv.text ? "Writing…" : "Thinking…"}</span></div>`
         : `<button class="btn" data-act="rvRun" ${S.kits.length ? "" : "disabled"}>${saved ? "Write a new review" : "Write my review"}</button>`}
@@ -1960,6 +1971,7 @@ document.addEventListener("input", e => {
     if (!S.hhDirty) { S.hhDirty = true; const btn = $('form[data-submit="saveHH"] button[type=submit]'); if (btn) btn.disabled = false; }
   }
 });
+document.addEventListener("toggle", e => { const id = e.target.dataset?.how; if (id) e.target.open ? S.how.add(id) : S.how.delete(id); }, true);
 document.addEventListener("change", async e => {
   const t = e.target;
   if (t.dataset.change === "item") {
