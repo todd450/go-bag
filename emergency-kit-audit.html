@@ -178,14 +178,15 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; }
 .tray-ph img { display: block; width: 72px; height: 72px; object-fit: cover; border-radius: 4px; border: 1px solid var(--rule); background: var(--rule); }
 .tray-ph .x { position: absolute; top: 2px; right: 2px; background: var(--card); padding: 1px 6px; font-size: 1rem; }
 .drop-on { outline: 2px dashed var(--accent); outline-offset: 2px; }
-.tbl-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); }
-table { border-collapse: collapse; width: 100%; min-width: 960px; font-size: .85rem; }
+.tbl-wrap { container-type: inline-size; overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); }
+table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: .85rem; }
 th { text-align: left; font-weight: 600; font-size: .78rem; color: var(--ink-2); padding: 5px 6px; border-bottom: 1px solid var(--rule); }
 td { padding: 1px 4px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
 tr:last-child td { border-bottom: 0; }
 td input:not([type=checkbox]), td select { width: 100%; padding: 3px 5px; background: transparent; border-color: transparent; }
 td input:hover, td select:hover, td input:focus, td select:focus { border-color: var(--rule); background: var(--paper); }
-td.num input { text-align: right; font-family: var(--f-mono); }
+td.num input { text-align: right; font-family: var(--f-mono); appearance: textfield; padding-inline: 3px; }
+td.num input::-webkit-inner-spin-button, td.num input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 td .flag { font-size: .78rem; font-weight: 500; }
 .flag.expired { color: var(--bad); } .flag.soon { color: var(--warn); }
 td.val { padding-right: 8px; }
@@ -278,9 +279,40 @@ tr.addrow td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .review h3 { margin-top: 10px; }
 .review ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
 
-td.sel, th.sel { width: 40px; text-align: center; padding-left: 10px; }
+td.sel, th.sel { width: 32px; text-align: center; padding-left: 4px; }
 td.sel input, th.sel input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
 tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
+/* The page gives the inventory at most ~810px, too narrow for eleven columns, so under 900px each item is a card:
+   name, category, quantity and value on the first line, the numbers and expiry on the second (four short lines on a phone) */
+@container (max-width: 899px) {
+  .inv, .inv tbody { display: block; }
+  .inv thead tr { display: flex; align-items: center; gap: 0 16px; border-bottom: 1px solid var(--rule); }
+  .inv thead th { border: 0; width: auto !important; }
+  .inv thead th:not(.sel):not(:has(.th-sort)) { display: none; }
+  .inv thead th:has(.th-sort)::before { content: "Sort by "; font-weight: 400; }
+  .inv tbody tr { display: grid; grid-template-columns: 24px repeat(12, minmax(0, 1fr)) 28px; align-items: end; gap: 4px 8px; padding: 8px 6px; border-bottom: 1px solid var(--rule);
+    grid-template-areas: "sel name name name name name cat cat cat qty val val val x" ". water water food food kg kg size size exp exp exp . ."; }
+  .inv tbody tr:last-child { border-bottom: 0; }
+  .inv tr.picked { background: color-mix(in srgb, var(--bad) 8%, transparent); }
+  .inv tr.addrow { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  .inv td, .inv tr.picked td, .inv tr.addrow td { border: 0; padding: 0; min-width: 0; background: none; }
+  .inv td:empty { display: none; }
+  .inv td[data-label]:not([data-label="Item"])::before { content: attr(data-label); display: block; font-size: .7rem; color: var(--ink-2); padding-left: 5px; }
+  .inv .cat-td { flex-wrap: wrap; gap: 0 6px; } .inv .cat-td::before { flex-basis: 100%; }
+  .inv .cat-td select { flex: 1; min-width: 0; }
+  .inv td.sel { grid-area: sel; width: auto; padding: 0 0 6px; text-align: left; align-self: end; }
+  .inv td.x-td { grid-area: x; }
+  .inv td[data-label="Item"] { grid-area: name; } .inv td[data-label="Category"] { grid-area: cat; } .inv td[data-label="Qty"] { grid-area: qty; }
+  .inv td[data-label="Value"] { grid-area: val; align-self: start; } .inv td[data-label="Water L"] { grid-area: water; } .inv td[data-label="Food kcal"] { grid-area: food; }
+  .inv td[data-label="kg"] { grid-area: kg; } .inv td[data-label="Size L"] { grid-area: size; } .inv td[data-label="Expires"] { grid-area: exp; }
+  .inv td.val .val-in { padding: 6px 5px 0; }
+  .inv .val-note { padding-left: 5px; }
+  .inv td.num input { text-align: left; }
+}
+@container (max-width: 599px) {
+  .inv tbody tr { grid-template-columns: 24px repeat(4, minmax(0, 1fr)) 28px;
+    grid-template-areas: "sel name name name name x" ". cat cat qty val val" ". water food kg size size" ". exp exp exp . ."; }
+}
 .selbar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; padding: 10px 14px; border: 1px solid var(--bad); border-radius: 6px; background: color-mix(in srgb, var(--bad) 7%, var(--card)); }
 .selbar b { font-weight: 600; font-variant-numeric: tabular-nums; }
 
@@ -1217,34 +1249,34 @@ function kitDetail(kit, ready) {
     <button class="btn danger sm" data-act="removeSel">Remove from kit</button>
     <button class="btn ghost sm" data-act="clearSel">Cancel</button>
   </div>` : ""}
-  <div class="tbl-wrap"><table>
-    <thead><tr>${S.canWrite ? `<th class="sel"><input type="checkbox" id="sel-all" data-change="selAll" aria-label="Select all items" ${items.length && items.every(i => S.sel.has(i.id)) ? "checked" : ""} ${items.length ? "" : "disabled"}></th>` : ""}<th style="width:28%">Item</th><th>${sortTh("cat", "Category")}</th><th style="width:60px">Qty</th><th style="width:76px">Water L</th><th style="width:86px">Food kcal</th><th style="width:68px" title="Weight of the whole line. Grey numbers are estimates.">kg</th><th style="width:68px" title="Packed size of the whole line. Grey numbers are estimates.">Size L</th><th style="width:140px">Expires</th><th style="width:118px" title="Kit readiness points this item earns. Every item's points add up to the kit's score.">${sortTh("value", "Value")}</th><th style="width:32px"></th></tr></thead>
+  <div class="tbl-wrap"><table class="inv">
+    <thead><tr>${S.canWrite ? `<th class="sel"><input type="checkbox" id="sel-all" data-change="selAll" aria-label="Select all items" ${items.length && items.every(i => S.sel.has(i.id)) ? "checked" : ""} ${items.length ? "" : "disabled"}></th>` : ""}<th>Item</th><th style="width:136px">${sortTh("cat", "Category")}</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px" title="Weight of the whole line. Grey numbers are estimates.">kg</th><th style="width:56px" title="Packed size of the whole line. Grey numbers are estimates.">Size L</th><th style="width:136px">Expires</th><th style="width:100px" title="Kit readiness points this item earns. Every item's points add up to the kit's score.">${sortTh("value", "Value")}</th><th style="width:28px"></th></tr></thead>
     <tbody>
       ${items.map(it => { const st = expState(it); const on = S.sel.has(it.id); const ld = itemLoad(it); return `<tr class="${on ? "picked" : ""}">
         ${S.canWrite ? `<td class="sel"><input type="checkbox" id="sel-${esc(it.id)}" data-change="sel" data-id="${esc(it.id)}" aria-label="Select ${esc(it.name)}" ${on ? "checked" : ""}></td>` : ""}
-        <td><input type="text" id="it-${esc(it.id)}-name" value="${esc(it.name)}" data-change="item" data-id="${esc(it.id)}" data-f="name" aria-label="Item name" ${D()}>${it.note ? `<div class="small muted" style="padding:0 6px">${esc(it.note)}</div>` : ""}${amazonA(it)}</td>
-        <td class="cat-td">${icon(it.category)}<select id="it-${esc(it.id)}-cat" data-change="item" data-id="${esc(it.id)}" data-f="category" aria-label="Category" ${D()}>${catOptions(it.category)}</select></td>
-        <td class="num"><input type="number" min="1" id="it-${esc(it.id)}-qty" value="${esc(Math.max(1, num(it.qty)))}" data-change="item" data-id="${esc(it.id)}" data-f="qty" aria-label="Quantity" ${D()}></td>
-        <td class="num"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-l" value="${num(it.liters) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="liters" aria-label="Litres of water" ${D()}></td>
-        <td class="num"><input type="number" min="0" step="50" id="it-${esc(it.id)}-k" value="${num(it.kcal) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="kcal" aria-label="Food calories" ${D()}></td>
-        <td class="num"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-g" value="${num(it.grams) ? num(it.grams) / 1000 : ""}" placeholder="${Math.round(ld.estG / 100) / 10}" data-change="item" data-id="${esc(it.id)}" data-f="grams" aria-label="Weight in kg" ${D()}></td>
-        <td class="num"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-ml" value="${num(it.ml) ? num(it.ml) / 1000 : ""}" placeholder="${Math.round(ld.estMl / 100) / 10}" data-change="item" data-id="${esc(it.id)}" data-f="ml" aria-label="Size in litres" ${D()}></td>
-        <td><input type="month" id="it-${esc(it.id)}-exp" value="${esc(it.expires || "")}" data-change="item" data-id="${esc(it.id)}" data-f="expires" aria-label="Expiry month" ${D()}>${st ? `<span class="flag ${st}">${st === "expired" ? "expired" : "expiring soon"}</span>` : ""}</td>
-        <td class="val" title="${esc(val[it.id].note || `Earns ${ptsLabel(val[it.id].pts)} of this kit's ${ready.score} points`)}"><div class="val-in"><span class="vbar"><i style="width:${Math.round(100 * val[it.id].pts / maxPts)}%"></i></span><b class="mono">${ptsLabel(val[it.id].pts)}</b></div>${val[it.id].note ? `<span class="val-note">${esc(val[it.id].note)}</span>` : ""}</td>
-        <td>${S.canWrite ? `<button class="x" data-act="delItem" data-id="${esc(it.id)}" aria-label="Remove ${esc(it.name)}">×</button>` : ""}</td>
+        <td data-label="Item"><input type="text" id="it-${esc(it.id)}-name" value="${esc(it.name)}" data-change="item" data-id="${esc(it.id)}" data-f="name" aria-label="Item name" ${D()}>${it.note ? `<div class="small muted" style="padding:0 6px">${esc(it.note)}</div>` : ""}${amazonA(it)}</td>
+        <td class="cat-td" data-label="Category">${icon(it.category)}<select id="it-${esc(it.id)}-cat" data-change="item" data-id="${esc(it.id)}" data-f="category" aria-label="Category" ${D()}>${catOptions(it.category)}</select></td>
+        <td class="num" data-label="Qty"><input type="number" min="1" id="it-${esc(it.id)}-qty" value="${esc(Math.max(1, num(it.qty)))}" data-change="item" data-id="${esc(it.id)}" data-f="qty" aria-label="Quantity" ${D()}></td>
+        <td class="num" data-label="Water L"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-l" value="${num(it.liters) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="liters" aria-label="Litres of water" ${D()}></td>
+        <td class="num" data-label="Food kcal"><input type="number" min="0" step="50" id="it-${esc(it.id)}-k" value="${num(it.kcal) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="kcal" aria-label="Food calories" ${D()}></td>
+        <td class="num" data-label="kg"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-g" value="${num(it.grams) ? num(it.grams) / 1000 : ""}" placeholder="${Math.round(ld.estG / 100) / 10}" data-change="item" data-id="${esc(it.id)}" data-f="grams" aria-label="Weight in kg" ${D()}></td>
+        <td class="num" data-label="Size L"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-ml" value="${num(it.ml) ? num(it.ml) / 1000 : ""}" placeholder="${Math.round(ld.estMl / 100) / 10}" data-change="item" data-id="${esc(it.id)}" data-f="ml" aria-label="Size in litres" ${D()}></td>
+        <td data-label="Expires"><input type="month" id="it-${esc(it.id)}-exp" value="${esc(it.expires || "")}" data-change="item" data-id="${esc(it.id)}" data-f="expires" aria-label="Expiry month" ${D()}>${st ? `<span class="flag ${st}">${st === "expired" ? "expired" : "expiring soon"}</span>` : ""}</td>
+        <td class="val" data-label="Value" title="${esc(val[it.id].note || `Earns ${ptsLabel(val[it.id].pts)} of this kit's ${ready.score} points`)}"><div class="val-in"><span class="vbar"><i style="width:${Math.round(100 * val[it.id].pts / maxPts)}%"></i></span><b class="mono">${ptsLabel(val[it.id].pts)}</b></div>${val[it.id].note ? `<span class="val-note">${esc(val[it.id].note)}</span>` : ""}</td>
+        <td class="x-td">${S.canWrite ? `<button class="x" data-act="delItem" data-id="${esc(it.id)}" aria-label="Remove ${esc(it.name)}">×</button>` : ""}</td>
       </tr>`; }).join("")}
       ${S.canWrite ? `<tr class="addrow">
         <td class="sel"></td>
-        <td><input type="text" id="add-name" placeholder="Add an item by hand…" maxlength="80" aria-label="New item name"></td>
-        <td><select id="add-cat" aria-label="New item category">${catOptions("water")}</select></td>
-        <td class="num"><input type="number" id="add-qty" min="1" value="1" aria-label="New item quantity"></td>
-        <td class="num"><input type="number" id="add-l" min="0" step="0.1" aria-label="New item litres"></td>
-        <td class="num"><input type="number" id="add-k" min="0" step="50" aria-label="New item calories"></td>
-        <td class="num"><input type="number" id="add-g" min="0" step="0.1" aria-label="New item weight in kg"></td>
-        <td class="num"><input type="number" id="add-ml" min="0" step="0.1" aria-label="New item size in litres"></td>
-        <td><input type="month" id="add-exp" aria-label="New item expiry"></td>
+        <td data-label="Item"><input type="text" id="add-name" placeholder="Add an item by hand…" maxlength="80" aria-label="New item name"></td>
+        <td data-label="Category"><select id="add-cat" aria-label="New item category">${catOptions("water")}</select></td>
+        <td class="num" data-label="Qty"><input type="number" id="add-qty" min="1" value="1" aria-label="New item quantity"></td>
+        <td class="num" data-label="Water L"><input type="number" id="add-l" min="0" step="0.1" aria-label="New item litres"></td>
+        <td class="num" data-label="Food kcal"><input type="number" id="add-k" min="0" step="50" aria-label="New item calories"></td>
+        <td class="num" data-label="kg"><input type="number" id="add-g" min="0" step="0.1" aria-label="New item weight in kg"></td>
+        <td class="num" data-label="Size L"><input type="number" id="add-ml" min="0" step="0.1" aria-label="New item size in litres"></td>
+        <td data-label="Expires"><input type="month" id="add-exp" aria-label="New item expiry"></td>
         <td></td>
-        <td><button class="btn sm" data-act="addItem" aria-label="Add item">+</button></td>
+        <td class="x-td"><button class="btn sm" data-act="addItem" aria-label="Add item">+</button></td>
       </tr>` : ""}
     </tbody>
   </table></div>
@@ -1257,18 +1289,18 @@ function draftTable(d) {
       <div><b>Claude found ${d.rows.length} item${d.rows.length === 1 ? "" : "s"}</b><p class="small muted">Fix anything it misread, remove what isn't there, then add them to the kit.</p></div>
       <div class="row"><button class="btn" data-act="draftSave" ${d.rows.length ? "" : "disabled"}>Add ${d.rows.length} to kit</button><button class="btn ghost" data-act="draftCancel">Discard</button></div>
     </div>
-    <div class="tbl-wrap"><table>
-      <thead><tr><th style="width:30%">Item</th><th>Category</th><th style="width:70px">Qty</th><th style="width:90px">Water L</th><th style="width:100px">Food kcal</th><th style="width:76px">kg</th><th style="width:76px">Size L</th><th style="width:150px">Expires</th><th style="width:36px"></th></tr></thead>
+    <div class="tbl-wrap"><table class="inv">
+      <thead><tr><th>Item</th><th style="width:136px">Category</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px">kg</th><th style="width:56px">Size L</th><th style="width:136px">Expires</th><th style="width:28px"></th></tr></thead>
       <tbody>${d.rows.map((r, i) => `<tr>
-        <td><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted" style="padding:0 6px">${esc(r.note)}</div>` : ""}${amazonA({ shopQuery: r.shop })}</td>
-        <td><select id="d-${r.key}-cat" data-input="draft" data-i="${i}" data-f="category" aria-label="Category">${catOptions(r.category)}</select></td>
-        <td class="num"><input type="number" min="1" id="d-${r.key}-qty" value="${r.qty}" data-input="draft" data-i="${i}" data-f="qty" aria-label="Quantity"></td>
-        <td class="num"><input type="number" min="0" step="0.1" id="d-${r.key}-l" value="${r.liters || ""}" data-input="draft" data-i="${i}" data-f="liters" aria-label="Litres"></td>
-        <td class="num"><input type="number" min="0" step="50" id="d-${r.key}-k" value="${r.kcal || ""}" data-input="draft" data-i="${i}" data-f="kcal" aria-label="Calories"></td>
-        <td class="num"><input type="number" min="0" step="0.1" id="d-${r.key}-g" value="${r.kg || ""}" data-input="draft" data-i="${i}" data-f="kg" aria-label="Weight in kg"></td>
-        <td class="num"><input type="number" min="0" step="0.1" id="d-${r.key}-ml" value="${r.L || ""}" data-input="draft" data-i="${i}" data-f="L" aria-label="Size in litres"></td>
-        <td><input type="month" id="d-${r.key}-exp" value="${esc(r.expires)}" data-input="draft" data-i="${i}" data-f="expires" aria-label="Expiry"></td>
-        <td><button class="x" data-act="draftDrop" data-i="${i}" aria-label="Remove ${esc(r.name)}">×</button></td>
+        <td data-label="Item"><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted" style="padding:0 6px">${esc(r.note)}</div>` : ""}${amazonA({ shopQuery: r.shop })}</td>
+        <td data-label="Category"><select id="d-${r.key}-cat" data-input="draft" data-i="${i}" data-f="category" aria-label="Category">${catOptions(r.category)}</select></td>
+        <td class="num" data-label="Qty"><input type="number" min="1" id="d-${r.key}-qty" value="${r.qty}" data-input="draft" data-i="${i}" data-f="qty" aria-label="Quantity"></td>
+        <td class="num" data-label="Water L"><input type="number" min="0" step="0.1" id="d-${r.key}-l" value="${r.liters || ""}" data-input="draft" data-i="${i}" data-f="liters" aria-label="Litres"></td>
+        <td class="num" data-label="Food kcal"><input type="number" min="0" step="50" id="d-${r.key}-k" value="${r.kcal || ""}" data-input="draft" data-i="${i}" data-f="kcal" aria-label="Calories"></td>
+        <td class="num" data-label="kg"><input type="number" min="0" step="0.1" id="d-${r.key}-g" value="${r.kg || ""}" data-input="draft" data-i="${i}" data-f="kg" aria-label="Weight in kg"></td>
+        <td class="num" data-label="Size L"><input type="number" min="0" step="0.1" id="d-${r.key}-ml" value="${r.L || ""}" data-input="draft" data-i="${i}" data-f="L" aria-label="Size in litres"></td>
+        <td data-label="Expires"><input type="month" id="d-${r.key}-exp" value="${esc(r.expires)}" data-input="draft" data-i="${i}" data-f="expires" aria-label="Expiry"></td>
+        <td class="x-td"><button class="x" data-act="draftDrop" data-i="${i}" aria-label="Remove ${esc(r.name)}">×</button></td>
       </tr>`).join("")}</tbody>
     </table></div>
   </div>`;

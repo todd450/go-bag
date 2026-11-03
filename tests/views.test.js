@@ -34,3 +34,23 @@ test("a refill due within a week becomes a next step", () => {
   run(`S.plan.meds[0].refill = "${day(30)}"`);
   assert.ok(!run(`nextActions(model()).acts.some(a => a.kind === "refill")`));
 });
+
+test("every inventory cell with something in it is labelled for the card layout", () => {
+  const { run } = load({ fixture: "tests/household" });
+  const tables = [];
+  for (const w of [true, false]) {
+    run(`S.canWrite = ${w}; S.openKit = "go"`);
+    tables.push(run("viewKits(model())"));
+  }
+  tables.push(run(`draftTable({ rows: [{ key: "a", name: "Tent", category: "shelter", qty: 1, liters: 0, kcal: 0, kg: 2, L: 9, expires: "", shop: "" }] })`));
+  for (const html of tables) {
+    const table = html.match(/<table class="inv">[\s\S]*?<\/table>/);
+    assert.ok(table, "inventory table has class inv");
+    const cells = table[0].match(/<td[^>]*>[\s\S]*?<\/td>/g);
+    assert.ok(cells.length > 8);
+    for (const td of cells) {
+      if (/^<td[^>]*><\/td>$/.test(td) || /^<td class="(sel|x-td)"/.test(td)) continue;
+      assert.match(td, /^<td[^>]*data-label="[^"]+"/, td.slice(0, 80));
+    }
+  }
+});
