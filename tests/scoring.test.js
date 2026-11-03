@@ -5,10 +5,24 @@ const { load } = require("./load");
 const weighted = run => run(`(() => { const M = model();
   return Math.round(M.active.reduce((a, r) => a + r.wt * r.score, 0) / M.active.reduce((a, r) => a + r.wt, 0)) === M.overall; })()`);
 
-test("readiness averages the emergencies, weighted by likelihood times importance", () => {
+test("readiness averages the emergencies, weighted by likelihood times severity times importance", () => {
   const { run } = load({ fixture: "tests/household" });
   assert.ok(weighted(run));
-  assert.ok(run(`model().results.every(r => r.wt === LEVELS[r.rel][1] * importanceOf(r.hz.id))`));
+  assert.ok(run(`model().results.every(r => r.wt === LEVELS[r.rel][1] * SEVERITY[r.hz.severity][1] * importanceOf(r.hz.id))`));
+});
+
+test("every emergency has a severity", () => {
+  const { json } = load({ fixture: "tests/household" });
+  assert.deepEqual(json(`HAZARDS.filter(h => !SEVERITY[h.severity]).map(h => h.id)`), []);
+});
+
+test("with kids at home, heavy bleeding still outweighs the cuts that happen most weeks", () => {
+  const { run } = load({ fixture: "tests/household" });
+  run(`S.hazards.levels.injury = "low"`);
+  const wt = id => run(`model().results.find(r => r.hz.id === "${id}").wt`);
+  assert.equal(run(`model().results.find(r => r.hz.id === "cuts").rel`), "high");
+  assert.ok(wt("injury") > wt("cuts"), `heavy bleeding ${wt("injury")} vs cuts ${wt("cuts")}`);
+  assert.ok(wt("outage") > wt("mishap"), "a week without power outweighs a dead phone on the road");
 });
 
 test("raising an emergency's importance multiplies its weight", () => {
@@ -16,7 +30,7 @@ test("raising an emergency's importance multiplies its weight", () => {
   const base = run(`model().results.find(r => r.hz.id === "housefire").wt`);
   run(`S.hazards.importance = { housefire: "more", burns: "most" }`);
   assert.equal(run(`model().results.find(r => r.hz.id === "housefire").wt`), base * 2);
-  assert.equal(run(`model().results.find(r => r.hz.id === "burns").wt`), run(`LEVELS[model().results.find(r => r.hz.id === "burns").rel][1]`) * 3);
+  assert.equal(run(`model().results.find(r => r.hz.id === "burns").wt`), run(`(r => LEVELS[r.rel][1] * SEVERITY[r.hz.severity][1])(model().results.find(r => r.hz.id === "burns"))`) * 3);
   assert.ok(weighted(run));
 });
 
