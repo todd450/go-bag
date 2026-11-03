@@ -107,3 +107,19 @@ test("every inventory cell with something in it is labelled for the card layout"
     }
   }
 });
+
+test("low, partway and ready scores look different and say so in words", () => {
+  const { run, json } = load({ fixture: "tests/household" });
+  const look = s => json(`[statusColor(${s}), band(${s})[1]]`);
+  assert.deepEqual(look(4), ["var(--warn)", "Low"]);
+  assert.deepEqual(look(39), ["var(--warn)", "Low"]);
+  assert.deepEqual(look(40), ["var(--meter)", "Partway"]);
+  assert.deepEqual(look(67), ["var(--meter)", "Partway"]);
+  assert.deepEqual(look(75), ["var(--good)", "Ready"]);
+  assert.deepEqual(look(100), ["var(--good)", "Ready"]);
+  const overall = json("model().overall");
+  const word = json(`band(${overall})[1]`);
+  assert.match(run("viewOverview(model())"), new RegExp(`class="band"><i[^>]*></i>${word}<`));
+  run(`S.openKit = "go"`);
+  assert.match(run("viewKits(model())"), /class="kit-pct"[^>]*>\d+%<\/span><span class="band">/);
+});
