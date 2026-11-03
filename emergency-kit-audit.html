@@ -164,6 +164,7 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; }
 .kits-grid { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
 @media (max-width: 860px) { .kits-grid { grid-template-columns: 1fr; } }
 .tags { display: grid; gap: 6px; }
+.add-kit { justify-content: center; border-style: dashed; }
 .tag { position: relative; text-align: left; background: var(--tag); color: var(--tag-ink); border: 1px solid color-mix(in srgb, var(--tag-ink) 25%, transparent); border-radius: 4px 12px 12px 4px; padding: 6px 10px 6px 26px; cursor: pointer; display: grid; gap: 0; width: 100%; line-height: 1.3; }
 .tag::before { content: ""; position: absolute; left: 9px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--paper); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tag-ink) 40%, transparent); }
 .tag[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -469,7 +470,7 @@ const S = {
   view: VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : location.hash === "#review" ? "plan" : "overview",
   profile: null, hazards: null, review: null, shopping: null, plan: null, kits: [], items: [],
   live: false, loaded: false, slow: false, canWrite: true,
-  openKit: null, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
+  openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(),
   scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null,
 };
@@ -1170,13 +1171,13 @@ function viewKits(M) {
         <span class="mono">${esc(KIT_TYPES[k.type] || "Kit")}${isExampleKit(k) ? " · EXAMPLE" : ""}</span><b>${esc(k.name)}</b>
         <span class="small">${pl(counts[k.id] || 0, "item")}${k.where ? " · " + esc(k.where) : ""}</span>
         <span class="tag-pct" style="color:${statusInk(M.kitRes[k.id].score)}" aria-label="Readiness ${M.kitRes[k.id].score} percent">${M.kitRes[k.id].score}%</span></button>`).join("") || `<p class="muted">No kits yet. Add the first one below: a go-bag, a home supply bin or a car kit.</p>`}</div>
-      ${S.canWrite ? `<form class="panel stack" data-submit="newKit">
+      ${!S.canWrite ? "" : S.kits.length && !S.addKit ? `<button class="btn ghost add-kit" data-act="addKit">+ Add a kit</button>` : `<form class="panel stack" data-submit="newKit">
         <p class="eyebrow">Add a kit</p>
         <label class="f">Name<input type="text" id="nk-name" name="name" required placeholder="Hall closet go-bag" maxlength="60"></label>
         <label class="f">Type<select id="nk-type" name="type">${Object.entries(KIT_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>
         <label class="f">Where it's kept<input type="text" id="nk-where" name="where" placeholder="Garage shelf" maxlength="60"></label>
-        <button class="btn" type="submit">Add kit</button>
-      </form>` : ""}
+        <div class="row"><button class="btn" type="submit">Add kit</button>${S.kits.length ? `<button class="btn ghost" type="button" data-act="cancelKit">Cancel</button>` : ""}</div>
+      </form>`}
     </div>
     <div class="stack">${kit ? kitDetail(kit, M.kitRes[kit.id]) : `<div class="panel"><p class="muted">Pick a kit to see its contents, or add one.</p></div>`}</div>
   </div>`;
@@ -1829,6 +1830,8 @@ function setPath(o, path, val) {
 /* ---------- events ---------- */
 const ACT = {
   tab: b => { S.view = b.dataset.v; try { history.replaceState(null, "", "#" + S.view); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
+  addKit: () => { S.addKit = true; render(); $("#nk-name")?.focus(); },
+  cancelKit: () => { S.addKit = false; render(); $(".add-kit")?.focus(); },
   openKit: b => { if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.confirm = null; render(); },
   gotoKit: b => { S.view = "kits"; if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; try { history.replaceState(null, "", "#kits"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   removeSel: () => removeItems([...S.sel]),
@@ -2047,7 +2050,7 @@ document.addEventListener("submit", async e => {
     const type = KIT_TYPES[$("#nk-type").value] ? $("#nk-type").value : "go";
     const id = uid();
     await setDoc("kits", id, { name, type, where: $("#nk-where").value.trim(), photos: [], createdAt: Date.now() }).catch(() => {});
-    S.openKit = id; f.reset(); render();
+    S.openKit = id; S.addKit = false; f.reset(); render();
   } else if (f.dataset.submit === "saveHH") {
     await saveHousehold();
   } else if (f.dataset.submit === "wizNext") {
