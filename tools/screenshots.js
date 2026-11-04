@@ -64,17 +64,33 @@ async function openChrome(chrome) {
   return { send, once, close };
 }
 
-// The tabs a page has, read from its own VIEWS by the tests' loader (tests/load.js), so a tab added to
-// the page is shot with no edit here. The loader reads its page from GO_BAG_PAGE once, when it is
-// first required, so each page is read in a fresh Node.
-function viewsOf(page) {
-  const code = `process.stdout.write(JSON.stringify(require(${JSON.stringify(path.join(ROOT, "tests", "load.js"))}).load().json("VIEWS")))`;
-  return JSON.parse(execFileSync(process.execPath, ["-e", code], { env: { ...process.env, GO_BAG_PAGE: page }, encoding: "utf8" }));
+// The tabs a page has, read from its own VIEWS by a copy of the tests' loader (tests/load.js), so a
+// tab added to the page is shot with no edit here. The loader reads its page from GO_BAG_PAGE once,
+// when it is first required, so each page is read in a fresh Node. Throws if the loader can't read it.
+const LOADER = path.join(ROOT, "tests", "load.js");
+function viewsOf(page, loader = LOADER) {
+  const code = `process.stdout.write(JSON.stringify(require(${JSON.stringify(loader)}).load().json("VIEWS")))`;
+  try {
+    return JSON.parse(execFileSync(process.execPath, ["-e", code],
+      { env: { ...process.env, GO_BAG_PAGE: page }, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }));
+  } catch (e) {
+    const why = String(e.stderr || "").split("\n").find(l => /^\w*Error\b/.test(l)) || e.message;
+    throw new Error(`can't read the tabs of ${page} with ${loader}: ${why}`);
+  }
 }
 
 // Every tab either page has, once each: this change's tabs in its order, then any only the base has.
-function tabs(base, change) {
-  return [...new Set([...viewsOf(change), ...viewsOf(base)])];
+// Each page is read with its own version's loader, since a change may move the page's boot sequence
+// and update tests/load.js to match. The base is read with its loader (baseLoader, when the base ref
+// has one) or else this checkout's; if neither can, the change's tabs are shot, with a warning.
+function tabs(base, change, { baseLoader, loader = LOADER, warn = console.warn } = {}) {
+  const ours = viewsOf(change, loader);
+  const errors = [];
+  for (const l of [...new Set([baseLoader, loader])].filter(Boolean)) {
+    try { return [...new Set([...ours, ...viewsOf(base, l)])]; } catch (e) { errors.push(e.message); }
+  }
+  warn(`Warning: shooting only this change's tabs; the base page's tabs couldn't be read (${errors.join("; ")}).`);
+  return ours;
 }
 
 async function shoot(page, file, view, size, png, n) {
@@ -106,7 +122,13 @@ async function main([outArg, fixture = "tests/household", base = "origin/main"])
   fs.writeFileSync(path.join(dirs.before, "index.html"), wrap(path.join(out, "base-page.html"), fixture));
   fs.writeFileSync(path.join(dirs.after, "index.html"), wrap(undefined, fixture));
 
-  const views = tabs(path.join(out, "base-page.html"), path.join(ROOT, "emergency-kit-audit.html"));
+  // The base ref's own loader reads the base page's tabs; a ref from before tests/load.js has none.
+  let baseLoader;
+  try {
+    const js = execFileSync("git", ["-C", ROOT, "show", `${base}:tests/load.js`], { stdio: ["ignore", "pipe", "ignore"] });
+    fs.writeFileSync(baseLoader = path.join(out, "base-load.js"), js);
+  } catch (_) {}
+  const views = tabs(path.join(out, "base-page.html"), path.join(ROOT, "emergency-kit-audit.html"), { baseLoader });
 
   const page = await openChrome(chrome);
   const rows = [];

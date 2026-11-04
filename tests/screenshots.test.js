@@ -3,21 +3,33 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { load, PAGE } = require("./load");
+const { load, PAGE, ROOT } = require("./load");
 const { tabs } = require("../tools/screenshots");
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-tabs-"));
 test.after(() => fs.rmSync(dir, { recursive: true, force: true }));
 
-// A copy of the page with its tab list edited, in a fresh scratch folder.
-function pageWith(edit) {
-  const file = fs.mkdtempSync(path.join(dir, "page-")) + "/page.html";
-  const html = fs.readFileSync(PAGE, "utf8");
-  const next = html.replace(/const VIEWS = (\[[^\]]*\]);/, (_, list) => `const VIEWS = ${JSON.stringify(edit(JSON.parse(list)))};`);
-  assert.notEqual(next, html, "the page's VIEWS was not found");
-  fs.writeFileSync(file, next);
-  return file;
+// A copy of `file` changed by `edit`, in a fresh scratch folder; it fails if the edit changed nothing.
+function copyWith(file, edit) {
+  const out = path.join(fs.mkdtempSync(path.join(dir, "copy-")), path.basename(file));
+  const text = fs.readFileSync(file, "utf8");
+  const next = edit(text);
+  assert.notEqual(next, text, `the edit found nothing to change in ${path.basename(file)}`);
+  fs.writeFileSync(out, next);
+  return out;
 }
+
+// A copy of the page with its tab list edited.
+const pageWith = edit => copyWith(PAGE, html =>
+  html.replace(/const VIEWS = (\[[^\]]*\]);/, (_, list) => `const VIEWS = ${JSON.stringify(edit(JSON.parse(list)))};`));
+
+// A page whose boot lines read differently, and a loader that finds them, as when one version of the
+// page moves its boot sequence and updates tests/load.js to match. The repo's loader can't read it.
+const BOOT = "\nsyncDraft();\nrender();";
+const MOVED = "\n/* boot */\nsyncDraft();\n\nrender();";
+const movedPage = () => copyWith(PAGE, html => html.replace(BOOT, MOVED));
+const movedLoader = () => copyWith(path.join(ROOT, "tests", "load.js"), js =>
+  js.replace("/\\nsyncDraft\\(\\);\\nrender\\(\\);/", "/\\n\\/\\* boot \\*\\/\\nsyncDraft\\(\\);\\n\\nrender\\(\\);/"));
 
 test("the screenshot tool shoots exactly the page's own tabs", () => {
   assert.deepEqual(tabs(PAGE, PAGE), load().json("VIEWS"));
@@ -34,4 +46,24 @@ test("when the two versions list different tabs, every tab of either is shot onc
   const both = tabs(PAGE, renamed);
   for (const t of [...load().json("VIEWS"), "family-plan"]) assert.ok(both.includes(t), t);
   assert.equal(new Set(both).size, both.length);
+});
+
+test("the base page's tabs are read with the base's own loader, not this change's", () => {
+  const warnings = [];
+  assert.deepEqual(tabs(movedPage(), PAGE, { baseLoader: movedLoader(), warn: w => warnings.push(w) }), load().json("VIEWS"));
+  assert.deepEqual(warnings, []);
+});
+
+test("a change that moves the boot sequence and its loader still reads the base's tabs", () => {
+  const warnings = [];
+  const views = tabs(PAGE, movedPage(), { baseLoader: path.join(ROOT, "tests", "load.js"), loader: movedLoader(), warn: w => warnings.push(w) });
+  assert.deepEqual(views, load().json("VIEWS"));
+  assert.deepEqual(warnings, []);
+});
+
+test("a base no loader can read falls back to this change's tabs, with a warning", () => {
+  const warnings = [];
+  const added = pageWith(v => [...v, "extra"]);
+  assert.deepEqual(tabs(movedPage(), added, { warn: w => warnings.push(w) }), [...load().json("VIEWS"), "extra"]);
+  assert.equal(warnings.length, 1);
 });
