@@ -641,6 +641,7 @@ const S = {
   openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
   scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, tag: null,
+  add: { cat: "water", ess: "" }, // the add-by-hand row's Category and Essential, so every redraw shows the two together
 };
 let db = null, assets = null, sample = null;
 
@@ -1710,8 +1711,8 @@ function kitDetail(kit, ready, M = model()) {
       ${S.canWrite ? `<tr class="addrow">
         <td class="sel"></td>
         <td data-label="Item"><input type="text" id="add-name" placeholder="Add an item by hand…" maxlength="80" aria-label="New item name"></td>
-        <td data-label="Category"><select id="add-cat" data-change="addCat" aria-label="New item category">${catOptions("water")}</select></td>
-        <td class="ess-td" data-label="Essential" id="add-ess-td">${essPicker("add-ess", "water", "")}</td>
+        <td data-label="Category"><select id="add-cat" data-change="addCat" aria-label="New item category">${catOptions(S.add.cat)}</select></td>
+        <td class="ess-td" data-label="Essential" id="add-ess-td">${essPicker("add-ess", S.add.cat, S.add.ess, `data-change="addEss"`)}</td>
         <td class="num" data-label="Qty"><input type="number" id="add-qty" min="1" value="1" aria-label="New item quantity"></td>
         <td class="num" data-label="Water L"><input type="number" id="add-l" min="0" step="0.1" aria-label="New item litres"></td>
         <td class="num" data-label="Food kcal"><input type="number" id="add-k" min="0" step="50" aria-label="New item calories"></td>
@@ -2401,7 +2402,10 @@ const ACT = {
     if (!name) { $("#add-name").focus(); return; }
     const category = $("#add-cat").value, essential = $("#add-ess")?.value;
     const row = { kitId: S.openKit, name, category, qty: Math.max(1, Math.round(num($("#add-qty").value) || 1)), liters: num($("#add-l").value), kcal: num($("#add-k").value), grams: gOfLb($("#add-g").value), ml: Math.round(num($("#add-ml").value) * 1000), expires: $("#add-exp").value || "", note: "", source: "manual", addedAt: Date.now(), ...essentialOk(category, essential) ? { essential } : {} };
-    $("#add-name").value = "";
+    // The row keeps its category and asks for the next item's essential; focus leaves the selects first, so
+    // render() doesn't put the old pick back.
+    S.add = { cat: Object.hasOwn(CATS, category) ? category : "water", ess: "" };
+    $("#add-name").value = ""; $("#add-name").focus();
     await setDoc("items", uid(), row).catch(() => {});
     $("#add-name")?.focus();
   },
@@ -2510,7 +2514,10 @@ document.addEventListener("change", async e => {
     if (!S.tag) return;
     S.tag.picks.set(t.dataset.id, t.value); render();
   } else if (t.dataset.change === "addCat") {
-    const cell = $("#add-ess-td"); if (cell) cell.innerHTML = essPicker("add-ess", t.value, "");
+    S.add = { cat: Object.hasOwn(CATS, t.value) ? t.value : "water", ess: "" };
+    const cell = $("#add-ess-td"); if (cell) cell.innerHTML = essPicker("add-ess", S.add.cat, "", `data-change="addEss"`);
+  } else if (t.dataset.change === "addEss") {
+    S.add.ess = essentialOk(S.add.cat, t.value) ? t.value : "";
   } else if (t.dataset.change === "packLim") {
     const kit = S.kits.find(k => k.id === t.dataset.id); if (!kit) return;
     const f = t.dataset.f, v = f === "carryKg" ? kgOfLb(t.value) : Math.round(num(t.value) * 2) / 2;

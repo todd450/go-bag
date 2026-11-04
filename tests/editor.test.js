@@ -213,3 +213,81 @@ test("adding by hand saves `essential` only when it is valid for the final categ
   assert.ok(!("essential" in saved()));
   assert.equal(app.writes().length, 7);
 });
+
+// What the add row shows when it is drawn again: the category its select shows (the selected option, or the
+// first), and its Essential select's values and the one shown, or null when it has none.
+function addRowShown(run) {
+  const tr = rows(run, "go").rows["+add"].tr;
+  const cats = options(tr.match(/<select id="add-cat"[^>]*>[\s\S]*?<\/select>/)[0]);
+  const ess = tr.match(/<select id="add-ess"[^>]*>[\s\S]*?<\/select>/)?.[0];
+  const shown = list => (list.find(o => o.selected) || list[0]).value;
+  return { cat: shown(cats), ess: ess ? { values: options(ess).map(o => o.value).filter(Boolean), picked: shown(options(ess)) } : null };
+}
+
+test("drawing the add row again keeps its category and its Essential picker together", async () => {
+  const app = withWrites("tests/household");
+  app.run(`S.openKit = "go"`);
+  const E = app.json("ESSENTIALS"), cats = app.json("Object.keys(CATS)");
+  const agree = (cat, picked, why) => {
+    const shown = addRowShown(app.run);
+    assert.equal(shown.cat, cat, `${why}: category`);
+    if (Object.hasOwn(E, cat)) assert.deepEqual(shown.ess, { values: [...E[cat].map(e => e.id), "none"], picked }, `${why}: picker`);
+    else assert.equal(shown.ess, null, `${why}: no picker`);
+  };
+  const cat = value => app.fire("change", { id: "add-cat", dataset: { change: "addCat" }, value });
+  const ess = value => app.fire("change", { id: "add-ess", dataset: { change: "addEss" }, value });
+  agree("water", "", "to start");
+  for (const c of cats) { await cat(c); agree(c, "", c); }
+  await cat("documents"); await ess("cash");
+  agree("documents", "cash", "a picked essential");
+  await cat("tools");
+  agree("tools", "", "a new category starts on pick one");
+  // Values off the lists never leave the row showing one thing and holding another.
+  await ess("cash"); agree("tools", "", "an essential off the category's list");
+  await cat("constructor"); agree("water", "", "an unknown category");
+  // After adding, the row keeps its category and asks for the next item's essential.
+  const r = addRow(app);
+  await r.cat("documents"); await ess("cash"); r.pickEss("cash"); await r.add("Envelope of twenties");
+  assert.equal(app.writes().at(-1)[2].essential, "cash");
+  agree("documents", "", "after adding");
+});
+
+// The same in a real browser, the way Safari and iPhone leave it: tapping + keeps focus on the category select,
+// and render() puts back the focused control's value. Skipped when there's no Chrome.
+const { execFileSync } = require("node:child_process");
+const os = require("node:os");
+const { wrap } = require("../tools/page.js");
+const chrome = process.env.CHROME || ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(f => fs.existsSync(f));
+test("in a browser, the add row never shows a checklist category without its Essential picker", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-addrow-"));
+  try {
+    const probe = `<script>addEventListener("load", () => setTimeout(async () => { try {
+      const out = [], q = s => document.querySelector(s), wait = () => new Promise(r => setTimeout(r, 300));
+      const look = where => { const c = q("#add-cat"), e = q("#add-ess"); out.push({ where, cat: c.value, ess: e ? [...e.options].map(o => o.value).filter(Boolean) : null, picked: e ? e.value : null }); };
+      const pick = (sel, v) => { const n = q(sel); if (!n) return; n.focus(); n.value = v; n.dispatchEvent(new Event("change", { bubbles: true })); };
+      S.view = "kits"; S.openKit = "go"; render();
+      q("#add-name").value = "Passport copy"; pick("#add-cat", "documents");
+      q('[data-act="addItem"]').click(); await wait(); look("after + with Essential left on pick one");
+      pick("#add-cat", "fire_safety"); render(); look("drawn again with the category focused");
+      pick("#add-ess", "extinguisher"); render(); look("drawn again with the essential focused");
+      q("#add-name").value = "Extinguisher"; q("#add-cat").focus(); q('[data-act="addItem"]').click(); await wait(); look("after + with an essential picked");
+      out.push({ saved: S.items.filter(i => i.kitId === "go" && i.source === "manual").map(i => [i.name, i.category, i.essential ?? null]), ESS: ESSENTIALS });
+      document.body.dataset.out = JSON.stringify(out);
+    } catch (e) { document.body.dataset.out = JSON.stringify({ error: String(e && e.stack || e) }); } }, 500));</script>`;
+    fs.writeFileSync(path.join(dir, "page.html"), wrap(undefined, "tests/household").replace(/<\/body>(?![\s\S]*<\/body>)/, probe + "</body>"));
+    const html = execFileSync(chrome, ["--headless=new", "--disable-gpu", "--no-first-run", `--user-data-dir=${path.join(dir, "profile")}`,
+      "--virtual-time-budget=5000", "--dump-dom", `file://${path.join(dir, "page.html")}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 60000 });
+    const m = html.match(/<body[^>]* data-out="([^"]*)"/);
+    assert.ok(m, "the page reported nothing");
+    const out = JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&"));
+    assert.ok(Array.isArray(out), out.error);
+    const { saved, ESS } = out.pop();
+    for (const v of out) {
+      if (Object.hasOwn(ESS, v.cat)) assert.deepEqual(v.ess, [...ESS[v.cat].map(e => e.id), "none"], `${v.where}: ${v.cat} shows its picker`);
+      else assert.equal(v.ess, null, `${v.where}: ${v.cat} has no picker`);
+    }
+    assert.equal(out[0].cat, "documents", "the category the household chose stays");
+    assert.equal(out[2].picked, "extinguisher", "a picked essential stays");
+    assert.deepEqual(saved, [["Passport copy", "documents", null], ["Extinguisher", "fire_safety", "extinguisher"]]);
+  } finally { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 }); }
+});
