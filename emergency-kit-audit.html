@@ -2158,7 +2158,7 @@ const ACT = {
       await Promise.all(S.items.filter(i => i.example).map(i => delDoc("items", i.id)));
       await Promise.all(drop.map(k => delDoc("kits", k.id)));
       await Promise.all(keep.map(k => setDoc("kits", k.id, { ...strip(k), example: false })));
-      if (S.profile?.example) { await delDoc("household", "profile"); S.hhDraft = { members: [{ label: "", age: "adult", needs: "" }], pets: [], vehicles: 0, home: "House" }; S.hhDirty = false; }
+      if (S.profile?.example) { await delDoc("household", "profile"); S.hhDraft = blankHousehold(); S.hhDirty = false; }
       S.openKit = null; toast("Examples removed");
     } catch (_) {}
     render();
@@ -2332,7 +2332,9 @@ async function shareShop() {
 }
 
 /* ---------- boot ---------- */
-function syncDraft() { if (!S.hhDirty) S.hhDraft = clone(S.profile) || { members: [{ label: "", age: "adult", needs: "" }], pets: [], vehicles: 0, home: "House", location: "" }; }
+// The household form before anything is saved: a new household, and the one left after clearing the examples.
+function blankHousehold() { return { members: [{ label: "", age: "adult", needs: "" }], pets: [], vehicles: 0, home: "House", location: "" }; }
+function syncDraft() { if (!S.hhDirty) S.hhDraft = clone(S.profile) || blankHousehold(); }
 document.querySelectorAll("#tabs button").forEach(b => b.insertAdjacentHTML("afterbegin", icon(TAB_ICON[b.dataset.v])));
 syncDraft();
 render();
