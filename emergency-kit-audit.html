@@ -632,7 +632,7 @@ const S = {
   live: false, loaded: false, slow: false, canWrite: true,
   openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
-  scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, tag: null,
+  scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, tag: null, tagNoteOff: false,
 };
 let db = null, assets = null, sample = null;
 
@@ -946,6 +946,30 @@ function overallIfTagged(chosen) {
   const keep = S.items, by = new Map(chosen.map(r => [r.it.id, r.v]));
   S.items = keep.map(it => by.has(it.id) ? { ...it, essential: by.get(it.id) } : it);
   try { return model().overall; } finally { S.items = keep; }
+}
+/* The household score as it was before the five checklist categories counted named essentials: each of their
+   rows had any items toward an old need of 2 for tools and 1 for the rest. Every other row is as it is now. */
+function overallOldCount(M) {
+  const tw = M.active.reduce((a, r) => a + r.wt, 0);
+  if (!tw) return null;
+  return Math.round(M.active.reduce((a, r) => {
+    const st = M.stocks[r.hz.mode] || stock(kitsFor(r.hz));
+    return a + r.wt * scoreRows(r.rows.map(x => x.ess ? { ...x, cov: Math.min(1, haveOf(x.cat, st) / (x.cat === "tools" ? 2 : 1)) } : x));
+  }, 0) / tw);
+}
+/* Why readiness is lower while items saved before the essentials were named are untagged: the old count, the
+   score with every name guess saved (worked out in memory) and today's. Dismissed for the session only. */
+function viewTagNote(M) {
+  const tr = tagRows();
+  if (S.tagNoteOff || !tr.length || M.overall == null) return "";
+  const B = overallIfTagged(tr.filter(r => r.guess).map(r => ({ ...r, v: r.guess })));
+  return `<div class="notice" data-note="tags">
+    <div class="stack" style="gap:6px">
+      <p>Checklist rows now count named essentials. Your readiness goes <b class="mono">${overallOldCount(M)} → ${B}</b> once your items are tagged (<b class="mono">${M.overall}</b> until then). Nothing left a kit.</p>
+      <details class="how"><summary>Why did it drop?</summary><p>${esc(orList(Object.keys(ESSENTIALS).map(catLabel), "and"))} used to give full credit for any one item (two for tools). Now each needs one of each named essential, and an item counts once it's tagged with the one it is. Tag them from Next steps below.</p></details>
+    </div>
+    <button class="btn ghost sm" data-act="tagNoteOff">Dismiss</button>
+  </div>`;
 }
 /* Up to three things to do next: setup that changes every number first, then the gaps worth the most points. */
 function nextActions(M) {
@@ -1474,6 +1498,7 @@ function viewOverview(M) {
     <div class="grp-h"><span class="eyebrow">${label}</span>${note ? `<span class="small muted">${note}</span>` : ""}</div>
     <div class="hz">${rows.map(r => hzRow(r, h, M)).join("")}</div></div>` : ""; };
   return `
+  ${viewTagNote(M)}
   ${tr.length ? viewTagReview(tr) : `<div class="panel next">
     <div class="stack">
       <div class="stack" style="gap:2px">
@@ -2315,6 +2340,7 @@ function setPath(o, path, val) {
 const ACT = {
   tagOpen: () => { if (!S.canWrite) return; S.tag = { picks: new Map() }; render(); },
   tagCancel: () => { S.tag = null; render(); },
+  tagNoteOff: () => { S.tagNoteOff = true; render(); },
   // One write per row with a value chosen, each the item's doc with only `essential` set.
   tagSave: async () => {
     const rows = tagChosen();
