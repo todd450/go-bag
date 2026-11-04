@@ -1,6 +1,7 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "go-bag", "runtimeExecutable": "sh", "runtimeArgs": ["preview.sh"], "port": 8765 }
+    { "name": "go-bag", "runtimeExecutable": "sh", "runtimeArgs": ["preview.sh"], "port": 8765 },
+    { "name": "go-bag (test household)", "runtimeExecutable": "sh", "runtimeArgs": ["-c", "PORT=8766 sh preview.sh tests/household"], "port": 8766 }
   ]
 }
