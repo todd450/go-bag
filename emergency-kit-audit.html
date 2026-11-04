@@ -116,7 +116,6 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .ell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sum { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 12px 28px; }
 .sum-score { display: grid; gap: 8px; align-content: start; }
-.sum-note { grid-column: 1 / -1; border-top: 1px solid var(--rule); padding-top: 10px; }
 @media (max-width: 760px) { .sum { grid-template-columns: 1fr; } }
 .tab-n { font-size: .75rem; font-variant-numeric: tabular-nums; color: var(--ink-2); font-weight: 500; }
 .next { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px 32px; }
@@ -259,10 +258,8 @@ tr.addrow td { background: var(--paper); }
 .people { display: grid; gap: 10px; }
 .person { display: grid; grid-template-columns: minmax(0, 1.2fr) 76px minmax(0, 2fr) 32px; gap: 8px; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--rule); }
 .pneeds { grid-column: 1 / -1; font-size: .75rem; color: var(--ink-2); }
-.conds { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 16px; }
-.conds label { display: inline-flex; gap: 6px; align-items: center; font-size: .82rem; color: var(--ink-2); cursor: pointer; }
 .pet { display: grid; grid-template-columns: minmax(0, 1fr) 90px 32px; gap: 8px; align-items: center; max-width: 420px; }
-@media (max-width: 640px) { .person { grid-template-columns: minmax(0, 1fr) 76px 32px; } .person .needs { grid-column: 1 / -1; grid-row: 2; } .person .pneeds { grid-row: 3; } .person .conds { grid-row: 4; } }
+@media (max-width: 640px) { .person { grid-template-columns: minmax(0, 1fr) 76px 32px; } .person .needs { grid-column: 1 / -1; grid-row: 2; } .person .pneeds { grid-row: 3; } }
 .cond-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; align-items: start; }
 .cond { border: 1px solid var(--rule); border-radius: 12px; background: var(--card); transition: border-color .15s; }
 .cond:hover { border-color: var(--rule-2); }
