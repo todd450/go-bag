@@ -917,7 +917,42 @@ const hasCond = c => m => (m.conditions || []).includes(c);
 /* A prescription-only rescue medicine: who it's for, and asking their doctor for a spare for the kit. */
 const forWho = who => who.length ? ` for ${orList(who, "and")}` : "";
 const rxAsk = (who, what, doctor = "doctor") => `Prescription only. Ask ${who.length ? orList(who, "and") + "'s" : "the"} ${doctor} for ${what}`;
-function buyGuide(cat, qty, unit, kt, h) {
+/* What to buy for one named essential (ESSENTIALS): [line, price, tip]. The medications are worked out from who lives here. */
+const ESS_BUY = {
+  id_copies: ["Copies of everyone's ID, made at home", 0, "Copy the front and back of each driver's license, passport and birth certificate, and seal them in a zip-top bag. Keep the originals somewhere safe."],
+  insurance: ["Copies of your insurance cards, front and back", 0, "Health, home and car. Write each policy number and claims phone number on the copy."],
+  cash: ["Cash in small bills, in a waterproof pouch", 8, "$100 to $200 in ones, fives and tens. Card machines and ATMs stop working when the power's out. The cash isn't in the price."],
+  records: ["A USB drive with scans of your records", 10, "Scan IDs, insurance, prescriptions, deeds and medical records onto it. A printed set in a waterproof pouch works too."],
+  extinguisher: ["A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)", 45, "Mount it near the kitchen exit, not over the stove, and check its gauge every month."],
+  fire_blanket: ["A fire blanket for the kitchen", 20, "Hang it near the stove, not over it. It smothers a pan fire: never throw water on burning oil."],
+  escape_ladder: ["A fire escape ladder for an upstairs window", 45, "Keep it in the bedroom it hooks onto, and practice opening that window. A three-story ladder costs about $80."],
+  radio: ["A hand-crank NOAA emergency radio with a phone charger", 30, "It still gets weather alerts when phones and the internet are down. Crank it every few months to check it works."],
+  whistle: ["A loud safety whistle", 5, "Three blasts means help. It carries further than a voice and takes less breath than shouting."],
+  contact_list: ["A printed contact list, written at home", 0, "Family, neighbors, doctors, school and an out-of-area contact: phones die and numbers are hard to remember. Seal it in a zip-top bag."],
+  multitool: ["A multi-tool with a knife blade", 25, "Pliers, a knife, screwdrivers and a can opener cover most jobs."],
+  duct_tape: ["A roll of duct tape", 6, "It patches a tarp, a hose or a broken window. Wind a few feet around a pencil to save room in a go-bag."],
+  shutoff_wrench: ["A gas and water shut-off wrench", 12, "Hang it by the gas meter, and note where it is on the Plan tab. Only shut the gas off if you smell or hear a leak: the gas company has to turn it back on."],
+  fire_starter: ["A lighter and waterproof matches", 8, "Keep them dry in a zip-top bag. After an earthquake, never strike one indoors until you know there's no gas leak."],
+};
+/* Prescriptions are one line per person on daily medication. With several, every line names them all and
+   none says whose is already in a kit, since the kit doesn't record whose an item is. */
+function essentialGuide(id, h) {
+  const kids = [...whoIs(h, m => groupOf(m) === "infant"), ...whoIs(h, m => groupOf(m) === "child")];
+  const allergic = whoIs(h, hasCond("allergy")), onMeds = whoIs(h, onDailyMeds);
+  if (id === "pain_reliever") return { line: `A bottle of pain and fever reliever${kids.length ? `, plus children's ibuprofen for ${orList(kids, "and")}` : ""}`, price: kids.length ? 16 : 8,
+    tip: `Ibuprofen or acetaminophen. Store-brand versions work the same and cost much less.${kids.length ? " Children's doses go by weight: check the label." : ""}` };
+  if (id === "allergy_med") return { line: "A box of antihistamine allergy tablets", price: 8,
+    tip: allergic.length ? `It eases hives and itching, but it doesn't stop anaphylaxis: ${orList(allergic, "and")} still ${allergic.length > 1 ? "need" : "needs"} their epinephrine.` : "It eases hives, itching and hay fever. Many kinds don't make you drowsy." };
+  if (id === "prescriptions") return onMeds.length > 1
+    ? { line: `A spare week of prescriptions for ${orList(onMeds)}`, price: null, tip: `Prescription only. ${orList(onMeds, "and")} each need a spare week of their own, one line each. Ask each pharmacy about an early refill, swap the spare into daily use before it expires, and track refills on the Plan tab.` }
+    : { line: `A spare week of ${onMeds.length ? onMeds[0] + "'s " : ""}prescriptions`, price: null, tip: `${rxAsk(onMeds, "a spare week to keep in the kit", "pharmacy")}. Swap it into daily use before it expires, and track refills on the Plan tab.` };
+  const [line, price, tip] = ESS_BUY[id];
+  return { line, price, tip };
+}
+/* A line for a named essential (`ess`, on the category's own list) gets that essential's suggestion;
+   anything else, including old lines saved without one, gets the category's. */
+function buyGuide(cat, qty, unit, kt, h, ess) {
+  if (essentialList(cat).some(x => x.id === ess)) return essentialGuide(ess, h);
   const n = Math.max(1, Math.ceil(num(qty))), q = num(qty), go = kt === "go" || kt === "car";
   const kids = whoIs(h, m => groupOf(m) === "child"), little = whoIs(h, m => groupOf(m) === "infant");
   const allergic = whoIs(h, hasCond("allergy")), onMeds = whoIs(h, onDailyMeds);
@@ -1017,7 +1052,8 @@ function scoreIfBought(list) {
 function shopInfo(e, M) {
   if (!CATS[e.cat]) return { line: e.text, sub: "", tip: "", gain: 0 };
   const kt = S.kits.find(k => k.id === (e.done ? e.inKit : shopKit(e)))?.type || (Array.isArray(e.kits) && e.kits[0]) || "home";
-  const b = buyGuide(e.cat, e.qty, e.unit, kt, M.h);
+  const b = buyGuide(e.cat, e.qty, e.unit, kt, M.h, e.essential);
+  // The bold line says what to buy; below it, water and food say how much and everything else its category
   return { ...b, sub: e.unit ? e.text : catLabel(e.cat), gain: e.done || e.kitId === "none" || M.overall == null ? 0 : Math.max(0, scoreIfShopped(M, [e]) - M.overall) };
 }
 const money = p => p === undefined ? "" : p === null ? "Prescription" : p === 0 ? "From home" : `$${p}`;
