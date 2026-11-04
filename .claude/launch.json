@@ -2,6 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     { "name": "go-bag", "runtimeExecutable": "sh", "runtimeArgs": ["preview.sh"], "port": 8765 },
-    { "name": "go-bag (test household)", "runtimeExecutable": "sh", "runtimeArgs": ["-c", "PORT=8766 sh preview.sh tests/household"], "port": 8766 }
+    { "name": "go-bag (test household)", "runtimeExecutable": "sh", "runtimeArgs": ["-c", "PORT=8766 sh preview.sh tests/household"], "port": 8766 },
+    { "name": "go-bag (vercel build)", "runtimeExecutable": "sh", "runtimeArgs": ["-c", "python3 -m http.server 8767 --bind 127.0.0.1 --directory dist"], "port": 8767 }
   ]
 }
