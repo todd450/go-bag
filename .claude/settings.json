@@ -3,7 +3,8 @@
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5-5"
   },
   "enabledPlugins": {
-    "founding-agents@founding-agents": true
+    "founding-agents@founding-agents": true,
+    "compound-engineering@compound-engineering-plugin": false
   },
   "hooks": {
     "Stop": [
