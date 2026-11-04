@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Issue #29 · Option C · Confirm where you look (7 stars)</title>
+<style>
+/* Tokens and components copied from emergency-kit-audit.html. New components for this option are
+   marked NEW below: the essential pill (.pill), the where-label (.where) and the in-row question (.ask). */
+:root {
+  --paper: #F7F7F7; --card: #FFFFFF; --ink: #222222; --ink-2: #6A6A6A; --rule: #E4E4E4; --rule-2: #C8C8C8;
+  --accent: #222222; --accent-ink: #FFFFFF; --brand: #E0612A; --meter: #E0612A;
+  --good: #1F7A4A; --warn: #A86A12; --bad: #C1281B;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px rgba(0, 0, 0, .04);
+  --f-display: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121212; --card: #1C1C1C; --ink: #F2F2F2; --ink-2: #A3A3A3; --rule: #2E2E2E; --rule-2: #4A4A4A;
+    --accent: #F2F2F2; --accent-ink: #121212; --brand: #F07A45; --meter: #F07A45;
+    --good: #5BC489; --warn: #E2AE4A; --bad: #F2695C; --shadow: none; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--f-body); -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-weight: 600; text-wrap: balance; margin: 0; line-height: 1.25; letter-spacing: -.01em; }
+h2 { font-size: 1.2rem; letter-spacing: -.015em; }
+h3 { font-size: 1.05rem; }
+p { margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+.mono { font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-2); }
+.small { font-size: .85rem; }
+.eyebrow { font-size: .8rem; font-weight: 500; color: var(--ink-2); }
+.how { font-size: .85rem; color: var(--ink-2); }
+.how summary { cursor: pointer; width: fit-content; text-decoration: underline dotted; text-underline-offset: 3px; }
+.how p { max-width: 70ch; margin-top: 4px; }
+
+.top { position: sticky; top: 0; z-index: 5; background: var(--card); border-bottom: 1px solid var(--rule); }
+.top-in, .wrap { max-width: 1120px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
+.top-in { display: flex; align-items: center; justify-content: space-between; gap: 4px 24px; flex-wrap: wrap; padding-block: 12px 0; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark { position: relative; width: 28px; height: 28px; border-radius: 8px; background: var(--brand); flex: none; }
+.brand-mark::after { content: ""; position: absolute; inset: 7px 7px 8px; background: #fff; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.brand h1 { font-size: 1.1rem; }
+.hdr-score { font-size: .8rem; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; background: var(--paper); border-radius: 999px; padding: 4px 14px; }
+.hdr-score b { font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
+nav.tabs { display: flex; gap: 28px; overflow-x: auto; width: 100%; scrollbar-width: none; }
+nav.tabs button { display: flex; align-items: center; gap: 6px; background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 0 12px; font-weight: 500; font-size: .92rem; color: var(--ink-2); white-space: nowrap; }
+nav.tabs button .ic { display: none; }
+nav.tabs button[aria-current="page"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
+.tab-n { font-size: .75rem; font-variant-numeric: tabular-nums; color: var(--ink-2); font-weight: 500; }
+@media (max-width: 640px) {
+  .top-in { padding-block: 10px; flex-wrap: nowrap; }
+  .brand { min-width: 0; }
+  .brand h1 { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hdr-score { flex: none; padding: 3px 12px; }
+  .hdr-score .eyebrow:first-child { display: none; }
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; gap: 0; justify-content: space-around; background: var(--card); border-top: 1px solid var(--rule); padding: 6px 8px; }
+  nav.tabs button { flex: 1; flex-direction: column; gap: 3px; padding: 4px 0; border-bottom: 0; font-size: .7rem; position: relative; }
+  nav.tabs button .ic { display: block; width: 22px; height: 22px; }
+  nav.tabs .tab-n { position: absolute; top: 0; left: calc(50% + 8px); background: var(--brand); color: #fff; border-radius: 999px; padding: 0 5px; font-size: .65rem; line-height: 1.5; }
+  main.wrap { padding-bottom: 88px; }
+}
+
+main.wrap { padding-block: 20px 64px; display: grid; gap: 28px; }
+.stack { display: grid; gap: 10px; min-width: 0; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.panel { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 20px 24px; min-width: 0; box-shadow: var(--shadow); }
+@media (max-width: 560px) { .panel { padding: 16px; border-radius: 14px; } }
+.notice { border: 1px solid var(--rule); border-radius: 12px; background: var(--card); padding: 12px 16px; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-size: .9rem; }
+.notice p { max-width: 70ch; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 8px 18px; font-weight: 600; font-size: .9rem; cursor: pointer; }
+.btn.ghost { background: var(--card); color: var(--ink); border-color: var(--rule-2); }
+.btn.sm { min-height: 32px; padding: 4px 14px; font-size: .82rem; }
+.x { background: none; border: 0; color: var(--ink-2); cursor: pointer; padding: 4px 8px; border-radius: 999px; font-size: 1.1rem; line-height: 1; }
+select, input[type=text], input[type=number] { background: var(--card); border: 1px solid var(--rule-2); border-radius: 8px; padding: 7px 10px; min-width: 0; }
+label.f { display: grid; gap: 6px; font-size: .85rem; font-weight: 500; color: var(--ink-2); }
+label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-weight: 400; }
+
+.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.ic-s { width: 14px; height: 14px; }
+.next { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px 32px; }
+.next .sum-score { order: -1; border-right: 1px solid var(--rule); padding-right: 28px; }
+.sum-score { display: grid; gap: 8px; align-content: start; }
+@media (max-width: 760px) { .next { grid-template-columns: 1fr; } .next .sum-score { border-right: 0; padding-right: 0; border-bottom: 1px solid var(--rule); padding-bottom: 16px; } }
+.acts { list-style: none; margin: 0; padding: 0; display: grid; }
+.act { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 6px 14px; align-items: start; padding: 14px 0; border-top: 1px solid var(--rule); }
+.act-n { width: 40px; height: 40px; border-radius: 12px; background: var(--paper); color: var(--ink); display: grid; place-items: center; }
+.act-n .ic { width: 20px; height: 20px; }
+.act-b { display: grid; gap: 2px; min-width: 0; }
+.act-b b { font-size: 1rem; font-weight: 600; }
+.act-do { display: flex; align-items: center; gap: 12px; padding-top: 2px; }
+.gain { color: var(--good); font-size: .85rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) { .act { grid-template-columns: 40px minmax(0, 1fr); } .act-do { grid-column: 2; } }
+.score { display: flex; align-items: baseline; gap: 6px; }
+.ring { position: relative; width: 132px; height: 132px; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 11; }
+.ring .trk { stroke: var(--rule); }
+.ring .val { stroke: var(--c); stroke-linecap: round; }
+.ring .score { position: absolute; inset: 0; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.ring .score .num { font-size: 2.6rem; font-weight: 700; line-height: .9; letter-spacing: -.04em; }
+.ring .score .of { font-size: .78rem; color: var(--ink-2); }
+.band { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.band i { width: 9px; height: 9px; border-radius: 2px; }
+
+.sec-h { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
+.grp { display: grid; gap: 4px; }
+.grp-h { display: grid; gap: 2px; }
+.hz { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--rule); }
+.hz-row { display: grid; grid-template-columns: minmax(0, 1fr) 104px 56px 36px 24px; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
+.hz-name { display: flex; gap: 8px; align-items: baseline; background: none; border: 0; padding: 2px 0; text-align: left; cursor: pointer; min-width: 0; overflow: hidden; white-space: nowrap; }
+.hz-name b { font-weight: 600; }
+.mode { font-size: .8rem; color: var(--ink-2); }
+.bar { height: 6px; background: var(--rule); border-radius: 999px; overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--c); border-radius: 999px; }
+.pct { font-size: .85rem; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.hz-lvl .pri { color: var(--brand); }
+.hz-detail { grid-column: 1 / -1; display: grid; gap: 8px; padding: 4px 0 12px; }
+.hz-like { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--ink-2); }
+.lvl { font-size: .8rem; padding: 4px 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; border: 1px solid transparent; background: var(--paper); color: var(--ink); border-radius: 999px; padding: 4px 11px 4px 9px; font-variant-numeric: tabular-nums; }
+.chip .ic { color: var(--ink-2); }
+.chip.full { border-color: color-mix(in srgb, var(--good) 30%, transparent); background: color-mix(in srgb, var(--good) 9%, var(--card)); }
+.chip.full .ic { color: var(--good); }
+@media (max-width: 560px) {
+  .hz-row { grid-template-columns: minmax(0, 1fr) 100px 36px 24px; }
+  .hz-row > .bar, .hz-name .mode { display: none; }
+}
+
+/* Shopping */
+.shop { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--rule); }
+.shop-row { display: grid; grid-template-columns: minmax(0, 1fr) 84px 200px 28px; gap: 4px 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.shop-chk { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; min-width: 0; }
+.shop-chk input { width: 20px; height: 20px; margin: 0; accent-color: var(--ink); flex: none; }
+.shop-chk > .ic { color: var(--ink-2); margin-top: 1px; }
+.shop-chk > span { display: grid; gap: 2px; min-width: 0; }
+.shop-row.done b { text-decoration: line-through; color: var(--ink-2); font-weight: 500; }
+.shop-kit select { width: 100%; font-size: .85rem; }
+.shop-meta { display: grid; justify-items: end; gap: 2px; font-variant-numeric: tabular-nums; }
+.shop-row.flash { background: color-mix(in srgb, var(--good) 10%, transparent); }
+@media (max-width: 560px) {
+  .shop-row { grid-template-columns: minmax(0, 1fr) 28px; }
+  .shop-meta { grid-column: 1; grid-row: 2; display: flex; gap: 10px; justify-content: flex-start; padding-left: 62px; }
+  .shop-kit { grid-column: 1; grid-row: 3; padding-left: 62px; }
+  .shop-row > .x { align-self: start; }
+}
+
+/* Inventory card (phone layout of the item table) */
+.tbl-wrap { border: 1px solid var(--rule); border-radius: 14px; background: var(--card); box-shadow: var(--shadow); padding: 10px 12px; }
+.inv-card { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.6fr) 64px; gap: 8px 10px; align-items: end; }
+.inv-card .f { font-size: .7rem; font-weight: 400; gap: 2px; }
+.inv-card .f > select, .inv-card .f > input { font-size: .86rem; padding: 5px 6px; width: 100%; }
+.cat-in { display: flex; align-items: center; gap: 6px; }
+.cat-in .ic { color: var(--ink-2); }
+.cat-in select { flex: 1; min-width: 0; }
+@media (max-width: 560px) { .inv-card { grid-template-columns: minmax(0, 1fr) 64px; } .inv-card .f-name, .inv-card .f-cat, .inv-card .f-ess { grid-column: 1 / -1; } }
+
+.toast { background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 12px; font-size: .88rem; display: flex; gap: 14px; align-items: center; justify-content: space-between; width: fit-content; max-width: 100%; }
+.toast button { background: none; color: inherit; border: 1px solid currentColor; border-radius: 999px; padding: 3px 12px; font-weight: 600; font-size: .82rem; }
+
+/* ---------- NEW: essentials block (B and C share it) ---------- */
+.ess { display: grid; gap: 8px; padding: 10px 0 12px; border-top: 1px solid var(--rule); }
+.ess-h { display: grid; grid-template-columns: auto minmax(0, 1fr) auto 72px; gap: 8px; align-items: center; font-size: .9rem; }
+.ess-h .ic { color: var(--ink-2); }
+.ess-h b { font-weight: 600; }
+.ess-h .cnt { font-weight: 600; font-variant-numeric: tabular-nums; font-size: .85rem; }
+.ess-foot { display: flex; gap: 6px 12px; align-items: center; flex-wrap: wrap; }
+
+/* ---------- NEW: essential pill ---------- */
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { display: inline-flex; align-items: flex-start; gap: 6px; font-size: .8rem; line-height: 1.35; border: 1px solid var(--rule-2); background: var(--card); color: var(--ink); border-radius: 14px; padding: 5px 11px 5px 8px; max-width: 100%; font-variant-numeric: tabular-nums; }
+.pill > .ic { margin-top: 1px; color: var(--ink-2); }
+.pill.have { border-color: color-mix(in srgb, var(--good) 30%, transparent); background: color-mix(in srgb, var(--good) 9%, var(--card)); }
+.pill.have > .ic { color: var(--good); }
+.pill .pt { color: var(--good); font-weight: 600; }
+.pill .one { color: var(--ink-2); }
+.pill-t { display: flex; flex-wrap: wrap; gap: 0 6px; min-width: 0; }
+.pill-t > b { font-weight: 600; }
+.pill.miss { border-style: dashed; }
+
+/* ---------- NEW: where-label (on a present pill) ---------- */
+.where { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-2); white-space: nowrap; }
+.where .ic { width: 13px; height: 13px; }
+.where::before { content: "·"; margin-right: 2px; }
+
+/* ---------- NEW: in-row question ---------- */
+.ask { display: grid; gap: 8px; border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--rule)); background: color-mix(in srgb, var(--warn) 6%, var(--card)); border-radius: 12px; padding: 10px 12px; }
+.ask-q { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; align-items: start; }
+.ask-q > .ic { color: var(--warn); margin-top: 2px; }
+.ask-q b { font-weight: 600; }
+.ask-a { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 26px; }
+.ask-a .btn .gain { font-size: .78rem; }
+.ask-note { padding-left: 26px; }
+.qcount { display: flex; gap: 8px; align-items: flex-start; font-size: .85rem; padding: 6px 10px; border-radius: 10px; background: var(--paper); }
+.qcount .ic { color: var(--warn); margin-top: 3px; }
+
+/* Mockup scaffolding (not product UI) */
+.frame-h { display: grid; gap: 4px; border-top: 2px solid var(--ink); padding-top: 12px; }
+.frame-h h2 { font-size: 1.05rem; }
+.lead { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 900px) { .lead { grid-template-columns: 1fr; } }
+.notes { display: grid; gap: 12px; font-size: .88rem; }
+.notes dl { margin: 0; display: grid; gap: 10px; }
+.notes dt { font-weight: 600; }
+.notes dd { margin: 0; color: var(--ink-2); }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 760px) { .pair { grid-template-columns: 1fr; } }
+.pair > .panel { align-content: start; }
+.pair .tag { font-size: .75rem; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+.cost { display: grid; gap: 8px; font-size: .9rem; }
+.cost ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7M6 9.5V20h12V9.5M10 20v-5h4v5"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="M4 16v-4l2.5-5h11l2.5 5v4zM4 12h16"/><circle cx="8" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/></symbol>
+    <symbol id="i-cart" viewBox="0 0 24 24"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></symbol>
+    <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4h11l-2 4 2 4H5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10"/><path d="m3.5 6 1.5 1.5 2.5-2.5M3.5 12l1.5 1.5 2.5-2.5M3.5 18l1.5 1.5 2.5-2.5"/></symbol>
+    <symbol id="i-documents" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
+    <symbol id="i-fire" viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="13" rx="2"/><path d="M12 8V5H8M12 5l4-1.5"/></symbol>
+    <symbol id="i-meds" viewBox="0 0 24 24"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/></symbol>
+    <symbol id="i-light" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></symbol>
+    <symbol id="i-clothing" viewBox="0 0 24 24"><path d="M8 4L3 7l2 4 2-1v10h10V10l2 1 2-4-5-3a4 4 0 0 1-8 0z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-open" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></symbol>
+    <symbol id="i-ask" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.5a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2-2.4 3.6M12 17h.01"/></symbol>
+  </defs>
+</svg>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><h1>Emergency Kit Audit</h1></div>
+    <div class="hdr-score"><span class="eyebrow">Readiness</span><b>33</b><span class="eyebrow">/ 100</span></div>
+    <nav class="tabs" aria-label="Sections">
+      <button aria-current="page"><svg class="ic"><use href="#i-gauge"/></svg>Readiness</button>
+      <button><svg class="ic"><use href="#i-bag"/></svg>Kits</button>
+      <button><svg class="ic"><use href="#i-cart"/></svg>Shopping</button>
+      <button><svg class="ic"><use href="#i-person"/></svg>Household</button>
+      <button><svg class="ic"><use href="#i-flag"/></svg>Plan</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ================= FRAME 5 · KEY MOMENT ================= -->
+<section class="stack" aria-labelledby="f5">
+  <p class="eyebrow" id="f5">Option C · Confirm where you look (7 stars) · Frame 5 · House fire, opened. The moment that matters most</p>
+
+  <div class="lead">
+    <div class="stack">
+      <div class="sec-h"><h2>Emergencies</h2><span class="small muted">Open one to see what it needs, or to change how likely it is</span></div>
+      <div class="grp">
+        <div class="grp-h"><span class="eyebrow">Disasters and outages</span></div>
+        <div class="hz">
+          <div class="hz-row">
+            <button class="hz-name" aria-expanded="true"><b>House fire</b><span class="mode">Evacuate · 24 h</span></button>
+            <div class="hz-lvl small muted">Moderate risk</div>
+            <div class="bar" style="--c:var(--warn)"><span style="width:32%"></span></div>
+            <div class="pct">32%</div>
+            <button class="x" aria-label="Close House fire">−</button>
+            <div class="hz-detail">
+              <p class="small"><b>Life-threatening if you're unprepared:</b> minutes matter. Counts 4× in your score.</p>
+              <p class="small muted">Needs sized for 5 people and 1 pet over 24 hours.</p>
+
+              <!-- NEW: question count across emergencies -->
+              <div class="qcount"><svg class="ic ic-s"><use href="#i-ask"/></svg><span><b>1 question left</b>, in Documents &amp; cash below. You confirmed 6 items here. None are waiting in other emergencies.</span></div>
+
+              <!-- Fire safety -->
+              <div class="ess">
+                <div class="ess-h"><svg class="ic ic-s"><use href="#i-fire"/></svg><b>Fire safety</b><span class="cnt">1 of 3</span><div class="bar" style="--c:var(--warn)"><span style="width:33%"></span></div></div>
+                <div class="pills">
+                  <span class="pill have"><svg class="ic ic-s"><use href="#i-check"/></svg><span class="pill-t"><b>Fire extinguisher</b><span class="where"><svg class="ic"><use href="#i-home"/></svg>Basement bin</span></span></span>
+                  <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">Fire blanket <span class="pt">+2</span></span></span>
+                  <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">Escape ladder <span class="pt">+1</span></span></span>
+                </div>
+                <div class="ess-foot"><button class="btn ghost sm">Add 2 to list</button></div>
+              </div>
+
+              <!-- Documents & cash, with the in-row question -->
+              <div class="ess">
+                <div class="ess-h"><svg class="ic ic-s"><use href="#i-documents"/></svg><b>Documents &amp; cash</b><span class="cnt">1 of 4</span><div class="bar" style="--c:var(--warn)"><span style="width:25%"></span></div></div>
+                <div class="pills">
+                  <span class="pill have"><svg class="ic ic-s"><use href="#i-check"/></svg><span class="pill-t"><b>Cash</b><span class="where"><svg class="ic"><use href="#i-bag"/></svg>Hall closet go-bag</span></span></span>
+                  <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">ID copies <span class="pt">+1</span></span></span>
+                  <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">Insurance cards <span class="pt">+1</span></span></span>
+                  <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">Records (USB or printed) <span class="pt">+1</span></span></span>
+                </div>
+                <div class="ask" role="group" aria-label="Question about Zip pouch of papers">
+                  <div class="ask-q"><svg class="ic"><use href="#i-ask"/></svg>
+                    <span><b>Zip pouch of papers: which is it?</b><br><span class="small muted">In Hall closet go-bag. It doesn't count until you say.</span></span></div>
+                  <div class="ask-a">
+                    <button class="btn ghost sm">ID copies <span class="gain">+1</span></button>
+                    <button class="btn ghost sm">Insurance cards <span class="gain">+1</span></button>
+                    <button class="btn ghost sm">Records <span class="gain">+1</span></button>
+                    <button class="btn ghost sm">Cash <span class="muted">· have it</span></button>
+                    <button class="btn ghost sm">None of these</button>
+                  </div>
+                  <p class="small muted ask-note">Your answer saves one tag on this item, right away. Change it any time on the Kits tab.</p>
+                </div>
+                <div class="ess-foot"><button class="btn ghost sm">Add 3 to list</button></div>
+              </div>
+
+              <!-- Medications -->
+              <div class="ess">
+                <div class="ess-h"><svg class="ic ic-s"><use href="#i-meds"/></svg><b>Medications</b><span class="cnt">1 of 3</span><div class="bar" style="--c:var(--warn)"><span style="width:33%"></span></div></div>
+                <div class="pills">
+                  <span class="pill have"><svg class="ic ic-s"><use href="#i-check"/></svg><span class="pill-t"><b>Pain or fever reliever</b><span class="one">· 4 items, counts once</span><span class="where"><svg class="ic"><use href="#i-bag"/></svg>Hall closet go-bag</span></span></span>
+                  <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">Allergy medicine <span class="pt">+2</span></span></span>
+                  <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">Sam's prescriptions <span class="pt">+2</span></span></span>
+                </div>
+                <p class="small muted">Counted once from Ibuprofen 200 mg, Children's Tylenol, Acetaminophen 500 mg and Advil Liqui-Gels. Old ibuprofen (expired 2020-01) doesn't count.</p>
+                <div class="ess-foot"><button class="btn ghost sm">Add 2 to list</button></div>
+              </div>
+
+              <!-- Quantity categories, unchanged -->
+              <div class="ess">
+                <span class="eyebrow">Counted by amount, as before</span>
+                <div class="chips">
+                  <span class="chip"><svg class="ic ic-s"><use href="#i-light"/></svg>Light · 2 of 3</span>
+                  <span class="chip"><svg class="ic ic-s"><use href="#i-clothing"/></svg>Clothing · 0 of 5</span>
+                </div>
+              </div>
+              <label class="hz-like small">How likely is this for you?
+                <select class="lvl" aria-label="Likelihood of House fire"><option>Moderate</option></select></label>
+            </div>
+          </div>
+          <div class="hz-row">
+            <button class="hz-name"><b>Short-notice evacuation</b><span class="mode">Evacuate · 72 h</span></button>
+            <div class="hz-lvl small muted">Moderate risk</div>
+            <div class="bar" style="--c:var(--rule)"><span style="width:0"></span></div>
+            <div class="pct muted">…</div>
+            <button class="x" aria-label="Open Short-notice evacuation">+</button>
+          </div>
+        </div>
+        <p class="small muted">The other emergencies sit below as they do today. Their scores are not drawn in this mockup.</p>
+      </div>
+    </div>
+
+    <aside class="panel notes" aria-label="What this option adds">
+      <p class="eyebrow">What's new in this frame</p>
+      <dl>
+        <dt>Where-label <span class="muted">(new component)</span></dt>
+        <dd>Every ticked essential names the bag to open to check it: <i>Cash · Hall closet go-bag</i>, <i>Fire extinguisher · Basement bin</i>. Green can be checked against the closet, not just believed.</dd>
+        <dt>Question in the row <span class="muted">(new component)</span></dt>
+        <dd>An item the app can't place sits inside the row it would fill, with each answer's points on the button. One tap saves one tag and the row re-reads in place. There's no separate review list.</dd>
+        <dt>Essential pill <span class="muted">(new component, shared with B)</span></dt>
+        <dd>Ticked pills for what's there, dashed pills with points for what's missing. Four pain relievers show as one pill that says it counts once.</dd>
+        <dt>What has to be trusted here</dt>
+        <dd>That green means ready, and that a tap saved only what it said. The row names each essential, where it is, and what each answer is worth before it's tapped.</dd>
+        <dt>Found while building this</dt>
+        <dd>House fire is an evacuation, so today it counts go-bags and car kits only. The storyboard's extinguisher is in Basement bin, which House fire wouldn't count. The where-label is what makes that visible. The build has to choose: count home kits for House fire's Fire safety, or show the extinguisher as missing with "In Basement bin, which House fire doesn't count".</dd>
+      </dl>
+    </aside>
+  </div>
+</section>
+
+<!-- ================= FRAME 3 ================= -->
+<section class="stack" aria-labelledby="f3">
+  <div class="frame-h"><p class="eyebrow" id="f3">Frame 3 · Readiness, first open after the change</p><h2>The drop is explained before the number is read</h2></div>
+
+  <div class="notice">
+    <p><b>Your score now counts named essentials.</b> It went from 41 to 22. Nothing left a kit: the old count gave a whole category to any one item, so one envelope of cash filled Documents &amp; cash. Some items need a yes from you; they're waiting in the emergencies they'd count for. Answer all 7 and it's 33.</p>
+    <details class="how"><summary>Which rows changed?</summary><p>Documents &amp; cash, Fire safety and Medications now count named essentials. Comms and Tools still count items for now. Water, food, light and other supplies still count by amount.</p></details>
+  </div>
+
+  <div class="panel next">
+    <div class="stack">
+      <div class="stack" style="gap:2px">
+        <p class="eyebrow">Next steps</p>
+        <h2>Your next 3 steps</h2>
+        <p class="small muted">Confirming the 7 items and adding these 2 takes readiness from 22 to 37.</p>
+      </div>
+      <ol class="acts">
+        <li class="act">
+          <span class="act-n"><svg class="ic"><use href="#i-list"/></svg></span>
+          <div class="act-b"><b>Confirm 7 items in House fire</b>
+            <p class="small">Cash envelope, Zip pouch of papers, 4 pain relievers and the fire extinguisher. House fire has the most points waiting, so it opens there.</p>
+            <p class="small muted">Each answer saves one tag. Nothing is saved until you tap.</p></div>
+          <div class="act-do"><span class="gain mono">+11</span><button class="btn sm">Open House fire</button></div>
+        </li>
+        <li class="act">
+          <span class="act-n"><svg class="ic"><use href="#i-fire"/></svg></span>
+          <div class="act-b"><b>Add a fire blanket</b><p class="small">Fire safety has a fire extinguisher, and no fire blanket or escape ladder.</p></div>
+          <div class="act-do"><span class="gain mono">+2</span><button class="btn ghost sm">Add to list</button></div>
+        </li>
+        <li class="act">
+          <span class="act-n"><svg class="ic"><use href="#i-meds"/></svg></span>
+          <div class="act-b"><b>Add allergy medicine</b><p class="small">Riley has a severe allergy, and no kit has an antihistamine.</p></div>
+          <div class="act-do"><span class="gain mono">+2</span><button class="btn ghost sm">Add to list</button></div>
+        </li>
+      </ol>
+    </div>
+    <div class="sum-score">
+      <p class="eyebrow">Household readiness</p>
+      <div class="ring" style="--c:var(--warn)" role="img" aria-label="Readiness 22 out of 100">
+        <svg viewBox="0 0 132 132" aria-hidden="true"><circle class="trk" cx="66" cy="66" r="56"/><circle class="val" cx="66" cy="66" r="56" pathLength="100" stroke-dasharray="22 100"/></svg>
+        <div class="score"><span class="num" style="color:var(--warn)">22</span><span class="of">of 100</span></div>
+      </div>
+      <span class="band"><i style="background:var(--warn)"></i>Low</span>
+      <p class="small muted">41 under the old count. 33 once your 7 items are confirmed.</p>
+      <p class="mono small muted">5 people · 1 pet · 3 kits</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FRAME 4 (folded into 5) ================= -->
+<section class="stack" aria-labelledby="f4">
+  <div class="frame-h"><p class="eyebrow" id="f4">Frame 4 · Tagging happens in the row, so there is no review screen</p><h2>One answer, one save, the row re-reads on the spot</h2></div>
+
+  <div class="pair">
+    <div class="panel stack">
+      <span class="tag">Medications, before</span>
+      <div class="ess" style="border-top:0;padding-top:0">
+        <div class="ess-h"><svg class="ic ic-s"><use href="#i-meds"/></svg><b>Medications</b><span class="cnt">0 of 3</span><div class="bar" style="--c:var(--bad)"><span style="width:0"></span></div></div>
+        <div class="pills">
+          <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">Pain or fever reliever <span class="pt">+2</span></span></span>
+          <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">Allergy medicine <span class="pt">+2</span></span></span>
+          <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">Sam's prescriptions <span class="pt">+2</span></span></span>
+        </div>
+        <div class="ask">
+          <div class="ask-q"><svg class="ic"><use href="#i-ask"/></svg>
+            <span><b>Ibuprofen 200 mg and 3 more: pain or fever reliever?</b><br><span class="small muted">Children's Tylenol, Acetaminophen 500 mg and Advil Liqui-Gels, all in Hall closet go-bag.</span></span></div>
+          <div class="ask-a"><button class="btn sm">Yes <span class="gain" style="color:inherit">+2</span></button><button class="btn ghost sm">Not this</button><button class="btn ghost sm">One at a time</button></div>
+          <p class="small muted ask-note">Yes saves the tag on these 4 items. They count once.</p>
+        </div>
+      </div>
+    </div>
+    <div class="panel stack">
+      <span class="tag">After tapping Yes</span>
+      <div class="ess" style="border-top:0;padding-top:0">
+        <div class="ess-h"><svg class="ic ic-s"><use href="#i-meds"/></svg><b>Medications</b><span class="cnt">1 of 3</span><div class="bar" style="--c:var(--warn)"><span style="width:33%"></span></div></div>
+        <div class="pills">
+          <span class="pill have"><svg class="ic ic-s"><use href="#i-check"/></svg><span class="pill-t"><b>Pain or fever reliever</b><span class="one">· 4 items, counts once</span><span class="where"><svg class="ic"><use href="#i-bag"/></svg>Hall closet go-bag</span></span></span>
+          <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">Allergy medicine <span class="pt">+2</span></span></span>
+          <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">Sam's prescriptions <span class="pt">+2</span></span></span>
+        </div>
+      </div>
+      <div class="toast" role="status"><span>Saved: 4 items are pain or fever relievers.</span><button>Undo</button></div>
+    </div>
+  </div>
+
+  <div class="pair">
+    <div class="panel stack">
+      <span class="tag">Documents &amp; cash, before (as in frame 5)</span>
+      <div class="ess" style="border-top:0;padding-top:0">
+        <div class="ess-h"><svg class="ic ic-s"><use href="#i-documents"/></svg><b>Documents &amp; cash</b><span class="cnt">1 of 4</span><div class="bar" style="--c:var(--warn)"><span style="width:25%"></span></div></div>
+        <div class="pills">
+          <span class="pill have"><svg class="ic ic-s"><use href="#i-check"/></svg><span class="pill-t"><b>Cash</b><span class="where"><svg class="ic"><use href="#i-bag"/></svg>Hall closet go-bag</span></span></span>
+          <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">Records (USB or printed) <span class="pt">+1</span></span></span>
+        </div>
+        <div class="ask">
+          <div class="ask-q"><svg class="ic"><use href="#i-ask"/></svg><span><b>Zip pouch of papers: which is it?</b></span></div>
+          <div class="ask-a"><button class="btn ghost sm">ID copies</button><button class="btn ghost sm">Insurance cards</button><button class="btn sm">Records <span class="gain" style="color:inherit">+1</span></button><button class="btn ghost sm">None of these</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel stack">
+      <span class="tag">After tapping Records</span>
+      <div class="ess" style="border-top:0;padding-top:0">
+        <div class="ess-h"><svg class="ic ic-s"><use href="#i-documents"/></svg><b>Documents &amp; cash</b><span class="cnt">2 of 4</span><div class="bar" style="--c:var(--warn)"><span style="width:50%"></span></div></div>
+        <div class="pills">
+          <span class="pill have"><svg class="ic ic-s"><use href="#i-check"/></svg><span class="pill-t"><b>Cash</b><span class="where"><svg class="ic"><use href="#i-bag"/></svg>Hall closet go-bag</span></span></span>
+          <span class="pill have"><svg class="ic ic-s"><use href="#i-check"/></svg><span class="pill-t"><b>Records (USB or printed)</b><span class="where"><svg class="ic"><use href="#i-bag"/></svg>Hall closet go-bag</span></span></span>
+          <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">ID copies <span class="pt">+1</span></span></span>
+          <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">Insurance cards <span class="pt">+1</span></span></span>
+        </div>
+        <div class="qcount"><svg class="ic ic-s" style="color:var(--good)"><use href="#i-check"/></svg><span><b>No questions left.</b> Readiness 33 → 34, the +1 the button showed.</span></div>
+      </div>
+      <div class="toast" role="status"><span>Saved: Zip pouch of papers is Records.</span><button>Undo</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FRAME 6/8 ================= -->
+<section class="stack" aria-labelledby="f6">
+  <div class="frame-h"><p class="eyebrow" id="f6">Frames 6 and 8 · Shopping list, one line ticked</p><h2>One line per missing essential; a ticked line lands in the kit shown</h2></div>
+  <div class="two">
+    <div class="panel stack">
+      <div class="row" style="justify-content:space-between"><b>5 to buy</b><span class="small muted mono">Readiness 35 → 43 if you get them all</span></div>
+      <ul class="shop">
+        <li class="shop-row">
+          <label class="shop-chk"><input type="checkbox"><svg class="ic"><use href="#i-fire"/></svg><span><b>Fire blanket</b><span class="small muted">Fire safety · for house fire</span></span></label>
+          <div class="shop-meta"><span class="gain mono">+2</span><span class="small muted">$25</span></div>
+          <div class="shop-kit"><select aria-label="Kit for Fire blanket"><option>Goes in Basement bin</option></select></div>
+          <button class="x" aria-label="Remove Fire blanket">×</button>
+        </li>
+        <li class="shop-row">
+          <label class="shop-chk"><input type="checkbox"><svg class="ic"><use href="#i-meds"/></svg><span><b>Allergy medicine (antihistamine)</b><span class="small muted">Medications · for house fire, evacuation, wildfire and more</span></span></label>
+          <div class="shop-meta"><span class="gain mono">+2</span><span class="small muted">$10</span></div>
+          <div class="shop-kit"><select aria-label="Kit for Allergy medicine"><option>Goes in Hall closet go-bag</option></select></div>
+          <button class="x" aria-label="Remove Allergy medicine">×</button>
+        </li>
+        <li class="shop-row">
+          <label class="shop-chk"><input type="checkbox"><svg class="ic"><use href="#i-meds"/></svg><span><b>Sam's prescriptions, 7-day spare</b><span class="small muted">Medications · ask the pharmacy for an early refill</span></span></label>
+          <div class="shop-meta"><span class="gain mono">+2</span></div>
+          <div class="shop-kit"><select aria-label="Kit for Sam's prescriptions"><option>Goes in Hall closet go-bag</option></select></div>
+          <button class="x" aria-label="Remove Sam's prescriptions">×</button>
+        </li>
+        <li class="shop-row">
+          <label class="shop-chk"><input type="checkbox"><svg class="ic"><use href="#i-documents"/></svg><span><b>ID copies</b><span class="small muted">Documents &amp; cash · for house fire and 2 other emergencies</span></span></label>
+          <div class="shop-meta"><span class="gain mono">+1</span><span class="small muted">$0 From home</span></div>
+          <div class="shop-kit"><select aria-label="Kit for ID copies"><option>Goes in Hall closet go-bag</option></select></div>
+          <button class="x" aria-label="Remove ID copies">×</button>
+        </li>
+        <li class="shop-row">
+          <label class="shop-chk"><input type="checkbox"><svg class="ic"><use href="#i-fire"/></svg><span><b>Escape ladder</b><span class="small muted">Fire safety · for house fire</span></span></label>
+          <div class="shop-meta"><span class="gain mono">+1</span><span class="small muted">$45</span></div>
+          <div class="shop-kit"><select aria-label="Kit for Escape ladder"><option>Goes in Basement bin</option></select></div>
+          <button class="x" aria-label="Remove Escape ladder">×</button>
+        </li>
+        <li class="shop-row done flash">
+          <label class="shop-chk"><input type="checkbox" checked><svg class="ic"><use href="#i-documents"/></svg><span><b>Insurance card copies</b></span></label>
+          <div class="shop-meta"><span class="gain mono">+1 added</span></div>
+          <div class="shop-kit"><span class="small muted">In Hall closet go-bag · tagged Insurance cards</span></div>
+          <button class="x" aria-label="Remove Insurance card copies">×</button>
+        </li>
+      </ul>
+    </div>
+    <div class="panel stack">
+      <p class="eyebrow">Back in House fire, after the tick</p>
+      <div class="ess" style="border-top:0;padding-top:0">
+        <div class="ess-h"><svg class="ic ic-s"><use href="#i-documents"/></svg><b>Documents &amp; cash</b><span class="cnt">3 of 4</span><div class="bar" style="--c:var(--meter)"><span style="width:75%"></span></div></div>
+        <div class="pills">
+          <span class="pill have"><svg class="ic ic-s"><use href="#i-check"/></svg><span class="pill-t"><b>Cash</b><span class="where"><svg class="ic"><use href="#i-bag"/></svg>Hall closet go-bag</span></span></span>
+          <span class="pill have"><svg class="ic ic-s"><use href="#i-check"/></svg><span class="pill-t"><b>Records (USB or printed)</b><span class="where"><svg class="ic"><use href="#i-bag"/></svg>Hall closet go-bag</span></span></span>
+          <span class="pill have"><svg class="ic ic-s"><use href="#i-check"/></svg><span class="pill-t"><b>Insurance cards</b><span class="where"><svg class="ic"><use href="#i-bag"/></svg>Hall closet go-bag</span></span></span>
+          <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">ID copies <span class="pt">+1</span></span></span>
+        </div>
+      </div>
+      <p class="small">The where-label reads the kit the line was ticked into. Readiness <b class="mono">34 → 35</b>, the +1 the line showed.</p>
+      <p class="small muted">Had the line been set to "Goes in Trunk bag", the same pill would read <i>Insurance cards · Trunk bag</i>: the label always names the bag to open.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FRAME 9 ================= -->
+<section class="stack" aria-labelledby="f9">
+  <div class="frame-h"><p class="eyebrow" id="f9">Frame 9 · Kits, item editor (small)</p><h2>The same tag, set by hand: Essential sits beside Category</h2></div>
+  <div class="two">
+    <div class="stack">
+      <div class="tbl-wrap">
+        <div class="inv-card">
+          <label class="f f-name">Item<input type="text" value="Zip pouch of papers"></label>
+          <label class="f f-cat">Category<span class="cat-in"><svg class="ic ic-s"><use href="#i-documents"/></svg><select><option>Documents &amp; cash</option></select></span></label>
+          <label class="f f-ess">Essential<select><option>Records (USB or printed)</option><option>ID copies</option><option>Insurance cards</option><option>Cash</option><option>Not one of these</option></select></label>
+          <label class="f">Qty<input type="number" value="1"></label>
+        </div>
+      </div>
+      <p class="small muted">Photo scan fills Essential. When Claude's tag isn't on the category's list, the item stays untagged and shows up as a question in the row, never as a wrong essential.</p>
+    </div>
+    <div class="panel stack">
+      <p class="eyebrow">Longest strings at phone width</p>
+      <div class="pills">
+        <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">Josephine's prescriptions <span class="pt">+2</span></span></span>
+        <span class="pill miss"><svg class="ic ic-s"><use href="#i-open"/></svg><span class="pill-t">Utility shut-off wrench <span class="pt">+1</span></span></span>
+        <span class="pill have"><svg class="ic ic-s"><use href="#i-check"/></svg><span class="pill-t"><b>Records (USB or printed)</b><span class="where"><svg class="ic"><use href="#i-car"/></svg>Trunk bag</span></span></span>
+      </div>
+      <div class="ask">
+        <div class="ask-q"><svg class="ic"><use href="#i-ask"/></svg><span><b>Cash envelope ($200 in small bills): which is it?</b></span></div>
+        <div class="ask-a"><button class="btn ghost sm">Cash <span class="muted">· have it, counts once</span></button><button class="btn ghost sm">None of these</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= COST ================= -->
+<section class="panel cost" aria-labelledby="fc">
+  <p class="eyebrow" id="fc">What option C costs</p>
+  <ul>
+    <li><b>About 7 days of UI</b> on top of the scoring, tagging and test work every option shares: <b>over the one-week appetite</b>.</li>
+    <li>To fit, it ships the brief's fallback: Documents &amp; cash, Fire safety and Medications count named essentials; Comms and Tools keep counting items until a second cycle.</li>
+    <li><b>Three new components:</b> the essential pill, the question inside the row, and the where-label on a ticked pill.</li>
+    <li>Each answer saves one tag on the spot, so it's many small live writes instead of one reviewed batch. "Nothing saves until tapped" still holds, and every save offers Undo.</li>
+  </ul>
+</section>
+
+</main>
+</body>
+</html>
