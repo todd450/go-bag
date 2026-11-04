@@ -408,6 +408,7 @@ const CATS = {
   breathing: ["Breathing", "rescue inhaler (albuterol), spacer, nebulizer and its medicine"],
   aspirin: ["Heart attack aid", "chewable 81 mg aspirin (prescribed nitroglycerin goes under Medications)"],
   naloxone: ["Overdose reversal", "naloxone (Narcan) nasal spray"],
+  sugar: ["Fast sugar", "glucose tablets or gel for low blood sugar, prescribed glucagon (nasal spray or auto-injector)"],
   seizure: ["Seizure rescue", "prescribed seizure rescue medication (nasal midazolam or diazepam, rectal diazepam), written seizure action plan"],
   co_alarm: ["CO alarm", "battery or plug-in carbon monoxide alarm"],
   bites: ["Bites & stings", "tick remover, sting relief wipes, hydrocortisone cream, instant cold pack"],
@@ -462,6 +463,7 @@ const ICONS = {
   breathing: '<path d="M12 4v7M12 11l-2.5 2M12 11l2.5 2"/><path d="M9.5 8C6.5 8 4 12 4 17c0 2 1 3 3 3s2.5-1.2 2.5-3zM14.5 8c3 0 5.5 4 5.5 9 0 2-1 3-3 3s-2.5-1.2-2.5-3z"/>',
   aspirin: '<circle cx="12" cy="12" r="8"/><path d="M8 12h8"/>',
   naloxone: '<path d="M11 2.5h2V6h-2zM9 6h6l1 3v12H8V9z"/><path d="M8 13h8"/>',
+  sugar: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>',
   seizure: '<path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/>',
   co_alarm: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/>',
   wound: '<rect x="2.5" y="8.5" width="19" height="7" rx="3.5" transform="rotate(-45 12 12)"/><path d="M10.6 10.6h.01M13.4 13.4h.01M10.6 13.4h.01M13.4 10.6h.01"/>',
@@ -554,22 +556,22 @@ const HAZARDS = [
   { id: "mishap", group: "everyday", name: "Small mishaps on the road", severity: "minor", mode: "vehicle", vehicle: true, days: 1, when: "Spills, delays, a dead phone, a forgotten jacket", base: () => "moderate", needs: ["comfort", "power", "hygiene", "clothing"], kidsToo: true },
   /* Health emergencies: likelihood comes from who lives here; `kits` says which kits are within reach. */
   { id: "cuts", group: "health", name: "Cuts, scrapes and splinters", severity: "minor", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · most weeks", base: h => h.kids || h.infants ? "high" : "moderate", needs: ["wound", "first_aid"] },
-  { id: "injury", group: "health", name: "Heavy bleeding", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: () => "moderate", needs: ["trauma", "first_aid", "communication"] },
-  { id: "fall", group: "health", name: "Falls, sprains and broken bones", severity: "serious", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first hour", base: h => h.kids || h.seniors || h.mobility ? "moderate" : "low", needs: ["splint", "first_aid", "light", "communication"] },
+  { id: "injury", group: "health", name: "Heavy bleeding", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · call 911, press hard on the wound", base: () => "moderate", needs: ["trauma", "first_aid"] },
+  { id: "fall", group: "health", name: "Falls, sprains and broken bones", severity: "serious", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first hour", base: h => h.kids || h.seniors || h.mobility ? "moderate" : "low", needs: ["splint", "first_aid", "light"] },
   { id: "burns", group: "health", name: "Burns and scalds", severity: "serious", mode: "anywhere", kits: ["home", "go"], days: 1, when: "Mostly the kitchen · first minutes", base: h => h.kids || h.infants ? "moderate" : "low", needs: ["burns", "first_aid", "fire_safety"] },
-  { id: "choking", group: "health", name: "Choking", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Mealtimes, small toys · first minutes", base: h => h.kids || h.infants || h.seniors ? "moderate" : "low", needs: ["cpr", "communication"] },
-  { id: "heartattack", group: "health", name: "Heart attack", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · call 911, then chew an aspirin", base: h => h.heart || h.seniors ? "moderate" : "low", needs: ["aspirin", "communication"] },
-  { id: "cardiac", group: "health", name: "Cardiac arrest", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.heart || h.seniors ? "moderate" : "low", needs: ["cpr", "communication"] },
-  { id: "poison", group: "health", name: "Poisoning", severity: "serious", mode: "anywhere", kits: ["home"], days: 1, when: "Mostly at home · call Poison Control first", base: h => h.kids || h.infants ? "moderate" : "low", needs: ["poison", "communication"] },
-  { id: "overdose", group: "health", name: "Opioid overdose", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.opioids ? "moderate" : "low", needs: ["naloxone", "cpr", "communication"] },
+  { id: "choking", group: "health", name: "Choking", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Mealtimes, small toys · first minutes", base: h => h.kids || h.infants || h.seniors ? "moderate" : "low", needs: ["cpr"] },
+  { id: "heartattack", group: "health", name: "Heart attack", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · call 911, then chew an aspirin", base: h => h.heart || h.seniors ? "moderate" : "low", needs: ["aspirin"] },
+  { id: "cardiac", group: "health", name: "Cardiac arrest", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · call 911, start CPR", base: h => h.heart || h.seniors ? "moderate" : "low", needs: ["cpr"] },
+  { id: "poison", group: "health", name: "Poisoning", severity: "serious", mode: "anywhere", kits: ["home"], days: 1, when: "Mostly at home · call Poison Control first", base: h => h.kids || h.infants ? "moderate" : "low", needs: ["poison"] },
+  { id: "overdose", group: "health", name: "Opioid overdose", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · call 911, give naloxone", base: h => h.opioids ? "moderate" : "low", needs: ["naloxone", "cpr"] },
   { id: "co", group: "health", name: "Carbon monoxide poisoning", severity: "critical", mode: "anywhere", kits: ["home"], days: 1, when: "At home · worst in outages, with generators and heaters", base: h => /^(House|Townhouse|Mobile home)$/.test(h.home) ? "moderate" : "low", needs: ["co_alarm"] },
   { id: "bites", group: "health", name: "Bites and stings", severity: "minor", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Pets, outdoors · first hour", base: h => h.pets || h.kids ? "moderate" : "low", needs: ["bites", "wound", "medications"] },
-  { id: "anaphylaxis", group: "health", name: "Severe allergic reaction", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.allergic ? "high" : "none", needs: ["allergy", "communication", "first_aid"] },
+  { id: "anaphylaxis", group: "health", name: "Severe allergic reaction", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · use the epinephrine, then call 911", base: h => h.allergic ? "high" : "none", needs: ["allergy", "first_aid"] },
   { id: "illness", group: "health", name: "Serious illness at home", severity: "serious", mode: "shelter", days: 3, when: "At home · 72 h", base: () => "moderate", needs: ["diagnostics", "medications", "hygiene", "masks", "water", "food"] },
   { id: "meds", group: "health", name: "Medication supply cut off", severity: "serious", mode: "anywhere", kits: ["home", "go"], days: 14, when: "Pharmacy closed or evacuated · 2 weeks", base: h => h.dailyMeds ? "high" : "none", needs: ["medications", "diagnostics"], qty: { medications: h => Math.max(1, h.dailyMeds) } },
-  { id: "asthma", group: "health", name: "Asthma attack", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · smoke and colds set it off", base: h => h.asthma ? "high" : "none", needs: ["breathing", "communication"], qty: { breathing: h => Math.max(1, h.asthma) } },
-  { id: "seizure", group: "health", name: "Seizure", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · time it, call 911 past 5 minutes", base: h => h.seizures ? "high" : "none", needs: ["seizure", "communication"], qty: { seizure: h => Math.max(1, h.seizures) } },
-  { id: "lowsugar", group: "health", name: "Low blood sugar", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.diabetes ? "high" : "none", needs: ["diagnostics"] },
+  { id: "asthma", group: "health", name: "Asthma attack", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · smoke and colds set it off", base: h => h.asthma ? "high" : "none", needs: ["breathing"], qty: { breathing: h => Math.max(1, h.asthma) } },
+  { id: "seizure", group: "health", name: "Seizure", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · time it, call 911 past 5 minutes", base: h => h.seizures ? "high" : "none", needs: ["seizure"], qty: { seizure: h => Math.max(1, h.seizures) } },
+  { id: "lowsugar", group: "health", name: "Low blood sugar", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · 15 g of fast sugar, recheck in 15 minutes", base: h => h.diabetes ? "high" : "none", needs: ["sugar", "diagnostics"], qty: { sugar: h => Math.max(1, h.diabetes) } },
   { id: "device", group: "health", name: "Power loss for a medical device", severity: "critical", mode: "shelter", days: 3, when: "At home · 72 h", base: h => h.devices ? "high" : "none", needs: ["power", "light", "communication"], qty: { power: h => 2 + 2 * h.devices } },
 ];
 const kitsFor = hz => hz.kits || MODES[hz.mode].kits;
@@ -803,6 +805,7 @@ const REFILE = [
   [/\b(narcan|naloxone)\b/i, "naloxone", ["medications", "poison", "first_aid", "other"]],
   [/\b(chewable|low[- ]dose|baby|81 ?mg)\b.*\baspirin\b|\baspirin\b.*\b(chewable|low[- ]dose|81 ?mg)\b/i, "aspirin", ["medications", "first_aid", "other"]],
   [/\b(midazolam|nayzilam|valtoco|diastat)\b/i, "seizure", ["medications", "other"]],
+  [/\b(glucose (tabs?|tablets?|gel)|dex4|glucagon|baqsimi|gvoke)\b/i, "sugar", ["food", "medications", "diagnostics", "first_aid", "other"]],
   [/\b(carbon monoxide|co (alarm|detector))\b/i, "co_alarm", ["poison", "fire_safety", "tools", "other"]],
 ];
 function refileable(items = S.items) {
@@ -884,6 +887,11 @@ function buyGuide(cat, qty, unit, kt, h) {
       tip: "For a suspected heart attack, call 911 first, then chew 4 of them (325 mg) unless the person is allergic to aspirin or a doctor has said not to. Keep a strip in every kit." };
     case "naloxone": return { line: pl(n, "two-dose pack of naloxone (Narcan) nasal spray", "two-dose packs of naloxone (Narcan) nasal spray"), price: n * 45,
       tip: "Sold over the counter, and it can't hurt someone who hasn't taken opioids. Call 911, give one spray in a nostril, and give the second after 2 to 3 minutes if they still aren't breathing normally. Many health departments and pharmacies give it out free." };
+    case "sugar": {
+      const who = whoIs(h, hasCond("diabetes"));
+      return { line: `${pl(n, "tube")} of glucose tablets${forWho(who)}`, price: n * 6,
+        tip: `At a low, take 15 g (4 tablets) and recheck in 15 minutes. Someone who can't swallow safely gets nothing by mouth: that's what glucagon is for. ${rxAsk(who, "a glucagon nasal spray or auto-injector for the kit")}, then call 911 after giving it.` };
+    }
     case "seizure": {
       const who = whoIs(h, hasCond("seizures"));
       return { line: `Rescue seizure medication${forWho(who)} and a printed seizure action plan`, price: null,
@@ -995,7 +1003,7 @@ const PACK = {
   first_aid: { g: 400, ml: 1500, lite: { name: "compact first-aid pouch", g: 150, ml: 500, trade: "covers everyday cuts; keep bleeding control separate" } },
   wound: { g: 150, ml: 400 }, trauma: { g: 150, ml: 350 }, burns: { g: 100, ml: 300 }, splint: { g: 150, ml: 600 },
   cpr: { g: 60, ml: 150 }, allergy: { g: 60, ml: 150 }, breathing: { g: 60, ml: 200 }, aspirin: { g: 30, ml: 60 },
-  naloxone: { g: 40, ml: 100 }, seizure: { g: 40, ml: 100 }, co_alarm: { g: 250, ml: 500 }, bites: { g: 60, ml: 150 }, poison: { g: 50, ml: 100 },
+  naloxone: { g: 40, ml: 100 }, sugar: { g: 60, ml: 150 }, seizure: { g: 40, ml: 100 }, co_alarm: { g: 250, ml: 500 }, bites: { g: 60, ml: 150 }, poison: { g: 50, ml: 100 },
   diagnostics: { g: 150, ml: 400 }, medications: { g: 100, ml: 200 },
   light: { g: 300, ml: 800, lite: { name: "headlamp", g: 90, ml: 200, trade: "hands-free, though it lights less of a room than a lantern" } },
   power: { g: 250, ml: 300 }, communication: { g: 350, ml: 1000 }, documents: { g: 150, ml: 300 },

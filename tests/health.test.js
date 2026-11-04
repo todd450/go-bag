@@ -106,3 +106,36 @@ test("nitroglycerin is filed as a medication, so it can't stand in for aspirin",
   assert.match(json(`CATS.medications[1]`), /nitroglycerin/);
   assert.doesNotMatch(json(`CATS.aspirin[1]`).replace(/\(.*\)/, ""), /nitroglycerin/);
 });
+
+test("a radio adds nothing to a health emergency, except powered medical equipment in an outage", () => {
+  const { run, json } = load({ fixture: "tests/household" });
+  run(`S.profile.members[0].conditions = ["device"]`);
+  const scores = () => json(`Object.fromEntries(model().results.filter(r => r.hz.group === "health").map(r => [r.hz.id, r.score]))`);
+  const before = scores();
+  run(`S.items.push({ id: "c1", kitId: "home", name: "Hand-crank NOAA radio", category: "communication", qty: 1 },
+    { id: "c2", kitId: "go", name: "Hand-crank NOAA radio", category: "communication", qty: 1 },
+    { id: "c3", kitId: "car", name: "Hand-crank NOAA radio", category: "communication", qty: 1 })`);
+  const after = scores();
+  const changed = Object.keys(after).filter(id => after[id] !== before[id]);
+  assert.deepEqual(changed, ["device"]);
+});
+
+test("low blood sugar needs fast sugar for each person with diabetes, not just a meter", () => {
+  const { run, json } = load();
+  run(`S.profile = { members: [{ years: 50, conditions: ["diabetes"] }, { years: 14, conditions: ["diabetes"] }], pets: [], vehicles: 0 }`);
+  run(`S.kits = [{ id: "go", type: "go", name: "Go-bag" }]`);
+  const low = () => json(`model().results.find(r => r.hz.id === "lowsugar")`);
+  assert.equal(low().rows.find(x => x.cat === "sugar").need, 2);
+  run(`S.items.push({ id: "g1", kitId: "go", name: "Glucose meter and strips", category: "diagnostics", qty: 2 })`);
+  assert.ok(low().score < 100, "a meter alone can't treat a low");
+  run(`S.items.push({ id: "g2", kitId: "go", name: "Glucose tablets", category: "sugar", qty: 2 })`);
+  assert.equal(low().score, 100);
+});
+
+test("glucose tablets and glucagon saved under another type are offered a move to Fast sugar", () => {
+  const { run, json } = load();
+  run(`S.items.push({ id: "s1", kitId: "go", name: "Dex4 glucose tablets", category: "food", qty: 1 },
+    { id: "s2", kitId: "go", name: "Baqsimi glucagon", category: "medications", qty: 1 },
+    { id: "s3", kitId: "go", name: "Granola bars", category: "food", qty: 1 })`);
+  assert.deepEqual(json(`refileable().map(x => [x.it.id, x.to])`), [["s1", "sugar"], ["s2", "sugar"]]);
+});
