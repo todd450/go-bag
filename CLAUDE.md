@@ -63,6 +63,9 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
   - The weight and space panel scores every pack it suggests with `kitReadiness` on that set
     of items, so its points are the points the kit would really score. Saved `grams`/`ml`
     always win over estimates (`tests/pack.test.js`).
+  - Documents & cash, Fire safety, Comms, Tools and Medications score by named essentials
+    (`ESSENTIALS`): one of each counts, an untagged item counts nothing until it is tagged, and each
+    missing essential is its own gap and shopping line (`tests/essentials.test.js`).
   - An item links to Amazon: its saved `amazonUrl` (only a plain `https://www.amazon.com/dp/…`
     link counts) or else the `shopQuery` Claude writes while reading the photo. The page never
     searches Amazon itself: Amazon refuses AI agents, so exact product pages are found from a

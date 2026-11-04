@@ -594,7 +594,7 @@ const HAZARDS = [
   { id: "bites", group: "health", name: "Bites and stings", severity: "minor", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Pets, outdoors · first hour", base: h => h.pets || h.kids ? "moderate" : "low", needs: ["bites", "wound", "medications"] },
   { id: "anaphylaxis", group: "health", name: "Severe allergic reaction", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · use the epinephrine, then call 911", base: h => h.allergic ? "high" : "none", needs: ["allergy", "first_aid"] },
   { id: "illness", group: "health", name: "Serious illness at home", severity: "serious", mode: "shelter", days: 3, when: "At home · 72 h", base: () => "moderate", needs: ["diagnostics", "medications", "hygiene", "masks", "water", "food"] },
-  { id: "meds", group: "health", name: "Medication supply cut off", severity: "serious", mode: "anywhere", kits: ["home", "go"], days: 14, when: "Pharmacy closed or evacuated · 2 weeks", base: h => h.dailyMeds ? "high" : "none", needs: ["medications", "diagnostics"], qty: { medications: h => Math.max(1, h.dailyMeds) } },
+  { id: "meds", group: "health", name: "Medication supply cut off", severity: "serious", mode: "anywhere", kits: ["home", "go"], days: 14, when: "Pharmacy closed or evacuated · 2 weeks", base: h => h.dailyMeds ? "high" : "none", needs: ["medications", "diagnostics"] },
   { id: "asthma", group: "health", name: "Asthma attack", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · smoke and colds set it off", base: h => h.asthma ? "high" : "none", needs: ["breathing"], qty: { breathing: h => Math.max(1, h.asthma) } },
   { id: "seizure", group: "health", name: "Seizure", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · time it, call 911 past 5 minutes", base: h => h.seizures ? "high" : "none", needs: ["seizure"], qty: { seizure: h => Math.max(1, h.seizures) } },
   { id: "lowsugar", group: "health", name: "Low blood sugar", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · 15 g of fast sugar, recheck in 15 minutes", base: h => h.diabetes ? "high" : "none", needs: ["sugar", "diagnostics"], qty: { sugar: h => Math.max(1, h.diabetes) } },
@@ -725,18 +725,23 @@ function stock(types) {
   const kitIds = new Set(S.kits.filter(k => types.includes(k.type)).map(k => k.id));
   return stockItems(S.items.filter(it => kitIds.has(it.kitId)));
 }
+/* What a set of items holds: units per category, litres, calories, and in the five checklist categories
+   how many items are tagged with each named essential. Expired items hold nothing. */
 function stockItems(items) {
-  const st = { count: {}, liters: 0, kcal: 0 };
+  const st = { count: {}, ess: {}, liters: 0, kcal: 0 };
   for (const it of items) {
     if (expState(it) === "expired") continue;
     const c = CATS[it.category] ? it.category : "other";
     st.count[c] = (st.count[c] || 0) + Math.max(1, num(it.qty));
+    const e = essentialOf(it);
+    if (e && e !== "none") { const x = st.ess[c] ||= {}; x[e] = (x[e] || 0) + 1; }
     st.liters += num(it.liters); st.kcal += num(it.kcal);
   }
   return st;
 }
 function needFor(cat, hz, h) {
   const d = hz.days;
+  if (Object.hasOwn(ESSENTIALS, cat)) return { need: essentialsFor(cat, h).length };
   if (hz.qty?.[cat]) return { need: hz.qty[cat](h) };
   switch (cat) {
     case "trauma": return { need: 2 };
@@ -747,7 +752,6 @@ function needFor(cat, hz, h) {
     case "light": return { need: Math.max(1, Math.ceil(h.people / 2)) };
     case "shelter": case "masks": return { need: h.people };
     case "clothing": return { need: hz.mode === "evacuate" ? h.people : 1 };
-    case "tools": return { need: 2 };
     case "car": return { need: 3 };
     case "comfort": return { need: 4 };
     case "pets": return { need: Math.max(1, h.pets) };
@@ -772,13 +776,23 @@ function model() {
   const active = results.filter(r => r.wt > 0);
   const tw = active.reduce((a, r) => a + r.wt, 0);
   const overall = tw ? Math.round(active.reduce((a, r) => a + r.wt * r.score, 0) / tw) : null;
+  /* One gap per counted category short anywhere, and one per missing named essential: each prescriptions
+     slot is its own gap, so two people's prescriptions are two. */
   const g = {};
   for (const r of active) for (const row of r.rows) {
     if (row.cov >= 1) continue;
-    const x = g[row.cat] ||= { cat: row.cat, imp: 0, worst: null, hazards: [] };
-    x.imp += r.wt * (1 - row.cov) * row.w;
-    x.hazards.push(r.hz.name);
-    if (!x.worst || row.need > x.worst.need) x.worst = { ...row, hz: r.hz };
+    const add = (key, gap, share) => {
+      const x = g[key] ||= { ...gap, imp: 0, worst: null, hazards: [] };
+      x.imp += r.wt * share * row.w;
+      x.hazards.push(r.hz.name);
+      if (!x.worst || row.need > x.worst.need) x.worst = { ...row, hz: r.hz };
+    };
+    if (!row.ess) { add(row.cat, { cat: row.cat }, 1 - row.cov); continue; }
+    const nth = {};
+    for (const e of row.ess) {
+      nth[e.id] = (nth[e.id] || 0) + 1;
+      if (!e.have) add(`${row.cat}|${e.id}|${nth[e.id]}`, { cat: row.cat, essential: e.id, label: e.label }, 1 / row.need);
+    }
   }
   const gaps = Object.values(g).sort((a, b) => b.imp - a.imp);
   const kitName = Object.fromEntries(S.kits.map(k => [k.id, k.name]));
@@ -790,16 +804,37 @@ function model() {
 const haveOf = (cat, st) => cat === "water" ? st.liters : cat === "food" ? st.kcal : (st.count[cat] || 0);
 function needRow(cat, hz, h, st) {
   const { need, unit } = needFor(cat, hz, h);
-  const have = haveOf(cat, st);
-  return { cat, need, have, unit, cov: need > 0 ? Math.min(1, have / need) : 1, w: cat === "water" || cat === "food" || cat === "comfort" && hz.mode === "vehicle" ? 2 : 1 };
+  const ess = essentialsFor(cat, h);
+  return fillRow({ cat, need, unit, ...(ess.length ? { ess } : {}), w: cat === "water" || cat === "food" || cat === "comfort" && hz.mode === "vehicle" ? 2 : 1 }, st);
 }
+/* A checklist row's have and coverage from stock `st`. A row of named essentials (`ess`, one per essential,
+   each marked `have`) counts each one once, and each prescriptions item for one person, so it never has
+   more than it needs. */
+function fillRow(r, st) {
+  if (!r.ess) { const have = haveOf(r.cat, st); return { ...r, have, cov: r.need > 0 ? Math.min(1, have / r.need) : 1 }; }
+  const n = st.ess?.[r.cat] || {}, used = {};
+  const ess = r.ess.map(e => ({ ...e, have: (used[e.id] = (used[e.id] || 0) + 1) <= (n[e.id] || 0) }));
+  return essCov({ ...r, ess });
+}
+const essCov = r => { const have = r.ess.filter(e => e.have).length; return { ...r, have, cov: r.need > 0 ? Math.min(1, have / r.need) : 1 }; };
 const rawScore = rows => rows.length ? 100 * rows.reduce((a, r) => a + r.w * r.cov, 0) / rows.reduce((a, r) => a + r.w, 0) : 0;
 const scoreRows = rows => Math.round(rawScore(rows));
-/* The household score if these categories were fully stocked: what closing a gap is worth. */
-function overallIf(M, cats) {
+/* The household score if these list entries were in the kits: a counted category fully stocked, and a named
+   essential filled once. What closing a gap is worth when there is no kit to work it out exactly. A line in
+   the five checklist categories without an essential fills nothing, as the untagged item it makes does. */
+function overallIf(M, es) {
   const tw = M.active.reduce((a, r) => a + r.wt, 0);
   if (!tw) return null;
-  return Math.round(M.active.reduce((a, r) => a + r.wt * scoreRows(r.rows.map(x => cats.has(x.cat) ? { ...x, cov: 1 } : x)), 0) / tw);
+  const full = new Set(es.filter(e => !Object.hasOwn(ESSENTIALS, e.cat)).map(e => e.cat));
+  const adds = {};
+  for (const e of es) if (Object.hasOwn(ESSENTIALS, e.cat) && typeof e.essential === "string") (adds[e.cat] ||= []).push(e.essential);
+  const fill = x => {
+    if (full.has(x.cat)) return { ...x, cov: 1 };
+    if (!x.ess || !adds[x.cat]) return x;
+    const left = [...adds[x.cat]];
+    return essCov({ ...x, ess: x.ess.map(e => { const i = e.have ? -1 : left.indexOf(e.id); if (i < 0) return e; left.splice(i, 1); return { ...e, have: true }; }) });
+  };
+  return Math.round(M.active.reduce((a, r) => a + r.wt * scoreRows(r.rows.map(fill)), 0) / tw);
 }
 const orList = (xs, word = "or") => xs.length < 2 ? xs.join("") : xs.slice(0, -1).join(", ") + ` ${word} ` + xs.at(-1);
 const gal = l => f1(l / 3.785);
@@ -810,6 +845,7 @@ function gapPlan(g, h) {
   const others = g.hazards.length - 1;
   const why = `For ${row.hz.name.toLowerCase()}${others ? ` and ${others} other emergenc${others > 1 ? "ies" : "y"}` : ""}. Goes in a ${orList(kits.map(k => KIT_TYPES[k].toLowerCase()))}.`;
   const hint = (CATS[g.cat] || CATS.other)[1];
+  if (g.essential) return { kits, why, hint, qty: 1, unit: "", name: g.label, title: `Add ${g.label}`, detail: `One of the ${catLabel(g.cat).toLowerCase()} essentials. One in a kit is enough.`, text: `${g.label} (${catLabel(g.cat)})` };
   if (row.unit === "L") {
     const L = Math.ceil(short), days = L / (h.people * 3.8 + h.pets);
     return { kits, why, hint, qty: L, unit: "L", name: "Drinking water", title: `Add ${L} L of drinking water`, detail: `About ${gal(L)} gallons: ${f1(days)} more days for everyone.`, text: `Drinking water: ${L} L (${gal(L)} gal)` };
@@ -822,9 +858,9 @@ function gapPlan(g, h) {
   return { kits, why, hint, qty: n, unit: "", name: catLabel(g.cat), title: `${catLabel(g.cat)}: add ${n}`, detail: `Such as ${hint}.`, text: `${catLabel(g.cat)} × ${n}` };
 }
 /* Readiness if these list entries were bought and put in the kit each would go in, the same sum ticking uses.
-   An entry with no kit of the right type yet can only be estimated, as if its category were full. */
+   An entry with no kit of the right type yet can only be estimated (overallIf), as if its category were full or its essential filled. */
 function scoreIfShopped(M, es) {
-  return es.every(e => shopKit(e)) ? scoreIfBought(es) : overallIf(M, new Set(es.map(e => e.cat)));
+  return es.every(e => shopKit(e)) ? scoreIfBought(es) : overallIf(M, es);
 }
 const scoreIfFilled = (M, gaps) => scoreIfShopped(M, gaps.map(g => shopFromGap(g, M.h)));
 /* Items saved before their supply type had a category of its own: the name says what it is, so Next steps
@@ -859,12 +895,11 @@ function nextActions(M) {
   const base = M.overall;
   const gain = gs => base == null ? 0 : Math.max(0, scoreIfFilled(M, gs) - base);
   // Gaps already on the shopping list fold into one step, so a listed gap doesn't hold a slot with nothing left to do
-  const listed = new Set(shopItems().filter(x => !x.done).map(x => x.cat));
-  const onList = M.gaps.filter(g => listed.has(g.cat));
-  const gaps = M.gaps.filter(g => !listed.has(g.cat)).map(g => ({ kind: "gap", g, ...gapPlan(g, M.h), gain: gain([g]) }));
+  const { on: onList, off } = splitListed(M.gaps);
+  const gaps = off.map(g => ({ kind: "gap", g, ...gapPlan(g, M.h), gain: gain([g]) }));
   if (onList.length) gaps.push({ kind: "shop", gs: onList, gain: gain(onList),
     title: `Buy the ${onList.length === 1 ? "thing" : onList.length + " things"} on your list`,
-    detail: `${(onList.length > 3 ? onList.slice(0, 3).map(g => catLabel(g.cat).toLowerCase()).join(", ") + ` and ${onList.length - 3} more` : orList(onList.map(g => catLabel(g.cat).toLowerCase()), "and")).replace(/^./, c => c.toUpperCase())}. Tick each one off as you buy it and it goes straight into a kit.` });
+    detail: `${(onList.length > 3 ? onList.slice(0, 3).map(gapName).join(", ") + ` and ${onList.length - 3} more` : orList(onList.map(gapName), "and")).replace(/^./, c => c.toUpperCase())}. Tick each one off as you buy it and it goes straight into a kit.` });
   gaps.sort((a, b) => b.gain - a.gain || (b.g?.imp ?? 0) - (a.g?.imp ?? 0));
   const acts = [...out, ...gaps].slice(0, 3);
   const filled = acts.flatMap(a => a.kind === "gap" ? [a.g] : a.kind === "shop" ? a.gs : []);
@@ -968,8 +1003,9 @@ function buyGuide(cat, qty, unit, kt, h) {
     default: return { line: `${catLabel(cat)} × ${n}`, tip: "" };
   }
 }
-/* The kit item a list entry becomes when ticked. */
-const itemFromShop = (e, kitId) => ({ kitId, name: e.name || catLabel(e.cat), category: e.cat, qty: e.unit ? 1 : Math.max(1, num(e.qty)), liters: e.unit === "L" ? num(e.qty) : 0, kcal: e.unit === "kcal" ? num(e.qty) : 0, expires: "", note: "Bought from the shopping list", source: "list" });
+/* The kit item a list entry becomes when ticked. A line for a named essential makes an item already tagged with it. */
+const itemFromShop = (e, kitId) => ({ kitId, name: e.name || catLabel(e.cat), category: e.cat, qty: e.unit ? 1 : Math.max(1, num(e.qty)), liters: e.unit === "L" ? num(e.qty) : 0, kcal: e.unit === "kcal" ? num(e.qty) : 0, expires: "", note: "Bought from the shopping list", source: "list",
+  ...(essentialList(e.cat).some(x => x.id === e.essential) ? { essential: e.essential } : {}) });
 /* Household readiness if these entries were bought and put in their kits: the same sum ticking them does. */
 function scoreIfBought(list) {
   const add = list.filter(e => CATS[e.cat] && shopKit(e)).map(e => ({ id: "_sim", ...itemFromShop(e, shopKit(e)) }));
@@ -987,9 +1023,20 @@ function shopInfo(e, M) {
 const money = p => p === undefined ? "" : p === null ? "Prescription" : p === 0 ? "From home" : `$${p}`;
 const shopItems = () => Array.isArray(S.shopping?.items) ? S.shopping.items : [];
 const saveShop = items => setDoc("household", "shopping", { items, updatedAt: Date.now() }).catch(() => {});
+/* Gaps and list lines match on category plus essential. Each line still to buy covers one gap, so two
+   prescriptions lines cover two people's, and an old line with no essential covers none of the five's. */
+const gapKey = x => `${x.cat}|${typeof x.essential === "string" ? x.essential : ""}`;
+function splitListed(gaps, lines = shopItems().filter(x => !x.done)) {
+  const n = new Map();
+  for (const e of lines) n.set(gapKey(e), (n.get(gapKey(e)) || 0) + 1);
+  const on = [], off = [];
+  for (const g of gaps) { const k = gapKey(g), left = n.get(k) || 0; if (left) { n.set(k, left - 1); on.push(g); } else off.push(g); }
+  return { on, off };
+}
+const gapName = g => g.essential ? g.label : catLabel(g.cat).toLowerCase();
 function shopFromGap(g, h) {
   const p = gapPlan(g, h);
-  return { id: uid(), cat: g.cat, qty: p.qty, unit: p.unit, name: p.name, text: p.text, note: p.hint, kits: p.kits, kitId: "", done: false, at: Date.now() };
+  return { id: uid(), cat: g.cat, ...(g.essential ? { essential: g.essential } : {}), qty: p.qty, unit: p.unit, name: p.name, text: p.text, note: p.hint, kits: p.kits, kitId: "", done: false, at: Date.now() };
 }
 /* The kit a bought item goes into: the one picked on the row, else the first kit of a type that covers the gap. */
 function shopKit(e) {
@@ -1077,7 +1124,10 @@ function packPlan(kit, ready, lim) {
   const lines = S.items.filter(i => i.kitId === kit.id).map(it => ({ it, ...itemLoad(it) }));
   const limG = lim.kg ? lim.kg * 1000 : Infinity, limMl = lim.L * 1000;
   const pick = keep => lines.flatMap((l, i) => keep[i] ? [{ ...l.it, qty: keep[i], liters: num(l.it.liters) * keep[i] / l.q, kcal: num(l.it.kcal) * keep[i] / l.q }] : []);
-  const raw = keep => rawScore(ready.rows.map(r => { const have = haveOf(r.cat, stockItems(pick(keep))); return { ...r, have, cov: r.need > 0 ? Math.min(1, have / r.need) : 1 }; }));
+  const raw = keep => { const st = stockItems(pick(keep)); return rawScore(ready.rows.map(r => fillRow(r, st))); };
+  /* Kept whatever the limits: water filters and tablets, and items in the five checklist categories not yet
+     tagged that its checklist asks for, which earn nothing until they are but are likely an essential. */
+  const must = lines.map(l => l.it.category === "water" && !num(l.it.liters) || ready.rows.some(r => r.ess && r.cat === l.it.category) && !essentialOf(l.it) && expState(l.it) !== "expired");
   const sumG = keep => lines.reduce((a, l, i) => a + l.unitG * keep[i], 0), sumMl = keep => lines.reduce((a, l, i) => a + l.unitMl * keep[i], 0);
   const fitsIn = keep => sumG(keep) <= limG + 1e-6 && sumMl(keep) <= limMl + 1e-6;
   const step = (i, keep, dir) => dir > 0 ? Math.min(lines[i].q - keep[i], Math.ceil(lines[i].q / 12)) : Math.min(keep[i], Math.ceil(lines[i].q / 12));
@@ -1085,7 +1135,7 @@ function packPlan(kit, ready, lim) {
   const fits = fitsIn(full);
   let best = null;
   if (!fits) {
-    let keep = lines.map(l => l.it.category === "water" && !num(l.it.liters) ? l.q : 0), cur = raw(keep);
+    let keep = lines.map((l, i) => must[i] ? l.q : 0), cur = raw(keep);
     const fill = () => {
       for (;;) {
         let pickI = -1, pickR = 0, pickS = 0, pickN = null;
@@ -1102,7 +1152,7 @@ function packPlan(kit, ready, lim) {
       }
     };
     const swap = () => {
-      for (let a = 0; a < lines.length; a++) if (keep[a]) for (let b = 0; b < lines.length; b++) {
+      for (let a = 0; a < lines.length; a++) if (keep[a] && !must[a]) for (let b = 0; b < lines.length; b++) {
         if (a === b || !step(b, keep, 1)) continue;
         const next = keep.slice(); next[a] -= step(a, keep, -1); next[b] += step(b, keep, 1);
         if (!fitsIn(next)) continue;
@@ -1120,13 +1170,13 @@ function packPlan(kit, ready, lim) {
   const lean = full.slice(), onList = new Set(ready.rows.map(r => r.cat));
   for (const i of lines.map((l, i) => i).sort((a, b) => lines[b].unitG - lines[a].unitG)) {
     const l = lines[i];
-    if (l.it.category === "water" && !num(l.it.liters) || l.it.category === "food" && !num(l.it.kcal)) continue;
+    if (must[i] || l.it.category === "food" && !num(l.it.kcal)) continue;
     let lo = 0, hi = lean[i];
     while (lo < hi) { const mid = Math.ceil((lo + hi) / 2), t = lean.slice(); t[i] -= mid; if (raw(t) >= fullRaw - 1e-9) lo = mid; else hi = mid - 1; }
     lean[i] -= lo;
   }
   const takeOut = lines.map((l, i) => ({ it: l.it, n: l.q - lean[i], g: l.unitG * (l.q - lean[i]),
-    why: expState(l.it) === "expired" ? "Expired, so it adds nothing" : onList.has(CATS[l.it.category] ? l.it.category : "other") ? "More than this kit needs" : "Not on this kit's checklist" }))
+    why: expState(l.it) === "expired" ? "Expired, so it adds nothing" : essentialOf(l.it) === "none" ? "Not one of the essentials" : onList.has(CATS[l.it.category] ? l.it.category : "other") ? "More than this kit needs" : "Not on this kit's checklist" }))
     .filter(x => x.n > 0).sort((a, b) => b.g - a.g);
   /* Lighter kinds of the same thing: same count on the checklist (same calories for food). */
   const swaps = lines.flatMap(l => {
@@ -1148,10 +1198,19 @@ function packPlan(kit, ready, lim) {
 function itemValues(kit, r) {
   const W = r.rows.reduce((a, x) => a + x.w, 0) || 1;
   const byRow = Object.fromEntries(r.rows.map(x => [x.cat, x]));
-  const out = {};
-  for (const it of S.items.filter(i => i.kitId === kit.id)) {
+  const out = {}, items = S.items.filter(i => i.kitId === kit.id), st = stockItems(items);
+  for (const it of items) {
     const c = CATS[it.category] ? it.category : "other";
     if (expState(it) === "expired") { out[it.id] = { pts: 0, note: "Expired, so it doesn't count" }; continue; }
+    /* A named essential's points are shared by the items tagged with it; an untagged item earns none yet. */
+    const row = byRow[c];
+    if (row?.ess) {
+      const e = essentialOf(it), n = e && e !== "none" ? st.ess[c]?.[e] || 0 : 0;
+      const filled = n ? row.ess.filter(x => x.id === e && x.have).length : 0;
+      out[it.id] = { pts: n ? 100 * row.w * filled / row.need / W / n : 0,
+        note: !e ? "Pick which essential it is so it counts" : e === "none" ? "Not one of the essentials, so it doesn't count" : n > filled ? "Kit has more of these than it needs" : "" };
+      continue;
+    }
     let pts = 0, over = false;
     const add = (row, amt) => {
       if (!row || !amt || !row.have) return;
@@ -1201,7 +1260,7 @@ function actBtn(a, i) {
   if (a.kind === "refill" || a.kind === "plan") return `<button class="${b}" data-act="tab" data-v="plan">Open plan</button>`;
   if (a.kind === "shop") return `<button class="${b}" data-act="tab" data-v="shop">Open list</button>`;
   if (a.kind === "refile") return `<button class="${b}" data-act="refile" ${D()}>Move</button>`;
-  return `<button class="${b}" data-act="shopAdd" data-cat="${a.g.cat}" ${D()}>Add to list</button>`;
+  return `<button class="${b}" data-act="shopAdd" data-cat="${a.g.cat}"${a.g.essential ? ` data-essential="${esc(a.g.essential)}"` : ""} ${D()}>Add to list</button>`;
 }
 const actRow = (a, i) => `<li class="act">
   <span class="act-n" title="Step ${i + 1}">${icon(a.kind === "gap" ? a.g.cat : KIND_ICON[a.kind])}</span>
@@ -1212,8 +1271,7 @@ function viewOverview(M) {
   const { h, results, overall, gaps, exp } = M;
   const N = nextActions(M);
   const nGap = N.filled.length;
-  const listed = new Set(shopItems().filter(x => !x.done).map(x => x.cat));
-  const unlisted = gaps.filter(g => !listed.has(g.cat)).length;
+  const unlisted = splitListed(gaps).off.length;
   const sc = overall ?? 0;
   const c = statusColor(sc);
   const assessed = S.hazards?.assessedAt;
@@ -1583,8 +1641,7 @@ function viewHousehold() {
 function viewShop(M) {
   const items = shopItems();
   const left = items.filter(x => !x.done), got = items.filter(x => x.done);
-  const listed = new Set(left.map(x => x.cat));
-  const unlisted = M.gaps.filter(g => !listed.has(g.cat)).length;
+  const unlisted = splitListed(M.gaps, left).off.length;
   const info = new Map(items.map(e => [e.id, shopInfo(e, M)]));
   const I = e => info.get(e.id);
   const kitName = id => S.kits.find(k => k.id === id)?.name;
@@ -2150,21 +2207,23 @@ const ACT = {
   wizBack: () => { S.wiz = Math.max(0, S.wiz - 1); render(); },
   wizClose: () => { S.wiz = null; render(); },
   wizNext: () => wizStep(),
+  // A gap's button carries its category and, for a named essential, the essential; a counted category needs only the first.
   shopAdd: b => {
-    const M = model(), g = M.gaps.find(x => x.cat === b.dataset.cat); if (!g) return;
+    const M = model(), key = gapKey({ cat: b.dataset.cat, essential: b.dataset.essential });
+    const g = [...splitListed(M.gaps).off, ...M.gaps].find(x => gapKey(x) === key); if (!g) return;
     saveShop([...shopItems(), shopFromGap(g, M.h)]);
-    toast(`Added ${catLabel(g.cat).toLowerCase()} to your shopping list`);
+    toast(`Added ${gapName(g)} to your shopping list`);
   },
   shopAddAll: () => {
-    const M = model(), have = new Set(shopItems().filter(x => !x.done).map(x => x.cat));
-    const add = M.gaps.filter(g => !have.has(g.cat)).map(g => shopFromGap(g, M.h));
+    const M = model();
+    const add = splitListed(M.gaps).off.map(g => shopFromGap(g, M.h));
     if (!add.length) { toast("Every gap is already on your list"); return; }
     saveShop([...shopItems(), ...add]);
     toast(`Added ${add.length} item${add.length === 1 ? "" : "s"} to your shopping list`);
   },
   shopAddTop: () => {
-    const M = model(), have = new Set(shopItems().filter(x => !x.done).map(x => x.cat));
-    const add = M.gaps.filter(g => !have.has(g.cat)).map(g => ({ g, gain: M.overall == null ? 0 : scoreIfFilled(M, [g]) - M.overall }))
+    const M = model();
+    const add = splitListed(M.gaps).off.map(g => ({ g, gain: M.overall == null ? 0 : scoreIfFilled(M, [g]) - M.overall }))
       .sort((a, b) => b.gain - a.gain || b.g.imp - a.g.imp).slice(0, 5).map(x => shopFromGap(x.g, M.h));
     if (!add.length) return;
     saveShop([...shopItems(), ...add]);
