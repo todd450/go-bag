@@ -10,4 +10,6 @@ hazards, reviewing the plan), and works in memory without them.
 
 - `./check.sh` runs every check (Node 22 or later, nothing to install).
 - `sh preview.sh` serves it locally at http://127.0.0.1:8765/.
+- The same page also runs on Vercel with Supabase for data and sign-in (`web/`, `api/`,
+  `supabase/`, issue #48). `npm run build` builds it into `dist/`.
 - `CLAUDE.md` is the map for agent sessions, including how a change ships.

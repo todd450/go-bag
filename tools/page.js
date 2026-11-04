@@ -8,8 +8,9 @@ const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..");
 
-function wrap(page = path.join(ROOT, "emergency-kit-audit.html"), fixture) {
-  let head = '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
+// `extraHead` is added to <head> as is: tools/build-web.js uses it for the Vercel runtime's scripts.
+function wrap(page = path.join(ROOT, "emergency-kit-audit.html"), fixture, extraHead = "") {
+  let head = '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' + extraHead;
   if (fixture) {
     const data = fs.readFileSync(path.join(ROOT, fixture + ".json"), "utf8");
     const js = s => s.replace(/<\/(script)/gi, "<\\/$1"); // keep "</script>" inside data from closing the tag

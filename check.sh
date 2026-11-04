@@ -11,6 +11,10 @@ trap 'rm -rf "$tmp"' EXIT
 awk '/<script>/{f=1;next}/<\/script>/{f=0}f' emergency-kit-audit.html > "$tmp/app.js"
 node --check "$tmp/app.js"
 
+# The Vercel version (issue #48): the runtime that stands in for window.claude, its build, and its
+# functions parse. Their behaviour is in tests/web-runtime.test.js.
+for f in web/runtime.js tools/build-web.js api/*.mjs; do node --check "$f"; done
+
 # Size budget for the page, gzipped, the way it travels to the founder's phone. Set on 4 Nov 2026
 # at about 20% over the 59.5 KB it was then (issue #25), so a few features fit before anyone
 # has to choose. Raising it is fine when it is a choice: change this one number in a PR and say why.
