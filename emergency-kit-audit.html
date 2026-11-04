@@ -374,13 +374,17 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
   .inv td[data-label="Value"] { grid-area: val; align-self: start; } .inv td[data-label="Water L"] { grid-area: water; } .inv td[data-label="Food kcal"] { grid-area: food; }
   .inv td[data-label="lb"] { grid-area: wt; } .inv td[data-label="Size L"] { grid-area: size; } .inv td[data-label="Expires"] { grid-area: exp; }
   .inv td.val .val-in { padding: 6px 5px 0; }
-  .inv td.d-ess { grid-area: val; } /* the photo draft has no Value column, so its Essential sits there */
+  /* The photo draft has no tick box or Value: its category and Essential share a line, so both labels show in full */
+  .draft .inv tbody tr { grid-template-areas: ". name name name name name name name name qty qty qty qty x" ". cat cat cat cat cat cat ess ess ess ess ess ess ." ". water water food food wt wt size size exp exp exp exp ."; }
+  .inv td.d-ess { grid-area: ess; }
   .inv .val-note { padding-left: 5px; }
   .inv td.num input { text-align: left; }
 }
 @container (max-width: 599px) {
   .inv tbody tr { grid-template-columns: 24px repeat(4, minmax(0, 1fr)) 28px;
     grid-template-areas: "sel name name name name x" ". cat cat qty val val" ". water food wt size size" ". exp exp exp . ."; }
+  .draft .inv tbody tr { grid-template-columns: repeat(4, minmax(0, 1fr)) 28px;
+    grid-template-areas: "name name name name x" "cat cat cat cat cat" "ess ess ess ess ess" "water food wt size ." "qty exp exp exp ."; }
 }
 .selbar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border: 1px solid var(--bad); border-radius: 12px; background: color-mix(in srgb, var(--bad) 7%, var(--card)); }
 .selbar b { font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -1777,7 +1781,7 @@ function draftTable(d) {
       <div><b>Claude found ${d.rows.length} item${d.rows.length === 1 ? "" : "s"}</b><p class="small muted">Fix anything it misread, remove what isn't there, then add them to the kit.</p></div>
       <div class="row"><button class="btn" data-act="draftSave" ${d.rows.length ? "" : "disabled"}>Add ${d.rows.length} to kit</button><button class="btn ghost" data-act="draftCancel">Discard</button></div>
     </div>
-    <div class="tbl-wrap"><table class="inv">
+    <div class="tbl-wrap draft"><table class="inv">
       <thead><tr><th>Item</th><th style="width:136px">Category</th><th style="width:136px">Essential</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px">lb</th><th style="width:56px">Size L</th><th style="width:136px">Expires</th><th style="width:28px"></th></tr></thead>
       <tbody>${d.rows.map((r, i) => `<tr>
         <td data-label="Item"><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted" style="padding:0 6px">${esc(r.note)}</div>` : ""}${amazonA({ shopQuery: r.shop })}</td>
@@ -2237,7 +2241,7 @@ async function shrink(file, max = 1600) {
 }
 function cleanRows(out) {
   const arr = Array.isArray(out) ? out : Array.isArray(out?.items) ? out.items : [];
-  return arr.filter(x => x && String(x.name || "").trim()).map(x => { const category = Object.hasOwn(CATS, x.category) ? x.category : "other"; return {
+  return arr.filter(x => x && String(x.name || "").trim()).map(x => { const category = typeof x.category === "string" && Object.hasOwn(CATS, x.category) ? x.category : "other"; return {
     key: uid(),
     name: String(x.name).trim().slice(0, 80),
     category,

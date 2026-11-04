@@ -150,6 +150,23 @@ test("a reply's essential is kept only when it is on the list for that row's cat
   cases.forEach(([x, want], i) => assert.equal(rows[i].essential, want, JSON.stringify(x).slice(0, 80)));
 });
 
+test("a reply's category is kept only when it is a category id, and anything else is other with no essential", async () => {
+  const cases = [
+    [{ category: "documents", essential: "cash" }, "documents", "cash"],
+    [{ category: ["documents"], essential: "cash" }, "other", ""],
+    [{ category: { toString: "documents" }, essential: "cash" }, "other", ""],
+    [{ category: 7, essential: "cash" }, "other", ""],
+    [{ category: null, essential: "cash" }, "other", ""],
+    [{ category: "constructor", essential: "cash" }, "other", ""],
+    [{ category: "__proto__", essential: "cash" }, "other", ""],
+    [{ essential: "cash" }, "other", ""],
+  ];
+  const app = await read(cases.map(([x], i) => ({ name: "Line " + i, qty: 1, ...x })));
+  const rows = app.json(`S.draft.rows`);
+  assert.equal(rows.length, cases.length);
+  cases.forEach(([x, category, essential], i) => assert.deepEqual([rows[i].category, rows[i].essential], [category, essential], JSON.stringify(x)));
+});
+
 test("the draft shows an Essential picker for a documents row and none for a water row", async () => {
   const app = await read([{ name: "Twenty dollar bills", category: "documents", essential: "cash", qty: 5 }, { name: "Water bottles", category: "water", essential: "cash", qty: 6, liters: 3 }]);
   const docs = app.json(`ESSENTIALS.documents.map(e => e.id)`);
