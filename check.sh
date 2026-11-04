@@ -14,8 +14,9 @@ node --check "$tmp/app.js"
 # Size budget for the page, gzipped, the way it travels to the founder's phone. Set on 4 Nov 2026
 # at about 20% over the 59.5 KB it was then (issue #25), so a few features fit before anyone
 # has to choose. Raising it is fine when it is a choice: change this one number in a PR and say why.
-# Raised to 72,000 for the health-need hints and household-rated reasons (about 1.5 KB, mostly keyword
-# lists). Measured on CI's Linux gzip, which reads about 700 bytes more than macOS gzip for the same page.
+# Raised to 72,000 on 4 Nov 2026 by the founder's choice, for the named essentials work (#29):
+# the Essential picker (#39) took the page to about 70.4 KB.
+# CI's Linux gzip reads about 1% (some 700 bytes) more than macOS gzip for the same page: CI's number counts.
 budget=72000
 size=$(gzip -9c emergency-kit-audit.html | wc -c | tr -d ' ')
 echo "check: page is $size bytes gzipped, budget $budget"

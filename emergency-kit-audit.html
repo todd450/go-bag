@@ -351,9 +351,10 @@ tr.addrow td { background: var(--paper); }
 td.sel, th.sel { width: 40px; text-align: center; padding-left: 10px; }
 td.sel input, th.sel input { width: 16px; height: 16px; accent-color: var(--ink); cursor: pointer; }
 tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
-/* The page gives the inventory at most ~810px, too narrow for eleven columns, so under 900px each item is a card:
-   name, category, quantity and value on the first line, the numbers and expiry on the second (four short lines on a phone) */
-@container (max-width: 899px) {
+/* The page gives the inventory at most ~810px, too narrow for twelve columns, so under 1000px each item is a card:
+   name, category, quantity and value on the first line, the numbers and expiry on the second (four short lines on a phone).
+   An item in a checklist category gets a line between them with its Essential picker, under Category. */
+@container (max-width: 999px) {
   .inv, .inv tbody { display: block; }
   .inv thead tr { display: flex; align-items: center; gap: 0 16px; border-bottom: 1px solid var(--rule); }
   .inv thead th { border: 0; width: auto !important; }
@@ -375,12 +376,22 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
   .inv td[data-label="Value"] { grid-area: val; align-self: start; } .inv td[data-label="Water L"] { grid-area: water; } .inv td[data-label="Food kcal"] { grid-area: food; }
   .inv td[data-label="lb"] { grid-area: wt; } .inv td[data-label="Size L"] { grid-area: size; } .inv td[data-label="Expires"] { grid-area: exp; }
   .inv td.val .val-in { padding: 6px 5px 0; }
+  /* The photo draft has no tick box or Value: its category and Essential share a line, so both labels show in full */
+  .draft .inv tbody tr { grid-template-areas: ". name name name name name name name name qty qty qty qty x" ". cat cat cat cat cat cat ess ess ess ess ess ess ." ". water water food food wt wt size size exp exp exp exp ."; }
+  .inv td.d-ess { grid-area: ess; }
   .inv .val-note { padding-left: 5px; }
   .inv td.num input { text-align: left; }
+  .inv td.ess-td { grid-area: ess; }
+  .inv tbody tr:has(> td.ess-td > select) {
+    grid-template-areas: "sel name name name name name cat cat cat qty val val val x" ". . . . . . ess ess ess . . . . ." ". water water food food wt wt size size exp exp exp . ."; }
 }
 @container (max-width: 599px) {
   .inv tbody tr { grid-template-columns: 24px repeat(4, minmax(0, 1fr)) 28px;
     grid-template-areas: "sel name name name name x" ". cat cat qty val val" ". water food wt size size" ". exp exp exp . ."; }
+  .inv tbody tr:has(> td.ess-td > select) {
+    grid-template-areas: "sel name name name name x" ". cat cat qty val val" ". ess ess ess . ." ". water food wt size size" ". exp exp exp . ."; }
+  .draft .inv tbody tr { grid-template-columns: repeat(4, minmax(0, 1fr)) 28px;
+    grid-template-areas: "name name name name x" "cat cat cat cat cat" "ess ess ess ess ess" "water food wt size ." "qty exp exp exp ."; }
 }
 .selbar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border: 1px solid var(--bad); border-radius: 12px; background: color-mix(in srgb, var(--bad) 7%, var(--card)); }
 .selbar b { font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -478,6 +489,8 @@ function essentialOf(it) {
   if (e === "none") return "none";
   return typeof e === "string" && essentialList(it.category).some(x => x.id === e) ? e : "";
 }
+/* Whether `v` may be saved as the essential of an item in category `cat`: one of its ids, or "none", in the five only. */
+const essentialOk = (cat, v) => essentialList(cat).length > 0 && !!v && essentialOf({ category: cat, essential: v }) === v;
 /* The essentials one checklist row needs for household `h`. One person's prescriptions carry their name;
    with several, no label says whose is in the kit. */
 function essentialsFor(cat, h) {
@@ -675,6 +688,7 @@ const S = {
   openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
   scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, tag: null, tagNoteOff: false,
+  add: { cat: "water", ess: "" }, // the add-by-hand row's Category and Essential, so every redraw shows the two together
 };
 let db = null, assets = null, sample = null;
 
@@ -1774,12 +1788,13 @@ function kitDetail(kit, ready, M = model()) {
     <button class="btn ghost sm" data-act="clearSel">Cancel</button>
   </div>` : ""}
   <div class="tbl-wrap"><table class="inv">
-    <thead><tr>${S.canWrite ? `<th class="sel"><input type="checkbox" id="sel-all" data-change="selAll" aria-label="Select all items" ${items.length && items.every(i => S.sel.has(i.id)) ? "checked" : ""} ${items.length ? "" : "disabled"}></th>` : ""}<th>Item</th><th style="width:136px">${sortTh("cat", "Category")}</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px" title="Weight of the whole line in pounds. Grey numbers are estimates.">lb</th><th style="width:56px" title="Packed size of the whole line. Grey numbers are estimates.">Size L</th><th style="width:136px">Expires</th><th style="width:100px" title="Kit readiness points this item earns. Every item's points add up to the kit's score.">${sortTh("value", "Value")}</th><th style="width:28px"></th></tr></thead>
+    <thead><tr>${S.canWrite ? `<th class="sel"><input type="checkbox" id="sel-all" data-change="selAll" aria-label="Select all items" ${items.length && items.every(i => S.sel.has(i.id)) ? "checked" : ""} ${items.length ? "" : "disabled"}></th>` : ""}<th>Item</th><th style="width:136px">${sortTh("cat", "Category")}</th><th style="width:136px">Essential</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px" title="Weight of the whole line in pounds. Grey numbers are estimates.">lb</th><th style="width:56px" title="Packed size of the whole line. Grey numbers are estimates.">Size L</th><th style="width:136px">Expires</th><th style="width:100px" title="Kit readiness points this item earns. Every item's points add up to the kit's score.">${sortTh("value", "Value")}</th><th style="width:28px"></th></tr></thead>
     <tbody>
       ${items.map(it => { const st = expState(it); const on = S.sel.has(it.id); const ld = itemLoad(it); return `<tr class="${on ? "picked" : ""}">
         ${S.canWrite ? `<td class="sel"><input type="checkbox" id="sel-${esc(it.id)}" data-change="sel" data-id="${esc(it.id)}" aria-label="Select ${esc(it.name)}" ${on ? "checked" : ""}></td>` : ""}
         <td data-label="Item"><input type="text" id="it-${esc(it.id)}-name" value="${esc(it.name)}" data-change="item" data-id="${esc(it.id)}" data-f="name" aria-label="Item name" ${D()}>${it.note ? `<div class="small muted" style="padding:0 6px">${esc(it.note)}</div>` : ""}${amazonA(it)}</td>
         <td class="cat-td" data-label="Category">${icon(it.category)}<select id="it-${esc(it.id)}-cat" data-change="item" data-id="${esc(it.id)}" data-f="category" aria-label="Category" ${D()}>${catOptions(it.category)}</select></td>
+        <td class="ess-td" data-label="Essential">${essPicker(`it-${esc(it.id)}-ess`, it.category, essentialOf(it), `data-change="item" data-id="${esc(it.id)}" data-f="essential" ${D()}`)}</td>
         <td class="num" data-label="Qty"><input type="number" min="1" id="it-${esc(it.id)}-qty" value="${esc(Math.max(1, num(it.qty)))}" data-change="item" data-id="${esc(it.id)}" data-f="qty" aria-label="Quantity" ${D()}></td>
         <td class="num" data-label="Water L"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-l" value="${num(it.liters) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="liters" aria-label="Litres of water" ${D()}></td>
         <td class="num" data-label="Food kcal"><input type="number" min="0" step="50" id="it-${esc(it.id)}-k" value="${num(it.kcal) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="kcal" aria-label="Food calories" ${D()}></td>
@@ -1792,7 +1807,8 @@ function kitDetail(kit, ready, M = model()) {
       ${S.canWrite ? `<tr class="addrow">
         <td class="sel"></td>
         <td data-label="Item"><input type="text" id="add-name" placeholder="Add an item by hand…" maxlength="80" aria-label="New item name"></td>
-        <td data-label="Category"><select id="add-cat" aria-label="New item category">${catOptions("water")}</select></td>
+        <td data-label="Category"><select id="add-cat" data-change="addCat" aria-label="New item category">${catOptions(S.add.cat)}</select></td>
+        <td class="ess-td" data-label="Essential" id="add-ess-td">${essPicker("add-ess", S.add.cat, S.add.ess, `data-change="addEss"`)}</td>
         <td class="num" data-label="Qty"><input type="number" id="add-qty" min="1" value="1" aria-label="New item quantity"></td>
         <td class="num" data-label="Water L"><input type="number" id="add-l" min="0" step="0.1" aria-label="New item litres"></td>
         <td class="num" data-label="Food kcal"><input type="number" id="add-k" min="0" step="50" aria-label="New item calories"></td>
@@ -1808,17 +1824,24 @@ function kitDetail(kit, ready, M = model()) {
   ${how("kit-table", `Water L, Food kcal, lb and Size L are totals for the whole line (a 24-pack of 500 ml bottles is 12 L). Grey lb and Size L numbers are estimates until you type your own. Only Water L and Food kcal count toward water and food needs. Value is how many of the kit's ${ready.score} readiness points each item earns: a checklist line's points are shared by the items that fill it, so a lone tourniquet is worth more than one of twenty water bottles.`)}`;
 }
 function catOptions(sel) { return Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${k === sel ? "selected" : ""}>${v[0]}</option>`).join(""); }
+/* An Essential picker's options for category `cat` with `v` chosen: "Pick one…" (left out once tagged, when `blank` is
+   false), the category's essentials in order, then "Not one of these". */
+const essOptions = (cat, v, blank = true) => [...blank ? [["", "Pick one…"]] : [], ...essentialList(cat).map(e => [e.id, e.label]), ["none", "Not one of these"]]
+  .map(([id, label]) => `<option value="${esc(id)}"${id === (v || "") ? " selected" : ""}>${esc(label)}</option>`).join("");
+/* The Essential select for an item in category `cat` tagged `sel` (essentialOf). Nothing outside the five checklist categories. */
+const essPicker = (id, cat, sel, attrs = "") => essentialList(cat).length ? `<select id="${id}" aria-label="Essential" ${attrs}>${essOptions(cat, sel, !sel)}</select>` : "";
 function draftTable(d) {
   return `<div class="panel stack" style="border-color:var(--accent)">
     <div class="row" style="justify-content:space-between">
       <div><b>Claude found ${d.rows.length} item${d.rows.length === 1 ? "" : "s"}</b><p class="small muted">Fix anything it misread, remove what isn't there, then add them to the kit.</p></div>
       <div class="row"><button class="btn" data-act="draftSave" ${d.rows.length ? "" : "disabled"}>Add ${d.rows.length} to kit</button><button class="btn ghost" data-act="draftCancel">Discard</button></div>
     </div>
-    <div class="tbl-wrap"><table class="inv">
-      <thead><tr><th>Item</th><th style="width:136px">Category</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px">lb</th><th style="width:56px">Size L</th><th style="width:136px">Expires</th><th style="width:28px"></th></tr></thead>
+    <div class="tbl-wrap draft"><table class="inv">
+      <thead><tr><th>Item</th><th style="width:136px">Category</th><th style="width:136px">Essential</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px">lb</th><th style="width:56px">Size L</th><th style="width:136px">Expires</th><th style="width:28px"></th></tr></thead>
       <tbody>${d.rows.map((r, i) => `<tr>
         <td data-label="Item"><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted" style="padding:0 6px">${esc(r.note)}</div>` : ""}${amazonA({ shopQuery: r.shop })}</td>
         <td data-label="Category"><select id="d-${r.key}-cat" data-input="draft" data-i="${i}" data-f="category" aria-label="Category">${catOptions(r.category)}</select></td>
+        <td class="d-ess" data-label="Essential">${essentialList(r.category).length ? `<select id="d-${r.key}-ess" data-input="draft" data-i="${i}" data-f="essential" aria-label="Which essential ${esc(r.name)} is">${essOptions(r.category, essentialOf(r))}</select>` : ""}</td>
         <td class="num" data-label="Qty"><input type="number" min="1" id="d-${r.key}-qty" value="${r.qty}" data-input="draft" data-i="${i}" data-f="qty" aria-label="Quantity"></td>
         <td class="num" data-label="Water L"><input type="number" min="0" step="0.1" id="d-${r.key}-l" value="${r.liters || ""}" data-input="draft" data-i="${i}" data-f="liters" aria-label="Litres"></td>
         <td class="num" data-label="Food kcal"><input type="number" min="0" step="50" id="d-${r.key}-k" value="${r.kcal || ""}" data-input="draft" data-i="${i}" data-f="kcal" aria-label="Calories"></td>
@@ -2198,12 +2221,15 @@ function photoPrompt(kit) {
   return `These photos show the contents of an emergency kit called "${kit.name}" (${KIT_TYPES[kit.type] || "kit"}). List every distinct supply item you can see. Combine identical units into one line with a quantity. Several photos may show the same item from different angles or distances: count each physical item once. If an item is partly hidden or you are unsure what it is, still list it and say so in the note.
 
 Reply with only a JSON array. Each element:
-{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "grams": estimated total weight of the whole line in grams including packaging, "ml": estimated total packed volume of the whole line in millilitres, "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or "", "shop": an Amazon search query for this exact product, with the brand, product name and size as printed on the label (a short generic query when there is no brand), or "" for a prescription medicine or anything you can't identify}
+{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "grams": estimated total weight of the whole line in grams including packaging, "ml": estimated total packed volume of the whole line in millilitres, "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or "", "shop": an Amazon search query for this exact product, with the brand, product name and size as printed on the label (a short generic query when there is no brand), or "" for a prescription medicine or anything you can't identify, "essential": for a line in a category listed under Essential ids, the one id on that category's list that this item is, or "" when you are unsure or it is none of them; "" for every other category}
 
-Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"grams":12500,"ml":13500,"expires":"2027-06","note":"","shop":"Poland Spring 500 ml water bottles 24 pack"}]
+Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"grams":12500,"ml":13500,"expires":"2027-06","note":"","shop":"Poland Spring 500 ml water bottles 24 pack","essential":""}]
 
 Category ids:
-${catGuide()}`;
+${catGuide()}
+
+Essential ids, by category:
+${Object.entries(ESSENTIALS).map(([c, l]) => `${c}: ${l.map(e => `${e.id} (${e.label})`).join(", ")}`).join("\n")}`;
 }
 function packPrompt(items) {
   return `Estimate the weight and packed size of these emergency-kit items. Each line is: id | name | category | quantity | litres of water | food calories.
@@ -2276,10 +2302,10 @@ async function shrink(file, max = 1600) {
 }
 function cleanRows(out) {
   const arr = Array.isArray(out) ? out : Array.isArray(out?.items) ? out.items : [];
-  return arr.filter(x => x && String(x.name || "").trim()).map(x => ({
+  return arr.filter(x => x && String(x.name || "").trim()).map(x => { const category = typeof x.category === "string" && Object.hasOwn(CATS, x.category) ? x.category : "other"; return {
     key: uid(),
     name: String(x.name).trim().slice(0, 80),
-    category: CATS[x.category] ? x.category : "other",
+    category,
     qty: Math.max(1, Math.round(num(x.qty) || 1)),
     liters: Math.round(num(x.liters) * 10) / 10,
     kcal: Math.round(num(x.kcal)),
@@ -2288,7 +2314,9 @@ function cleanRows(out) {
     expires: /^\d{4}-\d{2}$/.test(x.expires || "") ? x.expires : "",
     note: String(x.note || "").slice(0, 120),
     shop: typeof x.shop === "string" ? x.shop.trim().slice(0, 120) : "",
-  }));
+    // Only an id on this category's list. "none" is the household's to say, never Claude's.
+    essential: x.essential === "none" ? "" : essentialOf({ category, essential: x.essential }),
+  }; });
 }
 /* Photos wait in a tray until you read them, so a kit can be shot one photo at a time (a phone
    camera takes one per pick) and Claude still sees them all together. The tray lives in memory only. */
@@ -2355,7 +2383,7 @@ async function saveDraft() {
   const now = Date.now();
   const rows = d.rows.filter(r => String(r.name).trim());
   try {
-    await Promise.all(rows.map(r => setDoc("items", uid(), { kitId: kit.id, name: r.name.trim(), category: r.category, qty: Math.max(1, Math.round(num(r.qty) || 1)), liters: num(r.liters), kcal: num(r.kcal), grams: gOfLb(r.lb), ml: Math.round(num(r.L) * 1000), expires: r.expires || "", note: r.note || "", ...(r.shop ? { shopQuery: r.shop } : {}), source: "photo", addedAt: now })));
+    await Promise.all(rows.map(r => setDoc("items", uid(), { kitId: kit.id, name: r.name.trim(), category: r.category, qty: Math.max(1, Math.round(num(r.qty) || 1)), liters: num(r.liters), kcal: num(r.kcal), grams: gOfLb(r.lb), ml: Math.round(num(r.L) * 1000), expires: r.expires || "", note: r.note || "", ...(r.shop ? { shopQuery: r.shop } : {}), ...(essentialOf(r) ? { essential: essentialOf(r) } : {}), source: "photo", addedAt: now })));
     if (d.photoIds.length) await setDoc("kits", kit.id, { ...strip(kit), photos: [...(kit.photos || []), ...d.photoIds], updatedAt: now });
     S.draft = null;
     toast(`Added ${rows.length} item${rows.length === 1 ? "" : "s"} to ${kit.name}`);
@@ -2489,8 +2517,12 @@ const ACT = {
   addItem: async () => {
     const name = $("#add-name").value.trim();
     if (!name) { $("#add-name").focus(); return; }
-    const row = { kitId: S.openKit, name, category: $("#add-cat").value, qty: Math.max(1, Math.round(num($("#add-qty").value) || 1)), liters: num($("#add-l").value), kcal: num($("#add-k").value), grams: gOfLb($("#add-g").value), ml: Math.round(num($("#add-ml").value) * 1000), expires: $("#add-exp").value || "", note: "", source: "manual", addedAt: Date.now() };
-    $("#add-name").value = "";
+    const category = $("#add-cat").value, essential = $("#add-ess")?.value;
+    const row = { kitId: S.openKit, name, category, qty: Math.max(1, Math.round(num($("#add-qty").value) || 1)), liters: num($("#add-l").value), kcal: num($("#add-k").value), grams: gOfLb($("#add-g").value), ml: Math.round(num($("#add-ml").value) * 1000), expires: $("#add-exp").value || "", note: "", source: "manual", addedAt: Date.now(), ...essentialOk(category, essential) ? { essential } : {} };
+    // The row keeps its category and asks for the next item's essential; focus leaves the selects first, so
+    // render() doesn't put the old pick back.
+    S.add = { cat: Object.hasOwn(CATS, category) ? category : "water", ess: "" };
+    $("#add-name").value = ""; $("#add-name").focus();
     await setDoc("items", uid(), row).catch(() => {});
     $("#add-name")?.focus();
   },
@@ -2582,7 +2614,10 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-act]
 document.addEventListener("input", e => {
   const t = e.target;
   if (t.dataset.input === "draft") {
-    const r = S.draft?.rows[+t.dataset.i]; if (r) r[t.dataset.f] = t.value;
+    const r = S.draft?.rows[+t.dataset.i]; if (!r) return;
+    r[t.dataset.f] = t.value;
+    // A new category has its own essentials, so the old pick goes and the row redraws with the right picker.
+    if (t.dataset.f === "category") { r.essential = ""; render(); }
   } else if (t.dataset.input === "hh") {
     setPath(S.hhDraft, t.dataset.p, t.type === "number" ? (t.value === "" && t.dataset.blank ? "" : num(t.value)) : t.value);
     if (t.dataset.blank) { S.hhDirty = true; render(); return; }
@@ -2599,11 +2634,17 @@ document.addEventListener("change", async e => {
     const f = t.dataset.f;
     let v = t.value;
     if (f === "qty") v = Math.max(1, Math.round(num(v) || 1)); else if (f === "liters" || f === "kcal") v = num(v); else if (f === "grams") v = gOfLb(v); else if (f === "ml") v = Math.round(num(v) * 1000); else if (f === "name") { v = v.trim(); if (!v) { t.value = it.name; return; } }
+    else if (f === "essential" && !essentialOk(it.category, v)) { t.value = essentialOf(it); return; }
     if (it[f] === v) return;
     await setDoc("items", it.id, { ...strip(it), [f]: v }).catch(() => {});
   } else if (t.dataset.change === "tagPick") {
     if (!S.tag) return;
     S.tag.picks.set(t.dataset.id, t.value); render();
+  } else if (t.dataset.change === "addCat") {
+    S.add = { cat: Object.hasOwn(CATS, t.value) ? t.value : "water", ess: "" };
+    const cell = $("#add-ess-td"); if (cell) cell.innerHTML = essPicker("add-ess", S.add.cat, "", `data-change="addEss"`);
+  } else if (t.dataset.change === "addEss") {
+    S.add.ess = essentialOk(S.add.cat, t.value) ? t.value : "";
   } else if (t.dataset.change === "packLim") {
     const kit = S.kits.find(k => k.id === t.dataset.id); if (!kit) return;
     const f = t.dataset.f, v = f === "carryKg" ? kgOfLb(t.value) : Math.round(num(t.value) * 2) / 2;
