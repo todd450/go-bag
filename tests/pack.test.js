@@ -160,7 +160,7 @@ test("weights show and are typed in pounds, and saved data stays in grams and kg
   const app = load({ fixture: "tests/household" });
   const { run, json, fire } = app;
   // A 450 g first-aid kit shows as 1 lb in the kit table, under an lb column
-  const html = run(`S.openKit = "go"; viewKits(model())`);
+  const html = run(`S.openKit = "go"; ACT.kitView({ dataset: { v: "list" } }); viewKits(model())`);
   assert.match(html, />lb<\/th>/);
   assert.match(html, /id="it-i4-g" value="1"/);
   assert.doesNotMatch(html, />kg<|in kg| kg\b/);
