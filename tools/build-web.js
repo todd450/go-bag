@@ -11,7 +11,7 @@ const { wrap, ROOT } = require("./page");
 // `supabaseJs` is the browser build of supabase-js; tests pass a stand-in, so they need no install.
 function build(out = path.join(ROOT, "dist"), env = process.env, supabaseJs = require.resolve("@supabase/supabase-js/dist/umd/supabase.js", { paths: [ROOT] })) {
   const supabaseUrl = env.SUPABASE_URL, supabaseKey = env.SUPABASE_PUBLISHABLE_KEY;
-  if (!supabaseUrl || !supabaseKey) throw new Error("build-web: set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY");
+  if (!supabaseUrl || !supabaseKey) throw new Error("build-web: set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (locally: doppler run -- npm run build)");
 
   const files = {
     "supabase.js": fs.readFileSync(supabaseJs),

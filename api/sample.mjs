@@ -1,6 +1,6 @@
 // Claude for the page's photo scan, hazard check, pack estimate and plan review (issue #48).
 // The browser shim (web/runtime.js) posts { mode: "text" | "json", prompt, images?, tier? } with the
-// member's Supabase access token. The Anthropic key lives only in Vercel's ANTHROPIC_API_KEY.
+// member's Supabase access token. ANTHROPIC_API_KEY is set in Doppler (go-bag, prd), which syncs it to Vercel.
 import Anthropic from "@anthropic-ai/sdk";
 import { membership, json } from "./_member.mjs";
 import { parseJson } from "./_json.mjs";
@@ -38,7 +38,7 @@ export async function POST(request) {
   const who = await membership(token);
   if (who === "expired") return json({ code: "session_expired" }, 401);
   if (who !== "member") return json({ code: "not_granted" }, 403);
-  if (!process.env.ANTHROPIC_API_KEY) return json({ code: "sampling_disabled", message: "ANTHROPIC_API_KEY is not set in Vercel" }, 503);
+  if (!process.env.ANTHROPIC_API_KEY) return json({ code: "sampling_disabled", message: "ANTHROPIC_API_KEY is not set: add it to Doppler go-bag prd" }, 503);
   client ||= new Anthropic();
 
   const body = await request.json().catch(() => null);

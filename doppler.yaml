@@ -1,0 +1,8 @@
+# Doppler holds the Vercel version's keys (issue #48). Project and config NAMES only, never a value.
+# `doppler setup --no-interactive` here reads this; `doppler run -- <command>` then injects the `dev`
+# config into that command's environment, so no .env file is needed. Vercel production gets `prd`
+# through Doppler's Vercel integration. check.sh and the tests need no keys and never run under it.
+setup:
+  - project: go-bag
+    config: dev
+    path: ./
