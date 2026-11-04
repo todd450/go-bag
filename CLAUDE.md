@@ -32,7 +32,14 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
 - **Local preview:** `sh preview.sh`, which serves the page at http://127.0.0.1:8765/ wrapped the
   way claude.ai wraps it. Outside claude.ai there is no `window.claude`, so nothing saves and the
   Claude features (photo scan, hazard check, review) are off. It serves a temporary copy of the
-  page only, never this folder.
+  page only, never this folder. `sh preview.sh tests/household` (or any fixture) starts it with
+  that made-up household loaded from memory (`tools/fixture-db.js`); edits there are never saved.
+- **Screenshots in every PR that changes the page:** run
+  `node tools/screenshots.js <scratch dir>`. It shoots every tab at phone (390) and desktop (1440)
+  width, from `origin/main` and from your change, with `tests/household` loaded. It takes about
+  20 seconds and needs Chrome. Look at every shot it lists as changed, and say in the PR which tabs
+  changed and how. Send the founder its `compare.html` (both versions side by side, in one file).
+  Never commit the shots: they are scratch.
 - **This product's own rules:**
   - The whole app is `emergency-kit-audit.html`: markup, one inline `<script>` and its styles,
     with no build step (`check.sh` fails on a second `<script>`). Builders working at the same
