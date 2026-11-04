@@ -651,6 +651,9 @@ function expState(it) {
 
 /* ---------- storage (db when available, memory otherwise) ---------- */
 const COLS = { kits: "kits", items: "items" };
+// The single docs under household/, each kept in S under its own name. Boot subscribes to each of these and to
+// every collection in COLS, and the page counts as loaded once all of them have answered.
+const HOUSEHOLD_DOCS = ["profile", "hazards", "review", "shopping", "plan"];
 async function setDoc(col, id, data) {
   if (db) {
     try { await db.doc(col + "/" + id).set(data); }
@@ -2345,11 +2348,13 @@ render();
   S.live = true;
   const timer = setTimeout(() => { S.slow = true; render(); }, 10000);
   const seen = new Set();
-  const done = (k, snap) => { if (!snap.metadata?.fromCache) seen.add(k); if (seen.size >= 7) { S.loaded = true; S.slow = false; clearTimeout(timer); } };
+  const all = Object.keys(COLS).length + HOUSEHOLD_DOCS.length;
+  const done = (k, snap) => { if (!snap.metadata?.fromCache) seen.add(k); if (seen.size >= all) { S.loaded = true; S.slow = false; clearTimeout(timer); } };
   const fail = () => { clearTimeout(timer); S.loaded = true; render(); };
-  db.collection("kits").onSnapshot(snap => { S.kits = snap.docs.map(x => ({ id: x.id, ...x.data() })); done("kits", snap); render(); }, fail);
-  db.collection("items").onSnapshot(snap => { S.items = snap.docs.map(x => ({ id: x.id, ...x.data() })); done("items", snap); render(); }, fail);
-  for (const key of ["profile", "hazards", "review", "shopping", "plan"]) {
+  for (const [key, col] of Object.entries(COLS)) {
+    db.collection(col).onSnapshot(snap => { S[key] = snap.docs.map(x => ({ id: x.id, ...x.data() })); done(key, snap); render(); }, fail);
+  }
+  for (const key of HOUSEHOLD_DOCS) {
     db.doc("household/" + key).onSnapshot(snap => {
       S[key] = snap.exists ? clone(snap.data()) : null;
       if (key === "profile") syncDraft();

@@ -7,17 +7,21 @@ const vm = require("node:vm");
 const ROOT = path.join(__dirname, "..");
 const PAGE = process.env.GO_BAG_PAGE || path.join(ROOT, "emergency-kit-audit.html");
 
-function appScript() {
+// The page's script. Without `boot` it stops before the boot sequence (first render and the claude.ai
+// capability wiring), and tests drive state themselves.
+function appScript({ boot = false } = {}) {
   const html = fs.readFileSync(PAGE, "utf8");
   const m = html.match(/<script>([\s\S]*?)<\/script>/);
   if (!m) throw new Error("no <script> in the page");
-  // Drop the boot sequence (first render and the claude.ai capability wiring); tests drive state themselves.
+  if (boot) return m[1];
   const cut = m[1].search(/\nsyncDraft\(\);\nrender\(\);/);
   if (cut < 0) throw new Error("boot sequence not found: update tests/load.js");
   return m[1].slice(0, cut);
 }
 
-function load({ fixture } = {}) {
+// With `boot`, the page starts the way it does on claude.ai, with `claude` as window.claude (leave it
+// out to start with no capabilities, as it does outside claude.ai).
+function load({ fixture, boot = false, claude } = {}) {
   const el = () => ({
     addEventListener() {}, querySelectorAll: () => [], querySelector: () => null, setAttribute() {}, focus() {},
     hidden: false, innerHTML: "", textContent: "", style: {}, dataset: {},
@@ -33,13 +37,13 @@ function load({ fixture } = {}) {
     navigator: {},
     document: { querySelector: el, querySelectorAll: () => [], addEventListener: (type, fn) => { (listeners[type] ||= []).push(fn); }, getElementById: el, createElement: el, body: el() },
     location: { hash: "" },
-    window: { scrollTo() {}, matchMedia: () => ({ matches: true }) },
+    window: { scrollTo() {}, matchMedia: () => ({ matches: true }), claude },
     history: { replaceState() {} },
     // Timers are collected, not run, so toasts and flashes never keep the test process alive.
     setTimeout: fn => later.push(fn),
     clearTimeout() {},
   });
-  vm.runInContext(appScript(), ctx, { filename: "emergency-kit-audit.html" });
+  vm.runInContext(appScript({ boot }), ctx, { filename: "emergency-kit-audit.html" });
   const run = code => vm.runInContext(code, ctx);
   // Values built inside the context have that context's prototypes; JSON gives plain ones for deep asserts.
   const json = code => JSON.parse(run(`JSON.stringify(${code})`));
@@ -54,8 +58,9 @@ function load({ fixture } = {}) {
 // household is tests/household, and the edge cases live under fixtures/, one folder per failure class.
 function useFixture(app, name) {
   const f = JSON.parse(fs.readFileSync(path.join(ROOT, name + ".json"), "utf8"));
+  // The household docs come from the page's own list, so every doc the page loads, the tests load too.
   app.run(`(f => {
-    S.profile = f.profile; S.hazards = f.hazards || null; S.plan = f.plan || null; S.shopping = f.shopping || null;
+    for (const k of HOUSEHOLD_DOCS) S[k] = f[k] || null;
     S.kits = f.kits || []; S.items = f.items || [];
   })(${JSON.stringify(f)})`);
   return f;
