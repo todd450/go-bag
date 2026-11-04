@@ -215,3 +215,31 @@ test("the review renders for every scenario, and escapes item names", () => {
   app.run(`S.items.find(i => i.id === "i3").name = ${JSON.stringify(evil)}; S.kits.find(k => k.id === "home").name = ${JSON.stringify(evil)}; ACT.tagOpen()`);
   assert.ok(!app.run("viewOverview(model())").includes(evil));
 });
+
+test("a review whose rows all leave some other way closes, and a later untagged item doesn't reopen it", () => {
+  // Every way the last row can leave without Save or Cancel: deleted, moved out of the five categories,
+  // tagged from elsewhere, or expired. Each while on the Readiness tab and while on another tab.
+  const leave = {
+    deleted: `S.items = S.items.filter(i => i.id !== "i3")`,
+    moved: `S.items.find(i => i.id === "i3").category = "light"`,
+    tagged: `S.items.find(i => i.id === "i3").essential = "extinguisher"`,
+    expired: `S.items.find(i => i.id === "i3").expires = "2000-01"`,
+  };
+  for (const [how, code] of Object.entries(leave)) for (const view of ["overview", "kits"]) {
+    const app = load({ fixture: "tests/household" });
+    app.run(`S.view = ${JSON.stringify(view)}; ACT.tagOpen(); ${code}; render()`);
+    app.run(`S.items.push({ id: "n1", kitId: "home", name: "Whistle", category: "communication", qty: 1 }); S.view = "overview"; render()`);
+    const html = app.run("viewOverview(model())");
+    assert.equal(reviewRows(html).length, 0, `${how}, on ${view}: the review stays closed`);
+    assert.match(tagStep(app)?.title || "", /^Tag 1 item\b/, `${how}, on ${view}: the new item is offered as a step`);
+    assert.match(html, /data-act="tagOpen"/, `${how}, on ${view}: Next steps is back with its Review button`);
+  }
+});
+
+test("the review closes when its rows run out even if nothing else renders in between", () => {
+  const app = load({ fixture: "tests/household" });
+  app.run(`ACT.tagOpen(); S.items = S.items.filter(i => i.id !== "i3")`);
+  assert.equal(reviewRows(app.run("viewOverview(model())")).length, 0);
+  app.run(`S.items.push({ id: "n1", kitId: "home", name: "Whistle", category: "communication", qty: 1 })`);
+  assert.equal(reviewRows(app.run("viewOverview(model())")).length, 0, "the new item waits in Next steps");
+});

@@ -914,6 +914,13 @@ function guessEssential(it) {
 const tagRows = () => S.items.filter(it => Object.hasOwn(ESSENTIALS, it.category) && !essentialOf(it) && expState(it) !== "expired")
   .map(it => ({ it, guess: guessEssential(it) }));
 // A row's value: what was picked in the open review, else the guess. Only an id on its own list, or "none", is saved.
+// The open review's rows. A review left with none (each deleted, moved, tagged or expired elsewhere) closes,
+// so an untagged item that arrives later waits in Next steps instead of reopening it untapped.
+function tagReviewRows() {
+  const tr = S.tag ? tagRows() : [];
+  if (!tr.length) S.tag = null;
+  return tr;
+}
 const tagPick = r => S.tag?.picks.has(r.it.id) ? S.tag.picks.get(r.it.id) : r.guess;
 const tagChosen = (rows = tagRows()) => rows.map(r => ({ ...r, v: tagPick(r) }))
   .filter(({ it, v }) => v === "none" || essentialList(it.category).some(e => e.id === v));
@@ -1383,7 +1390,7 @@ function viewTagReview(rows) {
 }
 function viewOverview(M) {
   const { h, results, overall, gaps, exp } = M;
-  const N = nextActions(M), tr = S.tag ? tagRows() : [];
+  const tr = tagReviewRows(), N = nextActions(M);
   const nGap = N.filled.length;
   const unlisted = splitListed(gaps).off.length;
   const sc = overall ?? 0;
@@ -1925,6 +1932,7 @@ function render() {
   const keep = a && a.id && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.tagName === "SELECT")
     ? { id: a.id, value: a.value, s: a.selectionStart, e: a.selectionEnd } : null;
   const M = model();
+  tagReviewRows();
   if (S.sel.size) { const live = new Set(S.items.filter(i => i.kitId === S.openKit).map(i => i.id)); for (const id of S.sel) if (!live.has(id)) S.sel.delete(id); }
   if (!S.openKit && S.kits.length) S.openKit = [...S.kits].sort((x, y) => (x.createdAt || 0) - (y.createdAt || 0))[0].id;
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.v === S.view ? "page" : "false"));
