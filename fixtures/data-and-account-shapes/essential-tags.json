@@ -1,0 +1,42 @@
+{
+  "about": "Items tagged with the named essential they are, in all five checklist categories: valid tags, two items tagged with the same essential, an id from another category, an unknown id, a number, an object, \"Not one of these\", untagged items, an expired tagged item, two prescriptions items, and the one person on daily medication with markup in their name.",
+  "profile": {
+    "members": [
+      { "label": "Robin", "years": 44 },
+      { "label": "<b>Pat</b> & co", "years": 71, "conditions": ["heart", "diabetes"] },
+      { "years": 15 }
+    ],
+    "pets": [],
+    "vehicles": 1,
+    "home": "Apartment"
+  },
+  "hazards": { "assessedAt": 1, "levels": {}, "reasons": {} },
+  "kits": [
+    { "id": "go", "name": "Go-bag", "type": "go", "createdAt": 1 },
+    { "id": "home", "name": "Closet shelf", "type": "home", "createdAt": 2 },
+    { "id": "car", "name": "Car trunk", "type": "car", "createdAt": 3 }
+  ],
+  "items": [
+    { "id": "d1", "kitId": "go", "name": "Passport copies", "category": "documents", "qty": 1, "essential": "id_copies" },
+    { "id": "d2", "kitId": "go", "name": "Twenties in an envelope", "category": "documents", "qty": 1, "essential": "cash" },
+    { "id": "d3", "kitId": "home", "name": "Coins", "category": "documents", "qty": 1, "essential": "cash" },
+    { "id": "d4", "kitId": "home", "name": "Notebook", "category": "documents", "qty": 1, "essential": "none" },
+    { "id": "d5", "kitId": "go", "name": "Folder", "category": "documents", "qty": 1 },
+    { "id": "f1", "kitId": "home", "name": "Extinguisher", "category": "fire_safety", "qty": 1, "essential": "extinguisher" },
+    { "id": "f2", "kitId": "home", "name": "Ladder", "category": "fire_safety", "qty": 1, "essential": "radio" },
+    { "id": "f3", "kitId": "home", "name": "Smoke hood", "category": "fire_safety", "qty": 1, "essential": "flare_gun" },
+    { "id": "c1", "kitId": "go", "name": "Crank radio", "category": "communication", "qty": 1, "essential": "radio" },
+    { "id": "c2", "kitId": "go", "name": "Whistle", "category": "communication", "qty": 2, "essential": 7 },
+    { "id": "c3", "kitId": "car", "name": "Walkie-talkies", "category": "communication", "qty": 2, "essential": { "id": "radio" } },
+    { "id": "t1", "kitId": "go", "name": "Pocket knife", "category": "tools", "qty": 1, "essential": "multitool" },
+    { "id": "t2", "kitId": "car", "name": "Tape", "category": "tools", "qty": 1, "essential": "Duct_Tape" },
+    { "id": "t3", "kitId": "home", "name": "Rope", "category": "tools", "qty": 1, "essential": "" },
+    { "id": "m1", "kitId": "go", "name": "Ibuprofen", "category": "medications", "qty": 1, "expires": "2020-01", "essential": "pain_reliever" },
+    { "id": "m2", "kitId": "go", "name": "Antihistamine", "category": "medications", "qty": 1, "essential": "allergy_med" },
+    { "id": "m3", "kitId": "go", "name": "Insulin pens", "category": "medications", "qty": 1, "essential": "prescriptions" },
+    { "id": "m4", "kitId": "home", "name": "Heart pills", "category": "medications", "qty": 1, "essential": "prescriptions" },
+    { "id": "m5", "kitId": "home", "name": "Spare glasses", "category": "medications", "qty": 1, "essential": null },
+    { "id": "w1", "kitId": "home", "name": "Water jugs", "category": "water", "qty": 4, "liters": 15, "essential": "cash" },
+    { "id": "x1", "kitId": "go", "name": "Mystery", "category": "constructor", "qty": 1, "essential": "toString" }
+  ]
+}
