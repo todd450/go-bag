@@ -56,6 +56,7 @@ test("a count of one is never followed by a plural", () => {
 
 test("next steps that mix setup and supplies count only the supplies", () => {
   const { run, json } = load({ fixture: "tests/household" });
+  run(`S.items.find(i => i.id === "i3").essential = "extinguisher"`); // tagged, so no tag step takes a slot
   const kinds = json("nextActions(model()).acts.map(a => a.kind)");
   assert.deepEqual(kinds, ["plan", "gap", "gap"]);
   const html = run("viewOverview(model())");
