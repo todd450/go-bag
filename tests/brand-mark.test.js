@@ -3,8 +3,11 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
+const { execFileSync } = require("node:child_process");
 const { load, PAGE, ROOT } = require("./load");
+const { wrap } = require("../tools/page");
 
 const html = fs.readFileSync(PAGE, "utf8");
 const css = html.match(/<style>([\s\S]*?)<\/style>/)[1];
@@ -177,3 +180,74 @@ test("the brand is Cobalt, and Partway's orange stays the meter's", () => {
     assert.equal(uses, decl("meter").filter(v => v === old).length, `${old} appears only as --meter`);
   }
 });
+
+// In a real browser: the stand-in DOM finds a link anywhere and lays nothing out, so where the icon
+// link sits and how much room a kit name gets can only be seen in Chrome.
+function findChrome() {
+  if (process.env.CHROME) return process.env.CHROME;
+  const mac = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+  if (fs.existsSync(mac)) return mac;
+  for (const name of ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"]) {
+    try { return execFileSync("which", [name], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(); } catch (_) {}
+  }
+  return null;
+}
+const chrome = findChrome();
+// CI must have Chrome; a laptop without it skips these.
+const needsChrome = { skip: !chrome && !process.env.CI && "needs Chrome", timeout: 60000 };
+
+// Loads the page wrapped the way claude.ai wraps it (its markup lands in <body>), with `fixture`, on
+// the Kits tab in headless Chrome `width` pixels wide, and returns what `probe` returns once it has
+// settled. The web font is left out, so the test makes no network calls.
+function inChrome(fixture, width, probe) {
+  assert.ok(chrome, "no Chrome found: install it or set CHROME");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-mark-"));
+  try {
+    const page = wrap(undefined, fixture).replace(/<link[^>]*fonts\.g[^>]*>/g, "").replace(/<\/body>/,
+      `<script>addEventListener("load", () => setTimeout(() => { const p = document.createElement("pre"); p.id = "probe";`
+      + ` p.textContent = encodeURIComponent(JSON.stringify((${probe})())); document.body.append(p); }, 500));</script></body>`);
+    fs.writeFileSync(path.join(dir, "index.html"), page);
+    const out = execFileSync(chrome, ["--headless=new", "--disable-gpu", "--no-first-run", "--hide-scrollbars",
+      ...(process.platform === "linux" ? ["--no-sandbox"] : []), `--user-data-dir=${path.join(dir, "profile")}`,
+      `--window-size=${width},900`, "--virtual-time-budget=5000", "--dump-dom", `file://${path.join(dir, "index.html")}#kits`],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 45000 });
+    const m = out.match(/<pre id="probe">([^<]*)<\/pre>/);
+    assert.ok(m, "the page settled and the probe ran");
+    return JSON.parse(decodeURIComponent(m[1]));
+  } finally { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 }); }
+}
+
+test("in Chrome, the tab icon link sits in <head>, where browsers read it, at the household's score", needsChrome, () => {
+  const got = inChrome("tests/household", 1440, () => {
+    const links = [...document.querySelectorAll('link[rel~="icon"]')];
+    return { inHead: links.map(l => l.parentNode === document.head), href: links[0] && links[0].getAttribute("href"), overall: model().overall };
+  });
+  assert.deepEqual(got.inHead, [true], "one icon link, in <head>");
+  assert.equal(fillOf(iconSvg(got.href)), got.overall || null);
+});
+
+for (const fixture of ["tests/household", "fixtures/empty-and-one/big-household"]) {
+  for (const width of [500, 1440]) {
+    test(`in Chrome, a kit card's case takes no room from its name (${fixture}, ${width}px)`, needsChrome, () => {
+      const got = inChrome(fixture, width, () => {
+        const box = el => { const r = el.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom }; };
+        const cards = [...document.querySelectorAll(".tag")].map(t => ({
+          card: box(t), name: box(t.querySelector("b")), mark: box(t.querySelector(".tag-pct svg")), pct: box(t.querySelector(".tag-pct")),
+        }));
+        const room = () => [...document.querySelectorAll(".tag b")].map(b => b.clientWidth);
+        const withCase = room();
+        const hide = document.createElement("style");
+        hide.textContent = ".tag-pct svg { display: none }";
+        document.head.append(hide);
+        return { cards, withCase, withoutCase: room() };
+      });
+      assert.ok(got.cards.length > 0, "the Kits tab shows kit cards");
+      assert.deepEqual(got.withCase, got.withoutCase, "each kit name has the same room with the case drawn as without it");
+      for (const { card, name, mark, pct } of got.cards) {
+        assert.ok(mark.r - mark.l >= 23.5, "the case is drawn at its size");
+        assert.ok(mark.t >= card.t && mark.b <= card.b && mark.r <= card.r, "the case sits inside its card");
+        assert.ok(pct.l >= name.r, "the score and its case sit clear of the name");
+      }
+    });
+  }
+}
