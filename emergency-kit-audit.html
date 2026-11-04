@@ -602,22 +602,22 @@ const CONDITIONS = {
 /* Conditions that mean someone takes medication every day, so a pharmacy closing cuts them off. */
 const DAILY_MEDS = ["meds", "diabetes", "seizures", "opioids"];
 const onDailyMeds = m => Array.isArray(m.conditions) && m.conditions.some(c => DAILY_MEDS.includes(c));
-/* Words in a person's note that name a health need. The note never scores; a match offers to switch the need on. */
+/* Words in a person's note naming a health need. Notes never score: a match only offers to switch it on. */
 const CONDITION_WORDS = {
-  meds: /\b(medications?|medicines?|meds|prescriptions?|pills|blood[- ]pressure|thyroid)\b/,
+  meds: /\b(medications?|medicines?(?! cabinet)|meds|prescription (meds|drugs?|medicines?)|daily pills|blood[- ]pressure|thyroid)\b/,
   allergy: /\b(epi-?pens?|anaphyla\w*|severe allerg\w*)\b/,
   diabetes: /\b(diabet\w*|insulin|blood sugar)\b/,
-  heart: /\b(heart|cardiac|pacemaker|a-?fib)\b/,
+  heart: /\b(heart (condition|disease|failure|problems?|attack)|cardiac|pacemaker|a-?fib|arrhythmia)\b/,
   asthma: /\b(asthma|copd|inhalers?)\b/,
   seizures: /\b(epilep\w*|seizures?)\b/,
-  opioids: /\b(opioids?|oxy\w*|hydrocodone|morphine|fentanyl|methadone)\b/,
+  opioids: /\b(opioids?|oxycodone|oxycontin|hydrocodone|morphine|fentanyl|methadone)\b/,
   device: /\b(oxygen|c-?pap|ventilator|nebuli[sz]er|dialysis)\b/,
-  mobility: /\b(wheelchair|walker|cane|crutches|mobility)\b/,
+  mobility: /\b(wheelchair|crutches|(an?|uses|with) (cane|walker)|limited mobility|mobility (aid|issues?|problems?))\b/,
 };
 function conditionHints(m) {
   const have = new Set(Array.isArray(m.conditions) ? m.conditions : []);
-  const clauses = String(m.needs || "").toLowerCase().split(/[,;.\n]|\band\b|\bbut\b/)
-    .filter(c => !/\b(no|not|none|never|without|doesn'?t|don'?t)\b/.test(c));
+  const clauses = String(m.needs || "").toLowerCase().replace(/[‘’]/g, "'").split(/[,;.\n]|\band\b|\bbut\b/)
+    .filter(c => !/\b(no|not|non|none|never|off|stopped|quit|without|\w+n't)\b/.test(c));
   return Object.keys(CONDITIONS).filter(k => !have.has(k) && !(k === "meds" && onDailyMeds(m)) && clauses.some(c => CONDITION_WORDS[k].test(c)));
 }
 const KIT_TYPES = { go: "Go-bag", home: "Home supply", car: "Vehicle kit" };
@@ -801,8 +801,8 @@ function relevance(hz, h) {
 const FACT_WORDS = { seniors: "aged 65 or over", mobility: "with limited mobility", heart: "with a heart condition", dailyMeds: "on daily medication", allergic: "with a severe allergy", asthma: "with asthma or COPD", seizures: "with epilepsy or seizures", diabetes: "with diabetes", opioids: "on opioid pain medication", devices: "on a powered medical device" };
 const FACTS = ["kids", "infants", "pets", ...Object.keys(FACT_WORDS)];
 const factText = (k, n) => k === "pets" ? `${n} pet${n > 1 ? "s" : ""}` : k === "kids" || k === "infants" ? `${n} ${n > 1 ? "children" : "child"} ${k === "kids" ? "aged 3 to 12" : "under 3"}` : `${n > 1 ? n + " people" : "someone"} ${FACT_WORDS[k]}`;
-/* Why a health or everyday emergency is rated as it is, since the location check writes no reason for these:
-   each household fact that on its own raises it above a household with none, and the household's own rating. */
+/* Why a health or everyday emergency is rated as it is (the location check writes no reason for these):
+   the household's own rating, then each fact that alone raises it above a household with none. */
 function householdWhy(hz, h) {
   const at = x => (typeof hz.base === "function" ? hz.base(x) : hz.base) || "none";
   const rank = x => LEVELS[at(x)]?.[1] ?? 0;
@@ -811,13 +811,12 @@ function householdWhy(hz, h) {
   const floor = rank(bare);
   const facts = FACTS.filter(k => h[k] && rank({ ...bare, [k]: h[k] }) > floor).map(k => factText(k, h[k]));
   const home = h.home && rank({ ...bare, home: h.home }) > floor;
-  const own = S.hazards?.levels?.[hz.id];
-  const out = [];
-  if (LEVELS[own] && own !== at(h)) out.push(own === "none" ? "You marked this as not relevant." : `You rated this ${LEVELS[own][0].toLowerCase()}.`);
-  if (hz.vehicle && !h.vehicles) out.push("There's no vehicle in your household.");
-  else if (facts.length) out.push(`Your household includes ${orList(facts, "and")}.`);
-  if (home) out.push(`You live in ${/^[aeiou]/i.test(h.home) ? "an" : "a"} ${h.home.toLowerCase()}.`);
-  if (!facts.length && !home && !(hz.vehicle && !h.vehicles)) out.push(floor >= LEVELS.moderate[1] ? "Every household faces this, whoever lives there." : "Nobody here has a known risk factor for it.");
+  if (hz.vehicle && !h.vehicles) return "There's no vehicle in your household.";
+  const own = S.hazards?.levels?.[hz.id], lv = at(h), out = [];
+  if (LEVELS[own] && own !== lv) out.push(`You ${own === "none" ? "marked this as not relevant" : "rated this " + LEVELS[own][0].toLowerCase()} (${LEVELS[lv][0].toLowerCase()} from who lives here).`);
+  if (facts.length) out.push(`Your household includes ${orList(facts, "and")}.`);
+  if (home) out.push(`You live in a ${h.home.toLowerCase()}.`);
+  if (!facts.length && !home) out.push(floor < LEVELS.moderate[1] ? "Nothing about who lives here or your home raises it." : hz.vehicle ? "Anyone who drives faces this." : "Every household faces this, whoever lives there.");
   return out.join(" ");
 }
 /* The items in every kit of these types. */
@@ -1947,7 +1946,7 @@ function viewHousehold() {
     </div>
     ${!S.profile?.location ? `<p class="small muted">Save a location first.</p>` : S.hhDirty ? `<p class="small muted">Save your changes first.</p>` : ""}
     ${chk?.state === "error" ? `<p class="small" style="color:var(--bad)">${esc(chk.msg)}</p>` : ""}
-    ${hz?.assessedAt ? `<div class="reasons">${HAZARDS.filter(h => hz.levels?.[h.id]).sort((a, b) => LEVELS[hz.levels[b.id]][1] - LEVELS[hz.levels[a.id]][1]).map(h => `<div><span><b>${esc(h.name)}</b><br><span class="mono small">${esc(LEVELS[hz.levels[h.id]]?.[0] || "")}</span></span><span>${esc(h.group ? householdWhy(h, household()) : hz.reasons?.[h.id] || "")}</span></div>`).join("")}</div>
+    ${hz?.assessedAt ? `<div class="reasons">${HAZARDS.filter(h => LEVELS[hz.levels?.[h.id]]).sort((a, b) => LEVELS[hz.levels[b.id]][1] - LEVELS[hz.levels[a.id]][1]).map(h => `<div><span><b>${esc(h.name)}</b><br><span class="mono small">${esc(LEVELS[hz.levels[h.id]]?.[0] || "")}</span></span><span>${esc(h.group ? householdWhy(h, household()) : hz.reasons?.[h.id] || "")}</span></div>`).join("")}</div>
       ${hz.notes ? `<p class="small"><b>Also:</b> ${esc(hz.notes)}</p>` : ""}<p class="small muted">Checked ${when(hz.assessedAt)} for ${esc(hz.location || "")}.</p>` : ""}
   </div>`;
 }
