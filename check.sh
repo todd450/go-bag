@@ -16,8 +16,9 @@ node --check "$tmp/app.js"
 # has to choose. Raising it is fine when it is a choice: change this one number in a PR and say why.
 # Raised to 72,000 on 4 Nov 2026 by the founder's choice, for the named essentials work (#29):
 # the Essential picker (#39) took the page to about 70.4 KB.
+# Raised to 76,000 on 4 Nov 2026 by the founder's choice, for the flat-lay and bag-fill work (#59).
 # CI's Linux gzip reads about 1% (some 700 bytes) more than macOS gzip for the same page: CI's number counts.
-budget=72000
+budget=76000
 size=$(gzip -9c emergency-kit-audit.html | wc -c | tr -d ' ')
 echo "check: page is $size bytes gzipped, budget $budget"
 [ "$size" -le "$budget" ] || { echo "check: the page is over its size budget by $((size - budget)) bytes gzipped. Make it smaller, or raise the budget in check.sh in its own line and say why in the PR."; exit 1; }
