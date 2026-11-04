@@ -26,7 +26,8 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
   https://claude.ai/artifact/DXn8SMGiZhuKuQFGgKHenz, published from `emergency-kit-audit.html`
   on `main` with the Artifact tool: pass `url` set to that link and leave out `capabilities` and
   `icon`, so the stored ones carry forward. Publish only from a green `main`, and only when the
-  founder asks.
+  founder asks. The `ship` skill (`.claude/skills/ship/`) is the step-by-step for landing PRs and
+  publishing, and `live-commit.sh` there tells which commit is live.
 - **Local preview:** `sh preview.sh`, which serves the page at http://127.0.0.1:8765/ wrapped the
   way claude.ai wraps it. Outside claude.ai there is no `window.claude`, so nothing saves and the
   Claude features (photo scan, hazard check, review) are off. It serves a temporary copy of the
