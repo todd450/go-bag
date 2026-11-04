@@ -1085,7 +1085,7 @@ const PACK = {
   power: { g: 250, ml: 300 }, communication: { g: 350, ml: 1000 }, documents: { g: 150, ml: 300 },
   shelter: { g: 900, ml: 3000, lite: { name: "emergency bivvy", many: "emergency bivvies", g: 110, ml: 250, trade: "far lighter, but less warm than a sleeping bag" } },
   clothing: { g: 600, ml: 2500 }, hygiene: { g: 150, ml: 300 }, sanitation: { g: 400, ml: 1200 },
-  tools: { g: 400, ml: 700, lite: { name: "multi-tool", g: 250, ml: 150, trade: "one tool for most small jobs" } },
+  tools: { g: 400, ml: 700, lite: { name: "multi-tool", ess: "multitool", g: 250, ml: 150, trade: "one tool for most small jobs" } },
   masks: { g: 15, ml: 100 }, fire_safety: { g: 1500, ml: 3000 }, car: { g: 1500, ml: 3000 },
   comfort: { g: 150, ml: 400 }, pets: { g: 500, ml: 1500 }, baby: { g: 400, ml: 1500 }, kids: { g: 200, ml: 600 }, other: { g: 300, ml: 600 },
 };
@@ -1125,9 +1125,11 @@ function packPlan(kit, ready, lim) {
   const limG = lim.kg ? lim.kg * 1000 : Infinity, limMl = lim.L * 1000;
   const pick = keep => lines.flatMap((l, i) => keep[i] ? [{ ...l.it, qty: keep[i], liters: num(l.it.liters) * keep[i] / l.q, kcal: num(l.it.kcal) * keep[i] / l.q }] : []);
   const raw = keep => { const st = stockItems(pick(keep)); return rawScore(ready.rows.map(r => fillRow(r, st))); };
-  /* Kept whatever the limits: water filters and tablets, and items in the five checklist categories not yet
-     tagged that its checklist asks for, which earn nothing until they are but are likely an essential. */
-  const must = lines.map(l => l.it.category === "water" && !num(l.it.liters) || ready.rows.some(r => r.ess && r.cat === l.it.category) && !essentialOf(l.it) && expState(l.it) !== "expired");
+  /* Water filters and tablets are kept whatever the limits. Items in the five checklist categories not yet tagged
+     earn nothing until they are, but are likely an essential: they go back in while the pack has room, and are
+     never offered to take out. */
+  const must = lines.map(l => l.it.category === "water" && !num(l.it.liters));
+  const untagged = lines.map(l => ready.rows.some(r => r.ess && r.cat === l.it.category) && !essentialOf(l.it) && expState(l.it) !== "expired");
   const sumG = keep => lines.reduce((a, l, i) => a + l.unitG * keep[i], 0), sumMl = keep => lines.reduce((a, l, i) => a + l.unitMl * keep[i], 0);
   const fitsIn = keep => sumG(keep) <= limG + 1e-6 && sumMl(keep) <= limMl + 1e-6;
   const step = (i, keep, dir) => dir > 0 ? Math.min(lines[i].q - keep[i], Math.ceil(lines[i].q / 12)) : Math.min(keep[i], Math.ceil(lines[i].q / 12));
@@ -1152,7 +1154,7 @@ function packPlan(kit, ready, lim) {
       }
     };
     const swap = () => {
-      for (let a = 0; a < lines.length; a++) if (keep[a] && !must[a]) for (let b = 0; b < lines.length; b++) {
+      for (let a = 0; a < lines.length; a++) if (keep[a]) for (let b = 0; b < lines.length; b++) {
         if (a === b || !step(b, keep, 1)) continue;
         const next = keep.slice(); next[a] -= step(a, keep, -1); next[b] += step(b, keep, 1);
         if (!fitsIn(next)) continue;
@@ -1162,6 +1164,7 @@ function packPlan(kit, ready, lim) {
     };
     let rounds = 0;
     do fill(); while (swap() && ++rounds < 60);
+    lines.forEach((l, i) => { while (untagged[i] && keep[i] < l.q) { const next = keep.slice(); next[i]++; if (!fitsIn(next)) break; keep = next; } });
     const chosen = pick(keep);
     best = { keep, items: chosen, score: kitReadiness(kit, ready.h, ready.drivers, chosen).score, g: sumG(keep), ml: sumMl(keep),
       leave: lines.map((l, i) => ({ it: l.it, n: l.q - keep[i], g: l.unitG * (l.q - keep[i]) })).filter(x => x.n > 0).sort((a, b) => b.g - a.g) };
@@ -1170,7 +1173,7 @@ function packPlan(kit, ready, lim) {
   const lean = full.slice(), onList = new Set(ready.rows.map(r => r.cat));
   for (const i of lines.map((l, i) => i).sort((a, b) => lines[b].unitG - lines[a].unitG)) {
     const l = lines[i];
-    if (must[i] || l.it.category === "food" && !num(l.it.kcal)) continue;
+    if (must[i] || untagged[i] || l.it.category === "food" && !num(l.it.kcal)) continue;
     let lo = 0, hi = lean[i];
     while (lo < hi) { const mid = Math.ceil((lo + hi) / 2), t = lean.slice(); t[i] -= mid; if (raw(t) >= fullRaw - 1e-9) lo = mid; else hi = mid - 1; }
     lean[i] -= lo;
@@ -1178,14 +1181,15 @@ function packPlan(kit, ready, lim) {
   const takeOut = lines.map((l, i) => ({ it: l.it, n: l.q - lean[i], g: l.unitG * (l.q - lean[i]),
     why: expState(l.it) === "expired" ? "Expired, so it adds nothing" : essentialOf(l.it) === "none" ? "Not one of the essentials" : onList.has(CATS[l.it.category] ? l.it.category : "other") ? "More than this kit needs" : "Not on this kit's checklist" }))
     .filter(x => x.n > 0).sort((a, b) => b.g - a.g);
-  /* Lighter kinds of the same thing: same count on the checklist (same calories for food). */
+  /* Lighter kinds of the same thing: same count on the checklist (same calories for food). In the five
+     categories only an item that is the essential the lighter one fills, so the swap keeps it. */
   const swaps = lines.flatMap(l => {
     const c = CATS[l.it.category] ? l.it.category : "other", lite = PACK[c]?.lite, name = String(l.it.name || "");
     if (c === "food" && num(l.it.kcal) && !/ration|\bbars?\b|freeze|mre/i.test(name)) {
       const g2 = num(l.it.kcal) / BAR_KCAL_G;
       return l.g - g2 >= 200 ? [{ it: l.it, to: `${pl(Math.ceil(num(l.it.kcal) / BAR_KCAL), "ration bar")} (3,600 kcal each)`, saveG: l.g - g2, trade: "same calories, no cooking or water needed", est: !num(l.it.grams) }] : [];
     }
-    if (!lite || new RegExp(lite.name.split(" ").at(-1), "i").test(name) || l.unitG < 1.5 * lite.g) return [];
+    if (!lite || essentialList(c).length && essentialOf(l.it) !== lite.ess || new RegExp(lite.name.split(" ").at(-1), "i").test(name) || l.unitG < 1.5 * lite.g) return [];
     return [{ it: l.it, to: pl(l.q, lite.name, lite.many), saveG: (l.unitG - lite.g) * l.q, trade: lite.trade, est: !num(l.it.grams) }];
   }).sort((a, b) => b.saveG - a.saveG).slice(0, 5);
   const waterG = lines.filter(l => l.it.category === "water").reduce((a, l) => a + l.g, 0);

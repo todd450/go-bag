@@ -231,7 +231,7 @@ test("the best pack scores what kitReadiness gives on its items, with tagged ess
       takeOut: P.takeOut.map(x => x.it.id) }; })()`);
   assert.equal(out.fits, false);
   assert.equal(out.best.score, out.best.real);
-  assert.ok(!out.best.leave.includes("u1"), "an untagged item is kept until it is tagged");
+  assert.ok(!out.best.leave.includes("u1"), "an untagged item goes in while there is room");
   assert.ok(!out.takeOut.includes("u1"), "and isn't offered to take out");
   assert.ok(out.takeOut.includes("d1") || out.takeOut.includes("d2"), "a second copy of cash is spare");
 });
@@ -246,4 +246,67 @@ test("a tagged tools item swapped for the lighter multi-tool keeps its tag and i
   run(`Object.assign(S.items.find(i => i.id === "t1"), { name: ${JSON.stringify(swap.to)}, grams: PACK.tools.lite.g, ml: PACK.tools.lite.ml })`);
   assert.equal(json(`essentialOf(S.items.find(i => i.id === "t1"))`), "multitool");
   assert.equal(json("model().kitRes.go.score"), before);
+});
+
+// The go-bag's best pack, with what it keeps and what one more unit of each left-out item would weigh.
+const GO_PACK = `(() => { const M = model(), kit = S.kits.find(k => k.id === "go"), r = M.kitRes.go, lim = kitLimits(kit, r.h), P = packPlan(kit, r, lim);
+  return { limG: lim.kg ? lim.kg * 1000 : Infinity, limMl: lim.L * 1000, fits: P.fits, score: P.score,
+    best: P.best && { g: P.best.g, ml: P.best.ml, score: P.best.score, real: kitReadiness(kit, r.h, r.drivers, P.best.items).score,
+      left: P.best.leave.map(x => { const l = P.lines.find(l => l.it === x.it); return { id: x.it.id, untagged: ${JSON.stringify(FIVE)}.includes(x.it.category) && !essentialOf(x.it) && expState(x.it) !== "expired", g: l.unitG, ml: l.unitMl }; }) } }; })()`;
+const untaggedPacks = {
+  "untagged items heavier than the carry limit": [5, `
+    { id: "u1", kitId: "go", name: "Steel toolbox", category: "tools", qty: 1, grams: 9000 },
+    { id: "u2", kitId: "go", name: "Binder of documents", category: "documents", qty: 1, grams: 3000 },
+    { id: "w1", kitId: "go", name: "Water", category: "water", qty: 6, liters: 6 },
+    { id: "f1", kitId: "go", name: "Food bars", category: "food", qty: 10, kcal: 4000, grams: 1000 }`],
+  "many untagged units with estimated weights": [2, `
+    { id: "u1", kitId: "go", name: "Tools", category: "tools", qty: 6 },
+    { id: "u2", kitId: "go", name: "Papers", category: "documents", qty: 4 }`],
+  "room left for an untagged folder": [1.5, `
+    { id: "w1", kitId: "go", name: "Water", category: "water", qty: 12, liters: 6 },
+    { id: "u1", kitId: "go", name: "Folder", category: "documents", qty: 1 }`],
+};
+
+test("untagged items never push the best pack over the kit's limits or change its score, and stay in while there is room", () => {
+  for (const [name, [kg, items]] of Object.entries(untaggedPacks)) {
+    const { run, json } = load({ fixture: "tests/household" });
+    run(`S.kits.find(k => k.id === "go").carryKg = ${kg}; S.items.push(${items});`);
+    const P = json(GO_PACK);
+    assert.equal(P.fits, false, name);
+    assert.ok(P.best.g <= P.limG + 1e-6 && P.best.ml <= P.limMl + 1e-6, `${name}: ${P.best.g} g, ${P.best.ml} ml`);
+    assert.equal(P.best.score, P.best.real, name);
+    for (const x of P.best.left.filter(x => x.untagged))
+      assert.ok(P.best.g + x.g > P.limG + 1e-6 || P.best.ml + x.ml > P.limMl + 1e-6, `${name}: ${x.id} is left out though it fits`);
+    run(`S.items = S.items.filter(i => !(${JSON.stringify(FIVE)}.includes(i.category) && !essentialOf(i)))`);
+    const without = json(GO_PACK);
+    assert.equal(P.best.score, without.best ? without.best.score : without.score, `${name}: the untagged items, which earn nothing, change the best score`);
+  }
+});
+
+test("a lighter swap is offered only where it keeps the score: tools only for the multi-tool essential", () => {
+  const { run, json } = load({ fixture: "tests/household" });
+  run(`S.items.push(...["duct_tape", "shutoff_wrench", "fire_starter", "multitool", "none", ""].map(e => ({ id: "t_" + (e || "untagged"), kitId: "go", name: "Tool", category: "tools", qty: 1, essential: e })))`);
+  const offered = json(`(() => { const M = model(), kit = S.kits.find(k => k.id === "go"), r = M.kitRes.go; return packPlan(kit, r, kitLimits(kit, r.h)).swaps.filter(x => x.it.category === "tools").map(x => x.it.id); })()`);
+  assert.deepEqual(offered, ["t_multitool"]);
+});
+
+// Making a swap puts the lighter thing in the kit; in the five categories that is the essential it fills.
+test("every lighter swap keeps the kit's score, in every scenario", () => {
+  const apps = [...scenarios.map(name => [name, load({ fixture: name })]), ["screenshot case", screenshotCase()]];
+  const tagged = load({ fixture: "tests/household" });
+  tagged.run(`S.items.push(...["duct_tape", "shutoff_wrench", "multitool"].map(e => ({ id: "t_" + e, kitId: "go", name: "Tool", category: "tools", qty: 2, essential: e })))`);
+  apps.push(["tagged tools", tagged]);
+  let n = 0;
+  for (const [name, { run, json }] of apps) {
+    const swaps = json(`(() => { const M = model(); return S.kits.filter(k => kitLimits(k, M.h)).flatMap(k => packPlan(k, M.kitRes[k.id], kitLimits(k, M.h)).swaps
+      .filter(x => x.it.category !== "food").map(x => ({ kit: k.id, id: x.it.id, to: x.to }))); })()`);
+    for (const s of swaps) {
+      const before = json(`model().kitRes[${JSON.stringify(s.kit)}].score`);
+      run(`(it => { const lite = PACK[CATS[it.category] ? it.category : "other"].lite, q = Math.max(1, num(it.qty));
+        Object.assign(it, { name: ${JSON.stringify(s.to)}, grams: lite.g * q, ml: lite.ml * q }, essentialList(it.category).length ? { essential: lite.ess || "" } : {}); })(S.items.find(i => i.id === ${JSON.stringify(s.id)}))`);
+      assert.equal(json(`model().kitRes[${JSON.stringify(s.kit)}].score`), before, `${name}: swapping ${s.id} to ${s.to}`);
+      n++;
+    }
+  }
+  assert.ok(n > 0, "some swap is offered");
 });
