@@ -251,3 +251,31 @@ for (const fixture of ["tests/household", "fixtures/empty-and-one/big-household"
     });
   }
 }
+
+// Text on the brand colour (the tab count badge) must read at WCAG AA, 4.5:1, in light mode and in
+// both dark blocks. Each dark block falls back to the light value for any token it doesn't set.
+test("text on the brand colour is at least 4.5:1 in every theme", () => {
+  const block = re => { const m = css.match(re); assert.ok(m, `token block ${re}`); return m[1]; };
+  const tokens = src => Object.fromEntries([...src.matchAll(/--([\w-]+):\s*(#[0-9A-Fa-f]{6})/g)].map(m => [m[1], m[2]]));
+  const light = tokens(block(/(?:^|\n):root\s*\{([\s\S]*?)\n\}/));
+  const themes = {
+    light,
+    "prefers-color-scheme dark": { ...light, ...tokens(block(/:root:not\(\[data-theme="light"\]\)\s*\{([\s\S]*?)\}/)) },
+    'data-theme="dark"': { ...light, ...tokens(block(/:root\[data-theme="dark"\]\s*\{([\s\S]*?)\}/)) },
+  };
+  const lum = hex => {
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map(c => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+
+  const badge = css.match(/nav\.tabs \.tab-n\s*\{[^}]*\}/)[0];
+  assert.match(badge, /background:\s*var\(--brand\)/, "the badge sits on the brand colour");
+  assert.match(badge, /[^-]color:\s*var\(--brand-ink\)/, "the badge's text is --brand-ink");
+  for (const [name, t] of Object.entries(themes)) {
+    assert.ok(t.brand && t["brand-ink"], `${name} has --brand and --brand-ink`);
+    const ratio = contrast(t.brand, t["brand-ink"]);
+    assert.ok(ratio >= 4.5, `${name}: ${t["brand-ink"]} on ${t.brand} is ${ratio.toFixed(2)}:1`);
+  }
+});
