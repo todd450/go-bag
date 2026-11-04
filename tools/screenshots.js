@@ -15,7 +15,6 @@ const path = require("node:path");
 const { execFileSync, spawn } = require("node:child_process");
 const { wrap, ROOT } = require("./page.js");
 
-const VIEWS = ["overview", "kits", "shop", "household", "plan"];
 const SIZES = { phone: { width: 390, height: 844, mobile: true }, desktop: { width: 1440, height: 900, mobile: false } };
 const MAX_HEIGHT = 8000;
 const MAC_CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -65,6 +64,19 @@ async function openChrome(chrome) {
   return { send, once, close };
 }
 
+// The tabs a page has, read from its own VIEWS by the tests' loader (tests/load.js), so a tab added to
+// the page is shot with no edit here. The loader reads its page from GO_BAG_PAGE once, when it is
+// first required, so each page is read in a fresh Node.
+function viewsOf(page) {
+  const code = `process.stdout.write(JSON.stringify(require(${JSON.stringify(path.join(ROOT, "tests", "load.js"))}).load().json("VIEWS")))`;
+  return JSON.parse(execFileSync(process.execPath, ["-e", code], { env: { ...process.env, GO_BAG_PAGE: page }, encoding: "utf8" }));
+}
+
+// Every tab either page has, once each: this change's tabs in its order, then any only the base has.
+function tabs(base, change) {
+  return [...new Set([...viewsOf(change), ...viewsOf(base)])];
+}
+
 async function shoot(page, file, view, size, png, n) {
   const { width, height, mobile } = SIZES[size];
   await page.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile });
@@ -94,11 +106,13 @@ async function main([outArg, fixture = "tests/household", base = "origin/main"])
   fs.writeFileSync(path.join(dirs.before, "index.html"), wrap(path.join(out, "base-page.html"), fixture));
   fs.writeFileSync(path.join(dirs.after, "index.html"), wrap(undefined, fixture));
 
+  const views = tabs(path.join(out, "base-page.html"), path.join(ROOT, "emergency-kit-audit.html"));
+
   const page = await openChrome(chrome);
   const rows = [];
   try {
     let n = 0;
-    for (const view of VIEWS) for (const size of Object.keys(SIZES)) {
+    for (const view of views) for (const size of Object.keys(SIZES)) {
       const name = `${view}-${size}.png`;
       for (const dir of Object.values(dirs)) await shoot(page, path.join(dir, "index.html"), view, size, path.join(dir, name), ++n);
       const [a, b] = Object.values(dirs).map(d => fs.readFileSync(path.join(d, name)));
@@ -119,6 +133,8 @@ ${rows.map(r => `<h2 class="${r.changed ? "" : "same"}">${r.name.replace(".png",
   console.log(`Screenshots in ${out}/before and ${out}/after; side by side in ${out}/compare.html`);
   return 0;
 }
+
+module.exports = { tabs };
 
 if (require.main === module) {
   main(process.argv.slice(2)).then(code => { process.exitCode = code; }, e => { console.error(e.message); process.exitCode = 1; });
