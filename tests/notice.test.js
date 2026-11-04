@@ -42,10 +42,13 @@ function notice(html) {
   return { at, html: box, nums: (lead.match(/\d+/g) || []).map(Number) };
 }
 
-// A: each of the five rows counted the old way, any items toward an old need of 2 for tools and 1 for the
-// rest; every other row as it is now. Worked out here from the items in each emergency's kits.
+// A: each of the five rows counted the old way, any items toward the old need: 2 for tools, one per person
+// on daily medicines (at least 1) for Medication supply cut off's medications, and 1 for the rest; every
+// other row as it is now. Worked out here from the items in each emergency's kits.
 function oldCountScore(app) {
-  const M = app.json(`model().active.map(r => ({ wt: r.wt, types: kitsFor(r.hz), rows: r.rows.map(x => ({ cat: x.cat, w: x.w, cov: x.cov })) }))`);
+  const M = app.json(`model().active.map(r => ({ id: r.hz.id, wt: r.wt, types: kitsFor(r.hz), rows: r.rows.map(x => ({ cat: x.cat, w: x.w, cov: x.cov })) }))`);
+  const onMeds = app.json("household().members.filter(onDailyMeds).length");
+  const oldNeed = (cat, id) => cat === "tools" ? 2 : cat === "medications" && id === "meds" ? Math.max(1, onMeds) : 1;
   const kits = app.json("S.kits"), items = app.json("S.items.map(it => ({ ...it, expired: expState(it) === 'expired' }))");
   let sum = 0, tw = 0;
   for (const r of M) {
@@ -53,7 +56,7 @@ function oldCountScore(app) {
     const rows = r.rows.map(x => {
       if (!FIVE.includes(x.cat)) return x;
       const n = items.filter(it => ids.has(it.kitId) && it.category === x.cat && !it.expired).reduce((a, it) => a + Math.max(1, Number(it.qty) || 0), 0);
-      return { ...x, cov: Math.min(1, n / (x.cat === "tools" ? 2 : 1)) };
+      return { ...x, cov: Math.min(1, n / oldNeed(x.cat, r.id)) };
     });
     const score = Math.round(100 * rows.reduce((a, x) => a + x.w * x.cov, 0) / rows.reduce((a, x) => a + x.w, 0));
     sum += r.wt * score; tw += r.wt;
@@ -79,6 +82,23 @@ test("with untagged items, Readiness shows the notice above Next steps, with the
   assert.deepEqual(n.nums, [A, B, C]);
   assert.ok(A > C, `the old count (${A}) is above today's (${C}), so the scenario shows a drop`);
   assert.ok(B > C, `the guesses (${B}) add to today's (${C})`);
+});
+
+test("the old count asks one medicine per person on daily medicines, as it did before named essentials", () => {
+  const app = load({ fixture: "tests/household" });
+  app.run(`const ms = S.profile.members; ms[0].conditions = ["meds"]; ms[1].conditions = ["meds"]; ms[2].conditions = ["diabetes"];
+    S.items.push({ id: "m1", kitId: "go", name: "Pill organiser", category: "medications", qty: 1 })`);
+  assert.equal(app.json("household().members.filter(onDailyMeds).length"), 3, "three people on daily medicines");
+  const n = notice(overview(app));
+  assert.ok(n, "a notice");
+  assert.equal(n.nums[0], oldCountScore(app));
+  // With three on daily medicines and one medicine, the old Medication supply row was a third covered, so
+  // two more medicines raise A.
+  const one = n.nums[0];
+  app.run(`S.items.push({ id: "m2", kitId: "home", name: "Insulin pens", category: "medications", qty: 2 })`);
+  const two = notice(overview(app)).nums[0];
+  assert.equal(two, oldCountScore(app));
+  assert.ok(two > one, `two more medicines raise the old count (${one} → ${two})`);
 });
 
 test("the notice says why it dropped, naming the five categories", () => {

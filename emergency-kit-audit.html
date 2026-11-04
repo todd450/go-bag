@@ -948,13 +948,15 @@ function overallIfTagged(chosen) {
   try { return model().overall; } finally { S.items = keep; }
 }
 /* The household score as it was before the five checklist categories counted named essentials: each of their
-   rows had any items toward an old need of 2 for tools and 1 for the rest. Every other row is as it is now. */
+   rows had any items toward the old need of 2 for tools, one per person on daily medicines for Medication
+   supply cut off's medications, and 1 for the rest. Every other row is as it is now. */
+const oldNeed = (cat, hz, h) => cat === "tools" ? 2 : cat === "medications" && hz.id === "meds" ? Math.max(1, h.dailyMeds) : 1;
 function overallOldCount(M) {
   const tw = M.active.reduce((a, r) => a + r.wt, 0);
   if (!tw) return null;
   return Math.round(M.active.reduce((a, r) => {
     const st = M.stocks[r.hz.mode] || stock(kitsFor(r.hz));
-    return a + r.wt * scoreRows(r.rows.map(x => x.ess ? { ...x, cov: Math.min(1, haveOf(x.cat, st) / (x.cat === "tools" ? 2 : 1)) } : x));
+    return a + r.wt * scoreRows(r.rows.map(x => x.ess ? { ...x, cov: Math.min(1, haveOf(x.cat, st) / oldNeed(x.cat, r.hz, M.h)) } : x));
   }, 0) / tw);
 }
 /* Why readiness is lower while items saved before the essentials were named are untagged: the old count, the
