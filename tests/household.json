@@ -23,7 +23,7 @@
     { "id": "i1", "kitId": "home", "name": "Water jugs", "category": "water", "qty": 4, "liters": 15 },
     { "id": "i2", "kitId": "home", "name": "Canned soup", "category": "food", "qty": 12, "kcal": 3600 },
     { "id": "i3", "kitId": "home", "name": "Fire extinguisher", "category": "fire_safety", "qty": 1 },
-    { "id": "i4", "kitId": "go", "name": "First-aid kit", "category": "first_aid", "qty": 1 },
+    { "id": "i4", "kitId": "go", "name": "First-aid kit", "category": "first_aid", "qty": 1, "grams": 450, "ml": 1800 },
     { "id": "i5", "kitId": "go", "name": "Headlamp", "category": "light", "qty": 2 },
     { "id": "i6", "kitId": "car", "name": "Jumper cables", "category": "car", "qty": 1 },
     { "id": "i7", "kitId": "go", "name": "Old ibuprofen", "category": "medications", "qty": 1, "expires": "2020-01" }

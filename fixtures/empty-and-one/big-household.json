@@ -1,10 +1,10 @@
 {
-  "about": "The most the app should expect: 12 people of every age, 6 pets, 3 cars, a kit of each type stocked past its needs.",
+  "about": "The most the app should expect: 12 people of every age, 6 pets, 3 cars, a kit of each type stocked past its needs, and every health condition someone can have.",
   "profile": {
     "location": "Houston, TX",
     "members": [
-      { "years": 0 }, { "years": 1 }, { "years": 4 }, { "years": 8 }, { "years": 13 }, { "years": 17 },
-      { "years": 25, "conditions": ["meds", "allergy"] }, { "years": 44, "conditions": ["diabetes"] }, { "years": 50 },
+      { "years": 0 }, { "years": 1 }, { "years": 4 }, { "years": 8, "conditions": ["asthma"] }, { "years": 13 }, { "years": 17, "conditions": ["seizures"] },
+      { "years": 25, "conditions": ["meds", "allergy"] }, { "years": 44, "conditions": ["diabetes"] }, { "years": 50, "conditions": ["opioids"] },
       { "years": 66, "conditions": ["heart"] }, { "years": 80, "conditions": ["device", "mobility"] }, { "years": 101 }
     ],
     "pets": [{ "kind": "Dog", "count": 2 }, { "kind": "Cat", "count": 3 }, { "kind": "Rabbit", "count": 1 }],

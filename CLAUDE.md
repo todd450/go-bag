@@ -26,7 +26,8 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
   https://claude.ai/artifact/DXn8SMGiZhuKuQFGgKHenz, published from `emergency-kit-audit.html`
   on `main` with the Artifact tool: pass `url` set to that link and leave out `capabilities` and
   `icon`, so the stored ones carry forward. Publish only from a green `main`, and only when the
-  founder asks.
+  founder asks. The `ship` skill (`.claude/skills/ship/`) is the step-by-step for landing PRs and
+  publishing, and `live-commit.sh` there tells which commit is live.
 - **Local preview:** `sh preview.sh`, which serves the page at http://127.0.0.1:8765/ wrapped the
   way claude.ai wraps it. Outside claude.ai there is no `window.claude`, so nothing saves and the
   Claude features (photo scan, hazard check, review) are off. It serves a temporary copy of the
@@ -43,10 +44,18 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
     in memory, which is how the tests and the preview run it.
   - No real household's data goes in this repo or a test: fixtures use made-up people. Never
     write to the founder's live household data from a session without their yes for that change.
-  - The score is a weighted average of emergencies, weight = likelihood × importance
-    (`LEVELS`, `IMPORTANCE`). Next steps, "Add the top 5" and the shopping list all price a
+  - The score is a weighted average of emergencies, weight = likelihood × severity × importance
+    (`LEVELS`, `SEVERITY`, `IMPORTANCE`). Severity is fixed per emergency (how bad it is to face
+    unprepared) and is never re-rated by the household or the location check. Next steps, "Add the top 5" and the shopping list all price a
     gap with `scoreIfShopped`, so the points shown are the points ticking adds
     (`tests/shopping.test.js`).
   - Health and everyday emergencies are rated from who lives here, never by the location check
     (`tests/health.test.js`), and a location re-check keeps the household's own levels and
     importance (`tests/scoring.test.js`).
+  - The weight and space panel scores every pack it suggests with `kitReadiness` on that set
+    of items, so its points are the points the kit would really score. Saved `grams`/`ml`
+    always win over estimates (`tests/pack.test.js`).
+  - An item links to Amazon: its saved `amazonUrl` (only a plain `https://www.amazon.com/dp/…`
+    link counts) or else the `shopQuery` Claude writes while reading the photo. The page never
+    searches Amazon itself: Amazon refuses AI agents, so exact product pages are found from a
+    Claude session and saved to the item (`tests/amazon.test.js`).

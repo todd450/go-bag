@@ -19,16 +19,19 @@ function appScript() {
 
 function load({ fixture } = {}) {
   const el = () => ({
-    addEventListener() {}, querySelectorAll: () => [], querySelector: () => null, setAttribute() {},
+    addEventListener() {}, querySelectorAll: () => [], querySelector: () => null, setAttribute() {}, focus() {},
     hidden: false, innerHTML: "", textContent: "", style: {}, dataset: {},
     classList: { toggle() {}, add() {}, remove() {} },
   });
   const later = [];
+  // The page's document listeners, kept so a test can fire an input or change event at them.
+  const listeners = {};
   const ctx = vm.createContext({
     console,
     crypto: globalThis.crypto,
+    AbortController,
     navigator: {},
-    document: { querySelector: el, querySelectorAll: () => [], addEventListener() {}, getElementById: el, createElement: el, body: el() },
+    document: { querySelector: el, querySelectorAll: () => [], addEventListener: (type, fn) => { (listeners[type] ||= []).push(fn); }, getElementById: el, createElement: el, body: el() },
     location: { hash: "" },
     window: { scrollTo() {}, matchMedia: () => ({ matches: true }) },
     history: { replaceState() {} },
@@ -40,7 +43,9 @@ function load({ fixture } = {}) {
   const run = code => vm.runInContext(code, ctx);
   // Values built inside the context have that context's prototypes; JSON gives plain ones for deep asserts.
   const json = code => JSON.parse(run(`JSON.stringify(${code})`));
-  const app = { run, json, later };
+  // Fires an event of `type` at a stand-in target ({ dataset, value, ... }) and waits for every handler.
+  const fire = (type, target) => Promise.all((listeners[type] || []).map(fn => fn({ target: { closest: () => null, ...target }, preventDefault() {} })));
+  const app = { run, json, later, fire };
   if (fixture) useFixture(app, fixture);
   return app;
 }
