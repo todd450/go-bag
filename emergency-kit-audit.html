@@ -405,8 +405,13 @@ const CATS = {
   splint: ["Splints & sprains", "SAM splint, elastic wrap, triangular bandage or sling, instant cold packs"],
   cpr: ["CPR & airway", "CPR face shield or pocket mask, AED"],
   allergy: ["Allergy & anaphylaxis", "epinephrine auto-injectors, antihistamines"],
+  breathing: ["Breathing", "rescue inhaler (albuterol), spacer, nebulizer and its medicine"],
+  aspirin: ["Heart attack aid", "chewable 81 mg aspirin, prescribed nitroglycerin"],
+  naloxone: ["Overdose reversal", "naloxone (Narcan) nasal spray"],
+  seizure: ["Seizure rescue", "prescribed seizure rescue medication (nasal midazolam or diazepam, rectal diazepam), written seizure action plan"],
+  co_alarm: ["CO alarm", "battery or plug-in carbon monoxide alarm"],
   bites: ["Bites & stings", "tick remover, sting relief wipes, hydrocortisone cream, instant cold pack"],
-  poison: ["Poison safety", "Poison Control number saved and posted, locking medicine box, cabinet latches, carbon monoxide alarm"],
+  poison: ["Poison safety", "Poison Control number saved and posted, locking medicine box, cabinet latches"],
   diagnostics: ["Health monitoring", "thermometer, pulse oximeter, blood-pressure cuff, glucose meter and test strips"],
   medications: ["Medications", "prescriptions, pain relievers, allergy meds, spare glasses"],
   light: ["Light", "flashlights, headlamps, lanterns, light sticks"],
@@ -454,6 +459,11 @@ const ICONS = {
   pets: '<circle cx="6.5" cy="10" r="1.8"/><circle cx="10" cy="6" r="1.8"/><circle cx="14" cy="6" r="1.8"/><circle cx="17.5" cy="10" r="1.8"/><path d="M12 12c-3 0-5 3.5-5 5.5 0 1.5 1.5 2.5 3 2l2-.6 2 .6c1.5.5 3-.5 3-2 0-2-2-5.5-5-5.5z"/>',
   baby: '<path d="M9 8h6v11a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2zM10 8V6.5a2 2 0 0 1 4 0V8M9 12h2.5M9 15h2.5"/>',
   kids: '<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>',
+  breathing: '<path d="M12 4v7M12 11l-2.5 2M12 11l2.5 2"/><path d="M9.5 8C6.5 8 4 12 4 17c0 2 1 3 3 3s2.5-1.2 2.5-3zM14.5 8c3 0 5.5 4 5.5 9 0 2-1 3-3 3s-2.5-1.2-2.5-3z"/>',
+  aspirin: '<circle cx="12" cy="12" r="8"/><path d="M8 12h8"/>',
+  naloxone: '<path d="M11 2.5h2V6h-2zM9 6h6l1 3v12H8V9z"/><path d="M8 13h8"/>',
+  seizure: '<path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/>',
+  co_alarm: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/>',
   wound: '<rect x="2.5" y="8.5" width="19" height="7" rx="3.5" transform="rotate(-45 12 12)"/><path d="M10.6 10.6h.01M13.4 13.4h.01M10.6 13.4h.01M13.4 10.6h.01"/>',
   bites: '<ellipse cx="12" cy="14" rx="4" ry="5.5"/><path d="M12 8.5V20M8.3 12h7.4M8.3 16h7.4M10 8.8 8 5M14 8.8 16 5"/>',
   poison: '<path d="M9 3h6M10 3v4.5L5.5 17a2.5 2.5 0 0 0 2.3 3.5h8.4a2.5 2.5 0 0 0 2.3-3.5L14 7.5V3"/><path d="M10 14l4 3M14 14l-4 3"/>',
@@ -497,6 +507,9 @@ const CONDITIONS = {
   allergy: "Severe allergy, carries an EpiPen",
   diabetes: "Diabetes",
   heart: "Heart condition",
+  asthma: "Asthma or COPD, uses a rescue inhaler",
+  seizures: "Epilepsy or seizures",
+  opioids: "Takes opioid pain medication",
   device: "Uses a powered medical device",
   mobility: "Limited mobility",
 };
@@ -542,12 +555,17 @@ const HAZARDS = [
   { id: "fall", group: "health", name: "Falls, sprains and broken bones", severity: "serious", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first hour", base: h => h.kids || h.seniors || h.mobility ? "moderate" : "low", needs: ["splint", "first_aid", "light", "communication"] },
   { id: "burns", group: "health", name: "Burns and scalds", severity: "serious", mode: "anywhere", kits: ["home", "go"], days: 1, when: "Mostly the kitchen · first minutes", base: h => h.kids || h.infants ? "moderate" : "low", needs: ["burns", "first_aid", "fire_safety"] },
   { id: "choking", group: "health", name: "Choking", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Mealtimes, small toys · first minutes", base: h => h.kids || h.infants || h.seniors ? "moderate" : "low", needs: ["cpr", "communication"] },
+  { id: "heartattack", group: "health", name: "Heart attack", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · call 911, then chew an aspirin", base: h => h.heart || h.seniors ? "moderate" : "low", needs: ["aspirin", "communication"] },
   { id: "cardiac", group: "health", name: "Cardiac arrest", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.heart || h.seniors ? "moderate" : "low", needs: ["cpr", "communication"] },
-  { id: "poison", group: "health", name: "Poisoning or overdose", severity: "serious", mode: "anywhere", kits: ["home"], days: 1, when: "Mostly at home · call Poison Control first", base: h => h.kids || h.infants ? "moderate" : "low", needs: ["poison", "communication"] },
+  { id: "poison", group: "health", name: "Poisoning", severity: "serious", mode: "anywhere", kits: ["home"], days: 1, when: "Mostly at home · call Poison Control first", base: h => h.kids || h.infants ? "moderate" : "low", needs: ["poison", "communication"] },
+  { id: "overdose", group: "health", name: "Opioid overdose", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.opioids ? "moderate" : "low", needs: ["naloxone", "cpr", "communication"] },
+  { id: "co", group: "health", name: "Carbon monoxide poisoning", severity: "critical", mode: "anywhere", kits: ["home"], days: 1, when: "At home · worst in outages, with generators and heaters", base: () => "low", needs: ["co_alarm"] },
   { id: "bites", group: "health", name: "Bites and stings", severity: "minor", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Pets, outdoors · first hour", base: h => h.pets || h.kids ? "moderate" : "low", needs: ["bites", "wound", "medications"] },
   { id: "anaphylaxis", group: "health", name: "Severe allergic reaction", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.allergic ? "high" : "none", needs: ["allergy", "communication", "first_aid"] },
   { id: "illness", group: "health", name: "Serious illness at home", severity: "serious", mode: "shelter", days: 3, when: "At home · 72 h", base: () => "moderate", needs: ["diagnostics", "medications", "hygiene", "masks", "water", "food"] },
   { id: "meds", group: "health", name: "Medication supply cut off", severity: "serious", mode: "anywhere", kits: ["home", "go"], days: 14, when: "Pharmacy closed or evacuated · 2 weeks", base: h => h.dailyMeds ? "high" : "none", needs: ["medications", "diagnostics"], qty: { medications: h => Math.max(1, h.dailyMeds) } },
+  { id: "asthma", group: "health", name: "Asthma attack", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · smoke and colds set it off", base: h => h.asthma ? "high" : "none", needs: ["breathing", "communication"], qty: { breathing: h => Math.max(1, h.asthma) } },
+  { id: "seizure", group: "health", name: "Seizure", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · time it, call 911 past 5 minutes", base: h => h.seizures ? "high" : "none", needs: ["seizure", "communication"], qty: { seizure: h => Math.max(1, h.seizures) } },
   { id: "lowsugar", group: "health", name: "Low blood sugar", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.diabetes ? "high" : "none", needs: ["diagnostics"] },
   { id: "device", group: "health", name: "Power loss for a medical device", severity: "critical", mode: "shelter", days: 3, when: "At home · 72 h", base: h => h.devices ? "high" : "none", needs: ["power", "light", "communication"], qty: { power: h => 2 + 2 * h.devices } },
 ];
@@ -651,6 +669,7 @@ function household() {
   return {
     dailyMeds: has("meds", "diabetes"), allergic: has("allergy"), diabetes: has("diabetes"),
     heart: has("heart"), devices: has("device"), mobility: has("mobility"),
+    asthma: has("asthma"), seizures: has("seizures"), opioids: has("opioids"),
     seniors: members.filter(m => groupOf(m) === "senior").length,
     members,
     people: members.length,
@@ -834,6 +853,22 @@ function buyGuide(cat, qty, unit, kt, h) {
     case "cpr": return { line: "A CPR face shield or pocket mask", price: 10, tip: "A CPR class matters far more than this. Many fire stations run free ones." };
     case "allergy": return { line: `${pl(n, "epinephrine auto-injector")}${allergic.length ? ` for ${orList(allergic, "and")}` : ""}, plus an antihistamine`, price: null,
       tip: `Prescription only. Ask ${allergic.length ? orList(allergic, "and") + "'s" : "the"} doctor for an extra two-pack to keep in the kit, and check its expiry every year.` };
+    case "breathing": {
+      const who = whoIs(h, hasCond("asthma"));
+      return { line: `${pl(n, "spare rescue inhaler")} with a spacer${who.length ? ` for ${orList(who, "and")}` : ""}`, price: null,
+        tip: `Prescription only. Ask ${who.length ? orList(who, "and") + "'s" : "the"} doctor for a spare to keep in the kit, and check its expiry every year. A spacer gets more of each puff into the lungs, and it's what makes an inhaler work for a small child.` };
+    }
+    case "aspirin": return { line: "A bottle of chewable 81 mg aspirin", price: 5,
+      tip: "For a suspected heart attack, call 911 first, then chew 4 of them (325 mg) unless the person is allergic to aspirin or a doctor has said not to. Keep a strip in every kit." };
+    case "naloxone": return { line: pl(n, "two-dose pack of naloxone (Narcan) nasal spray", "two-dose packs of naloxone (Narcan) nasal spray"), price: n * 45,
+      tip: "Sold over the counter, and it can't hurt someone who hasn't taken opioids. Call 911, give one spray in a nostril, and give the second after 2 to 3 minutes if they still aren't breathing normally. Many health departments and pharmacies give it out free." };
+    case "seizure": {
+      const who = whoIs(h, hasCond("seizures"));
+      return { line: `Rescue seizure medication${who.length ? ` for ${orList(who, "and")}` : ""} and a printed seizure action plan`, price: null,
+        tip: `Prescription only. Ask ${who.length ? orList(who, "and") + "'s" : "the"} neurologist for a spare dose to keep in the kit. Time every seizure: past 5 minutes, give the rescue medication and call 911.` };
+    }
+    case "co_alarm": return { line: pl(n, "battery carbon monoxide alarm"), price: n * 30,
+      tip: "Put one on each floor and outside the bedrooms. Never run a generator, grill or camp stove indoors or in the garage, even with the door open. If it sounds, get everyone outside before calling 911." };
     case "diagnostics": {
       const dia = whoIs(h, hasCond("diabetes"));
       return dia.length ? { line: `A spare glucose meter and test strips for ${orList(dia, "and")}`, price: 40, tip: "Keep it with spare lancets and fast sugar such as glucose tablets." }
@@ -860,7 +895,7 @@ function buyGuide(cat, qty, unit, kt, h) {
     case "wound": return { line: "Saline wound wash, butterfly closures, non-stick pads and fine-point tweezers", price: 20, tip: "Rinse a cut under clean running water for a few minutes, then close and cover it. Saline also works as an eye wash." };
     case "bites": return { line: "A tick remover, sting relief wipes, hydrocortisone cream and an instant cold pack", price: 18,
       tip: `Pull ticks straight out, close to the skin. Wash any animal bite with soap and water for 5 minutes and see a doctor if it broke the skin.${allergic.length ? ` If ${orList(allergic)} ${allergic.length > 1 ? "are" : "is"} stung, follow their anaphylaxis plan.` : " Swelling of the face or trouble breathing after a sting means call 911."}` };
-    case "poison": return { line: little.length + kids.length ? "A locking medicine box, cabinet latches and a carbon monoxide alarm" : "A locking medicine box and a carbon monoxide alarm", price: little.length + kids.length ? 60 : 50,
+    case "poison": return { line: little.length + kids.length ? "A locking medicine box and cabinet latches" : "A locking medicine box", price: little.length + kids.length ? 35 : 25,
       tip: "Save Poison Control (1-800-222-1222 in the US) in every phone and on the fridge, and call it before doing anything else. Don't make anyone vomit." };
     case "comfort": return { line: `A car comfort pouch: a phone cable and car charger, snacks, wet wipes, tissues, spare socks and an umbrella${kids.length + little.length ? `, plus a small treat for ${orList([...kids, ...little], "and")}` : ""}`, price: 35,
       tip: "It's the bag you'll actually open: a spilled drink, a long wait, a dead phone, sudden rain. Swap the snacks every few months so they're ones people want." };
@@ -937,7 +972,8 @@ const PACK = {
   water: { g: 100, ml: 300 }, food: { g: 300, ml: 400 },
   first_aid: { g: 400, ml: 1500, lite: { name: "compact first-aid pouch", g: 150, ml: 500, trade: "covers everyday cuts; keep bleeding control separate" } },
   wound: { g: 150, ml: 400 }, trauma: { g: 150, ml: 350 }, burns: { g: 100, ml: 300 }, splint: { g: 150, ml: 600 },
-  cpr: { g: 60, ml: 150 }, allergy: { g: 60, ml: 150 }, bites: { g: 60, ml: 150 }, poison: { g: 50, ml: 100 },
+  cpr: { g: 60, ml: 150 }, allergy: { g: 60, ml: 150 }, breathing: { g: 60, ml: 200 }, aspirin: { g: 30, ml: 60 },
+  naloxone: { g: 40, ml: 100 }, seizure: { g: 40, ml: 100 }, co_alarm: { g: 250, ml: 500 }, bites: { g: 60, ml: 150 }, poison: { g: 50, ml: 100 },
   diagnostics: { g: 150, ml: 400 }, medications: { g: 100, ml: 200 },
   light: { g: 300, ml: 800, lite: { name: "headlamp", g: 90, ml: 200, trade: "hands-free, though it lights less of a room than a lantern" } },
   power: { g: 250, ml: 300 }, communication: { g: 350, ml: 1000 }, documents: { g: 150, ml: 300 },
