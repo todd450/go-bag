@@ -391,6 +391,28 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
   .draft .inv tbody tr { grid-template-columns: repeat(4, minmax(0, 1fr)) 28px;
     grid-template-areas: "name name name name x" "cat cat cat cat cat" "ess ess ess ess ess" "water food wt size ." "qty exp exp exp ."; }
 }
+/* The Contents panel: a Flat-lay | List switch, and the flat-lay's zones of item tiles, 4 a row on a phone and more as it widens. */
+.seg { display: inline-flex; padding: 2px; border: 1px solid var(--rule-2); border-radius: 999px; background: var(--card); }
+.seg button { min-height: 30px; padding: 3px 14px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: inherit; font-size: .82rem; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 500; }
+.fl-zone { display: grid; gap: 6px; }
+.fl-h { font-size: .8rem; font-weight: 500; color: var(--ink-2); }
+.fl-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+@media (min-width: 561px) { .fl-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; } }
+.fl-tile, .fl-add { position: relative; display: flex; flex-direction: column; gap: 1px; min-width: 0; min-height: 76px; padding: 8px 5px 6px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); color: var(--ink); font-size: .72rem; line-height: 1.25; }
+.fl-tile .ic { width: 22px; height: 22px; margin-bottom: 3px; color: var(--ink-2); }
+.fl-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-weight: 500; }
+.fl-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fl-note, .fl-exp { color: var(--ink-2); font-size: .68rem; }
+.fl-q { position: absolute; top: 7px; right: 6px; font-size: .72rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.fl-tile.expired { border-color: var(--bad); box-shadow: inset 0 0 0 1px var(--bad); }
+.fl-tile.expired .fl-name { text-decoration: line-through; }
+.fl-tile.expired .fl-exp { color: var(--bad); font-weight: 500; }
+.fl-tile.soon { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); }
+.fl-tile.soon .fl-exp { color: var(--warn); font-weight: 500; }
+.fl-add { align-items: center; justify-content: center; border-style: dashed; border-color: var(--rule-2); background: var(--card); font: inherit; font-size: .78rem; font-weight: 500; text-align: center; cursor: pointer; }
+.fl-add:hover { border-color: var(--ink); }
+.kit-ck > div > .ess-blk:first-child { border-top: 0; padding-top: 0; }
 .selbar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border: 1px solid var(--bad); border-radius: 12px; background: color-mix(in srgb, var(--bad) 7%, var(--card)); }
 .selbar b { font-weight: 600; font-variant-numeric: tabular-nums; }
 
@@ -469,6 +491,19 @@ const CATS = {
   kids: ["Kids' comfort", "comfort toy, cards, books, crayons, games for children"],
   other: ["Other", "anything that fits nowhere else"],
 };
+/* The flat-lay's zones, in the order the Contents panel shows them. Every CATS key is in exactly one, and an
+   item whose category isn't in CATS goes to Other. The bag in the Weight and space panel colours by these too. */
+const ZONES = [
+  { label: "Water & food", cats: ["water", "food"] },
+  { label: "First aid & medicine", cats: ["first_aid", "wound", "trauma", "burns", "splint", "cpr", "allergy", "breathing", "aspirin", "naloxone", "sugar", "seizure", "bites", "diagnostics", "medications"] },
+  { label: "Light, power & comms", cats: ["light", "power", "communication"] },
+  { label: "Shelter, clothing & hygiene", cats: ["shelter", "clothing", "hygiene", "sanitation", "masks"] },
+  { label: "Tools & safety", cats: ["tools", "fire_safety", "co_alarm", "poison", "car"] },
+  { label: "Documents & cash", cats: ["documents"] },
+  { label: "Family & pets", cats: ["pets", "baby", "kids"] },
+  { label: "Other", cats: ["comfort", "other"] },
+];
+const zoneOf = c => ZONES.find(z => z.cats.includes(c)) || ZONES.at(-1);
 /* The named essentials a kit needs in five checklist categories. An item's `essential` stores one of these ids,
    or "none" when the household said it is not one of them. Ids are saved in item docs, so they never change once
    shipped: new ones can be added, and an id taken off the list just reads as untagged. `perMed` is needed once
@@ -547,7 +582,7 @@ const ICONS = {
   yes: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   no: '<circle cx="12" cy="12" r="7.5"/>',
 };
-const icon = (k, cls = "ic") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ICONS.other}</svg>`;
+const icon = (k, cls = "ic") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${Object.hasOwn(ICONS, k) ? ICONS[k] : ICONS.other}</svg>`;
 /* The brand mark (#49): a supply case whose outline is the gauge. Two halves run from the bottom centre up
    each side and meet under the handle, filled to the score; handle, seam, latches and cross stay solid. */
 const caseScore = s => Math.round(Math.min(100, Math.max(0, Number(s) || 0)));
@@ -684,6 +719,7 @@ const S = {
   profile: null, hazards: null, review: null, shopping: null, plan: null, kits: [], items: [],
   live: false, loaded: false, slow: false, canWrite: true,
   openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
+  listKit: null, // the kit whose Contents panel shows List; any other kit shows Flat-lay. Memory only: never saved
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
   scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, tag: null, tagNoteOff: false,
   add: { cat: "water", ess: "" }, // the add-by-hand row's Category and Essential, so every redraw shows the two together
@@ -707,7 +743,7 @@ const band = s => BANDS.find(b => s >= b[0]);
 const statusColor = s => band(s)[2];
 const statusInk = s => s >= 40 && s < 75 ? "var(--ink)" : band(s)[2];
 const bandTag = s => `<span class="band"><i style="background:${statusColor(s)}"></i>${band(s)[1]}</span>`;
-const catLabel = c => (CATS[c] || CATS.other)[0];
+const catLabel = c => (Object.hasOwn(CATS, c) ? CATS[c] : CATS.other)[0];
 const D = () => S.canWrite ? "" : "disabled";
 const when = t => t ? new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
 /* Where to buy an item on Amazon: a saved product page when one was found (only a plain amazon.com/dp/ link counts),
@@ -1644,6 +1680,10 @@ function kitReadyPanel(kit, r, M = model()) {
       ${S.canWrite ? `<label class="f">People this kit is for<input type="number" min="1" max="50" id="kit-serves-${esc(kit.id)}" value="${r.serves}" data-change="serves" data-id="${esc(kit.id)}" style="width:110px"></label>` : ""}
     </div>
     <div class="bar" style="--c:${c}"><span style="width:${r.score}%"></span></div>
+  </div>`;
+}
+function kitChecklist(kit, r, M = model()) {
+  return `<div class="panel stack kit-ck">
     <div>${checklist(M, r.rows, r.kh, "days", S.items.filter(i => i.kitId === kit.id), "kit:" + kit.id)}</div>
     <p class="small muted">${r.drivers.length ? `Checklist covers ${esc(r.drivers.map(d => d.hz.name.toLowerCase()).join(", "))}. ` : ""}${r.whole ? "" : "Pet, baby and kids' supplies are expected only in kits for the whole household. "}Expired items don't count.</p>
   </div>`;
@@ -1759,26 +1799,8 @@ function kitDetail(kit, ready, M = model()) {
   const draft = S.draft?.kitId === kit.id ? S.draft : null;
   const tray = S.tray?.kitId === kit.id ? S.tray.photos : [];
   const working = scanning?.state === "working";
-  return `
-  <div class="row" style="justify-content:space-between;align-items:flex-end">
-    <div><p class="eyebrow">${esc(KIT_TYPES[kit.type] || "Kit")}${kit.where ? " · " + esc(kit.where) : ""}</p><h2>${esc(kit.name)}</h2></div>
-    ${S.canWrite ? (S.confirm === "kit:" + kit.id
-      ? `<div class="row"><span class="small">Delete this kit, its ${pl(items.length, "item")} and ${pl(photos.length, "photo")}?</span><button class="btn danger sm" data-act="delKit" data-id="${esc(kit.id)}">Delete</button><button class="btn ghost sm" data-act="cancelConfirm">Cancel</button></div>`
-      : `<button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button>`) : ""}
-  </div>
-  ${kitReadyPanel(kit, ready, M)}
-  ${packPanel(kit, ready)}
-  ${photos.length ? `<div class="photos">${photos.map(id => `<img src="/_blob/${esc(id)}" alt="Photo of ${esc(kit.name)}" loading="lazy">`).join("")}</div>` : ""}
-  ${S.canWrite ? `<div class="panel stack" data-drop="photos">
-    <div class="row" style="justify-content:space-between">
-      <div><b>Photograph the contents</b><p class="small muted">Lay items out so labels face up. Add as many photos as you need, from the camera or your library, or drop them here. Claude reads them together, then you check the list before anything is saved.</p></div>
-      ${working ? `<button class="btn ghost" data-act="stopScan">Stop</button>` : tray.length ? "" : `<button class="btn" data-act="pickPhotos">Add photos</button>`}
-    </div>
-    ${tray.length ? `<div class="tray">${tray.map((p, i) => `<figure class="tray-ph"><img src="${esc(p.url)}" alt="Photo ${i + 1}">${working ? "" : `<button class="x" data-act="trayDrop" data-k="${esc(p.key)}" aria-label="Remove photo ${i + 1}">×</button>`}</figure>`).join("")}</div>
-    ${working ? "" : `<div class="row"><button class="btn" data-act="readTray">Read ${tray.length} photo${tray.length === 1 ? "" : "s"}</button><button class="btn ghost" data-act="pickPhotos">Add more</button><button class="btn ghost" data-act="trayClear">Clear</button></div>`}` : ""}
-    ${scanning ? (working ? `<div class="working"><span class="pulse"></span><span>${esc(scanning.msg)}</span></div>` : `<p class="small" style="color:var(--bad)">${esc(scanning.msg)}</p>`) : ""}
-  </div>` : ""}
-  ${draft ? draftTable(draft) : ""}
+  // List: the item table as it always was, shown in the Contents panel once List is pressed
+  const list = S.listKit !== kit.id ? "" : `
   ${S.canWrite && S.sel.size ? `<div class="selbar">
     <b>${S.sel.size} selected</b>
     <button class="btn danger sm" data-act="removeSel">Remove from kit</button>
@@ -1819,6 +1841,50 @@ function kitDetail(kit, ready, M = model()) {
   </table></div>
   ${S.canWrite && items.length ? `<p class="small muted">Tick anything that's no longer in this kit, then remove it.</p>` : ""}
   ${how("kit-table", `Water L, Food kcal, lb and Size L are totals for the whole line (a 24-pack of 500 ml bottles is 12 L). Grey lb and Size L numbers are estimates until you type your own. Only Water L and Food kcal count toward water and food needs. Value is how many of the kit's ${ready.score} readiness points each item earns: a checklist line's points are shared by the items that fill it, so a lone tourniquet is worth more than one of twenty water bottles.`)}`;
+  return `
+  <div class="row" style="justify-content:space-between;align-items:flex-end">
+    <div><p class="eyebrow">${esc(KIT_TYPES[kit.type] || "Kit")}${kit.where ? " · " + esc(kit.where) : ""}</p><h2>${esc(kit.name)}</h2></div>
+    ${S.canWrite ? (S.confirm === "kit:" + kit.id
+      ? `<div class="row"><span class="small">Delete this kit, its ${pl(items.length, "item")} and ${pl(photos.length, "photo")}?</span><button class="btn danger sm" data-act="delKit" data-id="${esc(kit.id)}">Delete</button><button class="btn ghost sm" data-act="cancelConfirm">Cancel</button></div>`
+      : `<button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button>`) : ""}
+  </div>
+  ${kitReadyPanel(kit, ready, M)}
+  ${contentsPanel(kit, items, list)}
+  ${kitChecklist(kit, ready, M)}
+  ${packPanel(kit, ready)}
+  ${photos.length ? `<div class="photos">${photos.map(id => `<img src="/_blob/${esc(id)}" alt="Photo of ${esc(kit.name)}" loading="lazy">`).join("")}</div>` : ""}
+  ${S.canWrite ? `<div class="panel stack" data-drop="photos">
+    <div class="row" style="justify-content:space-between">
+      <div><b>Photograph the contents</b><p class="small muted">Lay items out so labels face up. Add as many photos as you need, from the camera or your library, or drop them here. Claude reads them together, then you check the list before anything is saved.</p></div>
+      ${working ? `<button class="btn ghost" data-act="stopScan">Stop</button>` : tray.length ? "" : `<button class="btn" data-act="pickPhotos">Add photos</button>`}
+    </div>
+    ${tray.length ? `<div class="tray">${tray.map((p, i) => `<figure class="tray-ph"><img src="${esc(p.url)}" alt="Photo ${i + 1}">${working ? "" : `<button class="x" data-act="trayDrop" data-k="${esc(p.key)}" aria-label="Remove photo ${i + 1}">×</button>`}</figure>`).join("")}</div>
+    ${working ? "" : `<div class="row"><button class="btn" data-act="readTray">Read ${tray.length} photo${tray.length === 1 ? "" : "s"}</button><button class="btn ghost" data-act="pickPhotos">Add more</button><button class="btn ghost" data-act="trayClear">Clear</button></div>`}` : ""}
+    ${scanning ? (working ? `<div class="working"><span class="pulse"></span><span>${esc(scanning.msg)}</span></div>` : `<p class="small" style="color:var(--bad)">${esc(scanning.msg)}</p>`) : ""}
+  </div>` : ""}
+  ${draft ? draftTable(draft) : ""}`;
+}
+/* The Contents panel: Flat-lay, one tile per item in the zones of ZONES, or List, the item table (`list`). */
+function contentsPanel(kit, items, list) {
+  const seg = (v, label) => `<button type="button" data-act="kitView" data-v="${v}" aria-pressed="${!!list === (v === "list")}">${label}</button>`;
+  const byZone = new Map(ZONES.map(z => [z, []]));
+  for (const it of [...items].sort((a, b) => String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name)))) byZone.get(zoneOf(it.category)).push(it);
+  const flat = [...byZone].filter(([, its]) => its.length).map(([z, its]) => `<section class="fl-zone"><h3 class="fl-h">${esc(z.label)}</h3><ul class="fl-grid">${its.map(flTile).join("")}</ul></section>`).join("")
+    || `<p class="fl-empty muted">Nothing in this kit yet.</p>`;
+  return `<div class="panel stack">
+    <div class="row" style="justify-content:space-between"><p class="eyebrow">Contents</p><div class="seg" role="group" aria-label="Show contents as">${seg("flat", "Flat-lay")}${seg("list", "List")}</div></div>
+    ${list || flat + (S.canWrite ? `<div class="fl-grid"><button type="button" class="fl-add" data-act="flAdd">+ Add by hand</button></div>` : "")}
+  </div>`;
+}
+/* One item's tile: its icon, name, ×N over 1, one short note (its own, else litres or kcal) and its expiry when near. */
+function flTile(it) {
+  const st = expState(it), q = Math.max(1, num(it.qty));
+  const note = typeof it.note === "string" && it.note.trim() ? it.note
+    : it.category === "water" && num(it.liters) ? f1(num(it.liters)) + " L"
+    : it.category === "food" && num(it.kcal) ? Math.round(num(it.kcal)).toLocaleString() + " kcal" : "";
+  return `<li class="fl-tile${st ? " " + st : ""}" data-id="${esc(it.id)}">${icon(it.category)}${q > 1 ? `<span class="fl-q">×${f1(q)}</span>` : ""}`
+    + `<span class="fl-name">${esc(String(it.name ?? "").trim() || catLabel(it.category))}</span>${note ? `<span class="fl-note">${esc(note)}</span>` : ""}`
+    + `${st ? `<span class="fl-exp">${st === "expired" ? "Expired" : "Expires"} ${esc(it.expires)}</span>` : ""}</li>`;
 }
 function catOptions(sel) { return Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${k === sel ? "selected" : ""}>${v[0]}</option>`).join(""); }
 /* An Essential picker's options for category `cat` with `v` chosen: "Pick one…" (left out once tagged, when `blank` is
@@ -2465,11 +2531,13 @@ const ACT = {
   tab: b => { S.view = b.dataset.v; try { history.replaceState(null, "", "#" + S.view); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   addKit: () => { S.addKit = true; render(); $("#nk-name")?.focus(); },
   cancelKit: () => { S.addKit = false; render(); $(".add-kit")?.focus(); },
-  openKit: b => { if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.confirm = null; render(); },
-  gotoKit: b => { S.view = "kits"; if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; try { history.replaceState(null, "", "#kits"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
+  openKit: b => { if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.confirm = null; S.listKit = null; render(); },
+  gotoKit: b => { S.view = "kits"; if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.listKit = null; try { history.replaceState(null, "", "#kits"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   removeSel: () => removeItems([...S.sel]),
   clearSel: () => { S.sel.clear(); render(); },
   sortItems: b => { S.itemSort = b.dataset.k; render(); },
+  kitView: b => { S.listKit = b.dataset.v === "list" ? S.openKit : null; render(); },
+  flAdd: () => { S.listKit = S.openKit; render(); $("#add-name")?.focus(); },
   planMedAdd: () => {
     const meds = Array.isArray(S.plan?.meds) ? S.plan.meds : [];
     const who = household().members.map((m, i) => [m, personName(m, i)]).find(([m, n]) => onDailyMeds(m) && !meds.some(x => x.who === n));

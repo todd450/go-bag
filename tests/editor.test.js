@@ -17,9 +17,9 @@ function withWrites(fixture) {
   return app;
 }
 
-// Each item row of the open kit's inventory, by item id: its cells, and its Essential select if it has one.
+// Each item row of the open kit's inventory (behind List), by item id: its cells, and its Essential select if it has one.
 function rows(run, kitId) {
-  const html = run(`S.openKit = ${JSON.stringify(kitId)}; viewKits(model())`);
+  const html = run(`S.openKit = ${JSON.stringify(kitId)}; ACT.kitView({ dataset: { v: "list" } }); viewKits(model())`);
   const table = html.match(/<table class="inv">[\s\S]*?<\/table>/)[0];
   const out = {};
   for (const tr of table.match(/<tr[^>]*>[\s\S]*?<\/tr>/g)) {
@@ -265,7 +265,7 @@ test("in a browser, the add row never shows a checklist category without its Ess
       const out = [], q = s => document.querySelector(s), wait = () => new Promise(r => setTimeout(r, 300));
       const look = where => { const c = q("#add-cat"), e = q("#add-ess"); out.push({ where, cat: c.value, ess: e ? [...e.options].map(o => o.value).filter(Boolean) : null, picked: e ? e.value : null }); };
       const pick = (sel, v) => { const n = q(sel); if (!n) return; n.focus(); n.value = v; n.dispatchEvent(new Event("change", { bubbles: true })); };
-      S.view = "kits"; S.openKit = "go"; render();
+      S.view = "kits"; S.openKit = "go"; render(); q('[data-act="kitView"][data-v="list"]').click();
       q("#add-name").value = "Passport copy"; pick("#add-cat", "documents");
       q('[data-act="addItem"]').click(); await wait(); look("after + with Essential left on pick one");
       pick("#add-cat", "fire_safety"); render(); look("drawn again with the category focused");

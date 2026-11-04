@@ -93,7 +93,7 @@ test("every inventory cell with something in it is labelled for the card layout"
   const { run } = load({ fixture: "tests/household" });
   const tables = [];
   for (const w of [true, false]) {
-    run(`S.canWrite = ${w}; S.openKit = "go"`);
+    run(`S.canWrite = ${w}; S.openKit = "go"; ACT.kitView({ dataset: { v: "list" } })`);
     tables.push(run("viewKits(model())"));
   }
   tables.push(run(`draftTable({ rows: [{ key: "a", name: "Tent", category: "shelter", qty: 1, liters: 0, kcal: 0, lb: 4.4, L: 9, expires: "", shop: "" }] })`));
@@ -127,7 +127,7 @@ test("low, partway and ready scores look different and say so in words", () => {
 
 test("each tab opens with one short line, and the full explanation sits behind How this works", () => {
   const { run } = load({ fixture: "tests/household" });
-  run(`syncDraft(); S.openKit = "go"`);
+  run(`syncDraft(); S.openKit = "go"; ACT.kitView({ dataset: { v: "list" } })`);
   const words = html => html.replace(/<[^>]*>/g, " ").trim().split(/\s+/).length;
   const pages = { score: "viewOverview(model())", "kit-table": "viewKits(model())", household: "viewHousehold()", shop: "viewShop(model())", plan: "viewPlan(model())", review: "viewPlan(model())" };
   for (const [id, view] of Object.entries(pages)) {
@@ -286,27 +286,8 @@ test("a block names its items still to tag and its expired items, which don't co
   assert.match(blocks(houseFire(run)).find(b => b.name === "Documents & cash").text, /\b2 items still to tag: Zip pouch of papers and Binder\b/);
 });
 
-// Layout at phone width needs a real browser. Headless Chrome won't make a window narrower than 500px,
-// so each household runs in a 390px-wide iframe (its own viewport, so the page's media queries see 390),
-// and the page reports what it measured into the DOM that --dump-dom prints. Skipped when there's no Chrome.
-const { execFileSync } = require("node:child_process");
-const os = require("node:os");
-const { wrap } = require("../tools/page.js");
-const chrome = process.env.CHROME || ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(f => fs.existsSync(f));
-function atPhoneWidth(fixtures, measure) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-phone-"));
-  try {
-    const attr = s => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-    const frames = fixtures.map(f => `<iframe data-f="${attr(f)}" style="width:390px;height:844px;border:0" srcdoc="${attr(wrap(undefined, f))}"></iframe>`).join("");
-    const probe = `<script>onload = () => setTimeout(() => { document.body.dataset.out = JSON.stringify([...document.querySelectorAll("iframe")].map(fr => [fr.dataset.f, fr.contentWindow.eval("(" + ${JSON.stringify(String(measure))} + ")()")])); }, 1000);</script>`;
-    fs.writeFileSync(path.join(dir, "probe.html"), `<!doctype html><body>${frames}${probe}</body>`);
-    const out = execFileSync(chrome, ["--headless=new", "--disable-gpu", "--no-first-run", `--user-data-dir=${path.join(dir, "profile")}`,
-      "--virtual-time-budget=5000", "--dump-dom", `file://${path.join(dir, "probe.html")}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 60000 });
-    const m = out.match(/<body data-out="([^"]*)"/);
-    assert.ok(m, "the page reported nothing");
-    return new Map(JSON.parse(unesc(m[1])));
-  } finally { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 }); }
-}
+// Layout at phone width, in a real browser (tests/phone.js). Skipped when there's no Chrome.
+const { chrome, atPhoneWidth } = require("./phone");
 
 test("at 390px every block shows its bar and nothing scrolls sideways, in opened emergencies and kit panels", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
   const fixtures = ["tests/household", "fixtures/phone-width/long-essentials", "fixtures/empty-and-one/big-household"];

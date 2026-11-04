@@ -32,7 +32,8 @@ test("the kit table links each item to Amazon and escapes what it links", () => 
   run(`S.openKit = S.kits[0].id;
     const mine = S.items.filter(i => i.kitId === S.openKit);
     mine[0].amazonUrl = "https://www.amazon.com/dp/B001CUX6N0";
-    mine[1].shopQuery = '"><img src=x onerror=alert(1)>';`);
+    mine[1].shopQuery = '"><img src=x onerror=alert(1)>';
+    ACT.kitView({ dataset: { v: "list" } });`);
   const html = run("viewKits(model())");
   assert.ok(html.includes(`href="https://www.amazon.com/dp/B001CUX6N0"`));
   assert.match(html, /On Amazon ↗/);
