@@ -1,0 +1,42 @@
+{
+  "about": "Made-up household for the essentials blocks at phone width: Josephine is the one person on daily medication, and every one of the five checklist categories has tagged and untagged items, so the longest labels and item names show (Records (USB or printed), Utility shut-off wrench, Pain or fever reliever with two items, Josephine's prescriptions, Cash envelope ($200 in small bills)), plus an expired tagged item.",
+  "profile": {
+    "location": "Bend, OR",
+    "members": [
+      { "label": "Josephine", "years": 58, "conditions": ["meds"] },
+      { "label": "Bartholomew", "years": 61 },
+      { "label": "Maximiliana", "years": 11 }
+    ],
+    "pets": [],
+    "vehicles": 1,
+    "home": "House"
+  },
+  "hazards": { "assessedAt": 1, "location": "Bend, OR", "levels": {}, "reasons": {} },
+  "kits": [
+    { "id": "go", "name": "Front closet go-bag", "type": "go", "where": "Front closet", "createdAt": 1 },
+    { "id": "home", "name": "Garage supply bin", "type": "home", "where": "Garage shelf", "createdAt": 2 },
+    { "id": "car", "name": "Station wagon kit", "type": "car", "createdAt": 3 }
+  ],
+  "items": [
+    { "id": "g1", "kitId": "go", "name": "Cash envelope ($200 in small bills)", "category": "documents", "qty": 1 },
+    { "id": "g2", "kitId": "go", "name": "Passport and licence copies", "category": "documents", "qty": 1, "essential": "id_copies" },
+    { "id": "g3", "kitId": "go", "name": "Ibuprofen 200 mg", "category": "medications", "qty": 1, "essential": "pain_reliever" },
+    { "id": "g4", "kitId": "go", "name": "Acetaminophen 500 mg", "category": "medications", "qty": 1, "essential": "pain_reliever" },
+    { "id": "g5", "kitId": "go", "name": "Josephine's blood pressure tablets", "category": "medications", "qty": 1 },
+    { "id": "g6", "kitId": "go", "name": "Old allergy tablets", "category": "medications", "qty": 1, "essential": "allergy_med", "expires": "2021-03" },
+    { "id": "g7", "kitId": "go", "name": "Hand-crank weather radio", "category": "communication", "qty": 1, "essential": "radio" },
+    { "id": "g8", "kitId": "go", "name": "Laminated family phone list", "category": "communication", "qty": 1 },
+    { "id": "g9", "kitId": "go", "name": "Pocket multi-tool", "category": "tools", "qty": 1, "essential": "multitool" },
+    { "id": "g10", "kitId": "go", "name": "Gas meter shut-off tool", "category": "tools", "qty": 1 },
+    { "id": "g11", "kitId": "go", "name": "Bottled water", "category": "water", "qty": 12, "liters": 6 },
+    { "id": "g12", "kitId": "go", "name": "Headlamp", "category": "light", "qty": 1 },
+    { "id": "h1", "kitId": "home", "name": "Kitchen fire extinguisher", "category": "fire_safety", "qty": 1, "essential": "extinguisher" },
+    { "id": "h2", "kitId": "home", "name": "Two-storey rope ladder", "category": "fire_safety", "qty": 1 },
+    { "id": "h3", "kitId": "home", "name": "Flash drive of insurance and medical records", "category": "documents", "qty": 1, "essential": "records" },
+    { "id": "h4", "kitId": "home", "name": "Spare reading glasses", "category": "medications", "qty": 1, "essential": "none" },
+    { "id": "h5", "kitId": "home", "name": "Water jugs", "category": "water", "qty": 4, "liters": 15 },
+    { "id": "c1", "kitId": "car", "name": "Safety whistle", "category": "communication", "qty": 1, "essential": "whistle" },
+    { "id": "c2", "kitId": "car", "name": "Roll of silver tape", "category": "tools", "qty": 1 },
+    { "id": "c3", "kitId": "car", "name": "Jumper cables", "category": "car", "qty": 1 }
+  ]
+}
