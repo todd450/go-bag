@@ -6,7 +6,10 @@
   const f = window.GO_BAG_FIXTURE || {};
   const cols = { kits: new Map(), items: new Map(), household: new Map() };
   for (const c of ["kits", "items"]) for (const { id, ...doc } of f[c] || []) cols[c].set(id, doc);
-  for (const k of ["profile", "hazards", "review", "shopping", "plan"]) if (f[k]) cols.household.set(k, f[k]);
+  // Household docs come from the fixture the first time the page names one (household/<name> is the
+  // fixture's <name>), so the page's own list decides which there are and none is copied here.
+  const named = new Set();
+  const household = id => { if (!named.has(id)) { named.add(id); if (f[id]) cols.household.set(id, f[id]); } };
   const copy = x => JSON.parse(JSON.stringify(x));
   const metadata = { fromCache: false, hasPendingWrites: false };
   const subs = new Set();
@@ -19,6 +22,7 @@
     }),
     doc: path => {
       const [c, id] = path.split("/");
+      if (c === "household") household(id);
       return {
         onSnapshot: cb => listen(c, () => cb({ metadata, id, exists: col(c).has(id), data: () => col(c).has(id) ? copy(col(c).get(id)) : undefined })),
         set: async d => { col(c).set(id, copy(d)); changed(c); },
