@@ -21,6 +21,7 @@ test("Next steps' 'from X to Y' is the score with all shown gaps bought together
 
 test("gaps already on the list fold into one step, and new gaps take the freed slots", () => {
   const { run, json } = load({ fixture: "tests/household" });
+  run(`S.items.find(i => i.id === "i3").essential = "extinguisher"`); // tagged, so no tag step takes a slot
   const before = json(`nextActions(model()).acts.filter(a => a.kind === "gap").map(a => a.g.cat)`);
   for (const cat of before.slice(0, 2)) run(`ACT.shopAdd({ dataset: { cat: "${cat}" } })`);
   const N = json(`(() => { const N = nextActions(model()); return { acts: N.acts.map(a => [a.kind, a.kind === "gap" ? a.g.cat : a.kind === "shop" ? a.gs.map(g => g.cat) : a.title]), more: N.more, total: model().gaps.length }; })()`);
