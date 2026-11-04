@@ -182,6 +182,19 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .chip .ic { color: var(--ink-2); }
 .chip.full { border-color: color-mix(in srgb, var(--good) 30%, transparent); background: color-mix(in srgb, var(--good) 9%, var(--card)); }
 .chip.full .ic { color: var(--good); }
+/* An essential pill: present is .chip.full with a check, missing is outlined with an empty circle and its points. */
+.chip.ess { line-height: 1.3; text-align: left; max-width: 100%; }
+.chip.ess .ic { stroke-width: 2; }
+.chip.ess.miss { background: var(--card); border-color: var(--rule-2); }
+.chip.ess .gain { font-size: inherit; }
+/* One checklist category of named essentials: icon, name, "1 of 4" and a bar, its pills, then its button and notes. */
+.ess-blk { display: grid; gap: 8px; padding: 10px 0 12px; border-top: 1px solid var(--rule); min-width: 0; }
+.ess-h { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto 72px; gap: 8px; align-items: center; font-size: .9rem; }
+.ess-h .ic { color: var(--ink-2); }
+.ess-h b { font-weight: 600; }
+.ess-h .of { font-variant-numeric: tabular-nums; font-weight: 600; font-size: .85rem; }
+.ess-f { display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .lvl { font-size: .8rem; padding: 4px 6px; }
 .hz-lvl.alarm { color: var(--bad); font-weight: 600; }
 .hz-lvl .pri { color: var(--brand); }
@@ -505,6 +518,8 @@ const ICONS = {
   gauge: '<path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/>',
   cart: '<path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/>',
   list: '<path d="M10 6h10M10 12h10M10 18h10"/><path d="m3.5 6 1.5 1.5 2.5-2.5M3.5 12l1.5 1.5 2.5-2.5M3.5 18l1.5 1.5 2.5-2.5"/>',
+  yes: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  no: '<circle cx="12" cy="12" r="7.5"/>',
 };
 const icon = (k, cls = "ic") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ICONS.other}</svg>`;
 const KIT_ICON = { go: "bag", home: "home", car: "car" };
@@ -721,10 +736,12 @@ function relevance(hz, h) {
   if (LEVELS[lv]) return lv;
   return (typeof hz.base === "function" ? hz.base(h) : hz.base) || "none";
 }
-function stock(types) {
+/* The items in every kit of these types. */
+function itemsIn(types) {
   const kitIds = new Set(S.kits.filter(k => types.includes(k.type)).map(k => k.id));
-  return stockItems(S.items.filter(it => kitIds.has(it.kitId)));
+  return S.items.filter(it => kitIds.has(it.kitId));
 }
+const stock = types => stockItems(itemsIn(types));
 /* What a set of items holds: units per category, litres, calories, and in the five checklist categories
    how many items are tagged with each named essential. Expired items hold nothing. */
 function stockItems(items) {
@@ -1239,7 +1256,58 @@ function amount(row, h, days = "household-days") {
   if (row.unit === "kcal") return `${f1(row.have / h.kcalDay)} of ${f1(row.need / h.kcalDay)} ${days}`;
   return `${row.have} of ${row.need}`;
 }
-const chipsFor = (rows, h, days) => rows.map(row => `<span class="chip ${row.cov >= 1 ? "full" : ""}">${icon(row.cat, "ic ic-s")}${esc(catLabel(row.cat))} · ${amount(row, h, days).replace(/<[^>]+>/g, "")}</span>`).join("");
+// The counted categories, one chip each; the five of named essentials are blocks (essBlock)
+const chipsFor = (rows, h, days) => rows.filter(row => !row.ess).map(row => `<span class="chip ${row.cov >= 1 ? "full" : ""}">${icon(row.cat, "ic ic-s")}${esc(catLabel(row.cat))} · ${amount(row, h, days).replace(/<[^>]+>/g, "")}</span>`).join("");
+/* The household gap a row's missing essential is: the same essential with the same label. There is none when every
+   emergency that counts has it (another kit covers it, or the emergency doesn't apply), so adding it moves no score. */
+const essGap = (M, cat, e) => M.gaps.find(g => g.cat === cat && g.essential === e.id && g.label === e.label);
+// What ticking a gap's shopping line adds, worked out once per model: the same sum the list and Next steps use
+const gapGains = new WeakMap();
+function gapGain(M, g) {
+  if (!g || M.overall == null) return 0;
+  let c = gapGains.get(M); if (!c) gapGains.set(M, c = new Map());
+  if (!c.has(g)) c.set(g, Math.max(0, scoreIfShopped(M, [shopFromGap(g, M.h)]) - M.overall));
+  return c.get(g);
+}
+const itemNames = its => { const n = its.map(i => String(i.name || "Unnamed item")); return n.length > 3 ? `${n.slice(0, 3).join(", ")} and ${n.length - 3} more` : orList(n, "and"); };
+/* One of the five categories as a block: the essentials in (each once, however many items fill it), the ones missing
+   with the points adding each is worth, the most first, an Add button for those not on the list yet, and the items
+   still to tag and the expired ones that don't count. `items` are those in the kits the row counts, and `at` says
+   which emergency ("hz:<id>") or kit ("kit:<id>") the block is in. */
+function essBlock(M, row, items, at) {
+  const mine = items.filter(it => it.category === row.cat);
+  const live = mine.filter(it => expState(it) !== "expired"), old = mine.filter(it => expState(it) === "expired");
+  const untagged = live.filter(it => !essentialOf(it));
+  const off = new Set(splitListed(M.gaps).off);
+  const miss = row.ess.filter(e => !e.have).map(e => { const g = essGap(M, row.cat, e); return { e, g, gain: gapGain(M, g) }; }).sort((a, b) => b.gain - a.gain);
+  const add = new Set(miss.filter(x => x.g && off.has(x.g)).map(x => x.g)).size;
+  const slots = id => row.ess.filter(e => e.id === id).length;
+  const has = row.ess.filter(e => e.have).map(e => {
+    const its = live.filter(it => essentialOf(it) === e.id);
+    return `<span class="chip ess full" title="${esc(its.map(i => i.name).join(", "))}">${icon("yes", "ic ic-s")}<span class="vh">Have </span>${esc(e.label)}${its.length > 1 && slots(e.id) === 1 ? `<span class="muted"> · ${its.length} items, counts once</span>` : ""}</span>`;
+  });
+  const lacks = miss.map(({ e, gain }) => `<span class="chip ess miss">${icon("no", "ic ic-s")}<span class="vh">Missing </span>${esc(e.label)}${gain ? ` · <span class="gain" title="Readiness points adding it adds">+${gain}</span>` : ""}</span>`);
+  const foot = [
+    add ? `<button class="btn ghost sm" data-act="shopAddBlock" data-cat="${esc(row.cat)}" data-at="${esc(at)}" ${D()}>Add ${add} to list</button>`
+      : miss.some(x => x.g) ? `<span class="small muted">On your shopping list</span>` : "",
+    untagged.length ? `<span class="small muted">${pl(untagged.length, "item")} still to tag: ${esc(itemNames(untagged))}</span>` : "",
+    old.length ? `<span class="small muted">${esc(itemNames(old))} expired${old.length === 1 ? " " + esc(old[0].expires) : ""}, so ${old.length === 1 ? "it doesn't" : "they don't"} count</span>` : "",
+  ].filter(Boolean);
+  const pct = Math.round(row.cov * 100);
+  return `<section class="ess-blk">
+    <div class="ess-h">${icon(row.cat)}<b>${esc(catLabel(row.cat))}</b><span class="of">${row.have} of ${row.need}</span><div class="bar" style="--c:${statusColor(pct)}"><span style="width:${pct}%"></span></div></div>
+    <div class="chips">${[...has, ...lacks].join("")}</div>
+    ${foot.length ? `<div class="ess-f">${foot.join("")}</div>` : ""}
+  </section>`;
+}
+/* An emergency's or a kit's checklist: a block for each category of named essentials, then the counted ones as chips. */
+function checklist(M, rows, h, days, items, at) {
+  const counted = chipsFor(rows, h, days);
+  return rows.filter(r => r.ess).map(r => essBlock(M, r, items, at)).join("")
+    + (counted ? `<p class="eyebrow">Counted by amount</p><div class="chips">${counted}</div>` : "");
+}
+/* A missing essential's name inside a sentence: "insurance cards", but "ID copies" and "Sam's prescriptions" as they are. */
+const essWord = (cat, label) => essentialList(cat).some(x => label === x.label || x.perMed && label.startsWith(x.label + " (")) && !/^.[A-Z]/.test(label) ? label[0].toLowerCase() + label.slice(1) : label;
 const modeLine = hz => hz.when || `${MODES[hz.mode].label} · ${hz.days === 1 ? "24 h" : hz.days === 3 ? "72 h" : hz.days + " days"}`;
 
 /* ---------- views ---------- */
@@ -1287,7 +1355,7 @@ function viewOverview(M) {
   const offCount = results.filter(r => !applies(r)).length;
   const group = (label, rows, note) => { rows = S.showOff ? rows : rows.filter(applies); return rows.length ? `<div class="grp">
     <div class="grp-h"><span class="eyebrow">${label}</span>${note ? `<span class="small muted">${note}</span>` : ""}</div>
-    <div class="hz">${rows.map(r => hzRow(r, h)).join("")}</div></div>` : ""; };
+    <div class="hz">${rows.map(r => hzRow(r, h, M)).join("")}</div></div>` : ""; };
   return `
   <div class="panel next">
     <div class="stack">
@@ -1335,7 +1403,12 @@ function viewOverview(M) {
 function kitRow(k, r) {
   const c = statusColor(r.score);
   const miss = r.rows.filter(x => x.cov < 1).sort((a, b) => a.cov - b.cov);
-  const missText = miss.length ? "Short on " + miss.map(x => catLabel(x.cat).toLowerCase()).join(", ") + "." : "Has everything on its checklist.";
+  // The missing essentials by name, in the categories' order, then the counted categories it is short on
+  const lacks = Object.keys(ESSENTIALS).flatMap(cat => miss.find(x => x.cat === cat && x.ess)?.ess.filter(e => !e.have).map(e => essWord(cat, e.label)) || []);
+  const short = miss.filter(x => !x.ess).map(x => catLabel(x.cat).toLowerCase());
+  const missText = !miss.length ? "Has everything on its checklist."
+    : [lacks.length ? `Missing ${lacks.length > 3 ? `${lacks.slice(0, 2).join(", ")} and ${lacks.length - 2} more` : orList(lacks, "and")}.` : "",
+      short.length ? `Short on ${short.join(", ")}.` : ""].filter(Boolean).join(" ");
   return `<div class="kit-row">
     <button class="kit-name ell" data-act="gotoKit" data-id="${esc(k.id)}" title="Open ${esc(k.name)}"><b>${esc(k.name)}</b><span class="mode">${esc(r.std.label)} · ${esc(servesLine(r))}</span></button>
     <div class="bar" style="--c:${c}"><span style="width:${r.score}%"></span></div>
@@ -1343,7 +1416,7 @@ function kitRow(k, r) {
     <p class="kit-miss small muted ell" title="${esc(missText)}">${esc(missText)}</p>
   </div>`;
 }
-function kitReadyPanel(kit, r) {
+function kitReadyPanel(kit, r, M = model()) {
   const c = statusColor(r.score);
   return `<div class="panel stack">
     <div class="row" style="justify-content:space-between;align-items:flex-end">
@@ -1352,7 +1425,7 @@ function kitReadyPanel(kit, r) {
       ${S.canWrite ? `<label class="f">People this kit is for<input type="number" min="1" max="50" id="kit-serves-${esc(kit.id)}" value="${r.serves}" data-change="serves" data-id="${esc(kit.id)}" style="width:110px"></label>` : ""}
     </div>
     <div class="bar" style="--c:${c}"><span style="width:${r.score}%"></span></div>
-    <div class="chips">${chipsFor(r.rows, r.kh, "days")}</div>
+    <div>${checklist(M, r.rows, r.kh, "days", S.items.filter(i => i.kitId === kit.id), "kit:" + kit.id)}</div>
     <p class="small muted">${r.drivers.length ? `Checklist covers ${esc(r.drivers.map(d => d.hz.name.toLowerCase()).join(", "))}. ` : ""}${r.whole ? "" : "Pet, baby and kids' supplies are expected only in kits for the whole household. "}Expired items don't count.</p>
   </div>`;
 }
@@ -1405,7 +1478,7 @@ function packPanel(kit, ready) {
   </div>`;
 }
 const RISK = { high: "High risk", moderate: "Moderate risk", low: "Low risk", none: "Doesn't apply" };
-function hzRow(r, h) {
+function hzRow(r, h, M = model()) {
   const open = S.openHz.has(r.hz.id);
   const off = LEVELS[r.rel][1] === 0;
   const c = statusColor(r.score);
@@ -1427,7 +1500,7 @@ function hzRow(r, h) {
       <label class="hz-like small">How much does it matter to you?
         <select class="lvl" data-change="importance" data-id="${r.hz.id}" aria-label="Importance of ${esc(r.hz.name)}" ${D()}>${Object.entries(IMPORTANCE).map(([k, v]) => `<option value="${k}" ${v[1] === pri ? "selected" : ""}>${v[0]}</option>`).join("")}</select></label>`}
       <p class="small muted">Counts ${kitsFor(r.hz).map(k => KIT_TYPES[k].toLowerCase().replace(/y$/, "ie") + "s").join(", ").replace(/, ([^,]*)$/, " and $1")}. ${r.hz.group ? (r.hz.days > 1 ? `Needs sized for ${r.hz.days} days.` : "") : `Needs sized for ${h.people} ${h.people === 1 ? "person" : "people"}${h.pets ? ` and ${h.pets} pet${h.pets > 1 ? "s" : ""}` : ""} over ${r.hz.days === 1 ? "24 hours" : r.hz.days + " days"}.`}</p>
-      <div class="chips">${chipsFor(r.rows, h)}</div>
+      <div>${checklist(M, r.rows, h, undefined, itemsIn(kitsFor(r.hz)), "hz:" + r.hz.id)}</div>
     </div>` : ""}
   </div>`;
 }
@@ -1453,10 +1526,10 @@ function viewKits(M) {
         <div class="row"><button class="btn" type="submit">Add kit</button>${S.kits.length ? `<button class="btn ghost" type="button" data-act="cancelKit">Cancel</button>` : ""}</div>
       </form>`}
     </div>
-    <div class="stack">${kit ? kitDetail(kit, M.kitRes[kit.id]) : `<div class="panel"><p class="muted">Pick a kit to see its contents, or add one.</p></div>`}</div>
+    <div class="stack">${kit ? kitDetail(kit, M.kitRes[kit.id], M) : `<div class="panel"><p class="muted">Pick a kit to see its contents, or add one.</p></div>`}</div>
   </div>`;
 }
-function kitDetail(kit, ready) {
+function kitDetail(kit, ready, M = model()) {
   const val = itemValues(kit, ready);
   const maxPts = Math.max(1, ...Object.values(val).map(v => v.pts));
   const byValue = S.itemSort === "value";
@@ -1474,7 +1547,7 @@ function kitDetail(kit, ready) {
       ? `<div class="row"><span class="small">Delete this kit, its ${pl(items.length, "item")} and ${pl(photos.length, "photo")}?</span><button class="btn danger sm" data-act="delKit" data-id="${esc(kit.id)}">Delete</button><button class="btn ghost sm" data-act="cancelConfirm">Cancel</button></div>`
       : `<button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button>`) : ""}
   </div>
-  ${kitReadyPanel(kit, ready)}
+  ${kitReadyPanel(kit, ready, M)}
   ${packPanel(kit, ready)}
   ${photos.length ? `<div class="photos">${photos.map(id => `<img src="/_blob/${esc(id)}" alt="Photo of ${esc(kit.name)}" loading="lazy">`).join("")}</div>` : ""}
   ${S.canWrite ? `<div class="panel stack" data-drop="photos">
@@ -2217,6 +2290,17 @@ const ACT = {
     const g = [...splitListed(M.gaps).off, ...M.gaps].find(x => gapKey(x) === key); if (!g) return;
     saveShop([...shopItems(), shopFromGap(g, M.h)]);
     toast(`Added ${gapName(g)} to your shopping list`);
+  },
+  // A checklist block's button: its missing essentials that are household gaps not on the list yet, in the emergency or kit it's in
+  shopAddBlock: b => {
+    const M = model(), { cat, at = "" } = b.dataset, i = at.indexOf(":"), kind = at.slice(0, i), id = at.slice(i + 1);
+    const r = kind === "kit" ? (Object.hasOwn(M.kitRes, id) ? M.kitRes[id] : null) : kind === "hz" ? M.results.find(x => x.hz.id === id) : null;
+    const row = r?.rows.find(x => x.cat === cat && x.ess);
+    const off = new Set(splitListed(M.gaps).off);
+    const add = [...new Set(row ? row.ess.filter(e => !e.have).map(e => essGap(M, cat, e)).filter(g => g && off.has(g)) : [])];
+    if (!add.length) { toast("Already on your shopping list"); return; }
+    saveShop([...shopItems(), ...add.map(g => shopFromGap(g, M.h))]);
+    toast(add.length === 1 ? `Added ${gapName(add[0])} to your shopping list` : `Added ${add.length} items to your shopping list`);
   },
   shopAddAll: () => {
     const M = model();
