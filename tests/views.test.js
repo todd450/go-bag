@@ -284,3 +284,48 @@ test("a block names its items still to tag and its expired items, which don't co
   run(`S.items.push({ id: "z2", kitId: "go", name: "Folder", category: "documents", qty: 1, essential: "none" }, { id: "z3", kitId: "go", name: "Binder", category: "documents", qty: 1 })`);
   assert.match(blocks(houseFire(run)).find(b => b.name === "Documents & cash").text, /\b2 items still to tag: Zip pouch of papers and Binder\b/);
 });
+
+// Layout at phone width needs a real browser. Headless Chrome won't make a window narrower than 500px,
+// so each household runs in a 390px-wide iframe (its own viewport, so the page's media queries see 390),
+// and the page reports what it measured into the DOM that --dump-dom prints. Skipped when there's no Chrome.
+const { execFileSync } = require("node:child_process");
+const os = require("node:os");
+const { wrap } = require("../tools/page.js");
+const chrome = process.env.CHROME || ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(f => fs.existsSync(f));
+function atPhoneWidth(fixtures, measure) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-phone-"));
+  try {
+    const attr = s => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+    const frames = fixtures.map(f => `<iframe data-f="${attr(f)}" style="width:390px;height:844px;border:0" srcdoc="${attr(wrap(undefined, f))}"></iframe>`).join("");
+    const probe = `<script>onload = () => setTimeout(() => { document.body.dataset.out = JSON.stringify([...document.querySelectorAll("iframe")].map(fr => [fr.dataset.f, fr.contentWindow.eval("(" + ${JSON.stringify(String(measure))} + ")()")])); }, 1000);</script>`;
+    fs.writeFileSync(path.join(dir, "probe.html"), `<!doctype html><body>${frames}${probe}</body>`);
+    const out = execFileSync(chrome, ["--headless=new", "--disable-gpu", "--no-first-run", `--user-data-dir=${path.join(dir, "profile")}`,
+      "--virtual-time-budget=5000", "--dump-dom", `file://${path.join(dir, "probe.html")}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 60000 });
+    const m = out.match(/<body data-out="([^"]*)"/);
+    assert.ok(m, "the page reported nothing");
+    return new Map(JSON.parse(unesc(m[1])));
+  } finally { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 }); }
+}
+
+test("at 390px every block shows its bar and nothing scrolls sideways, in opened emergencies and kit panels", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
+  const fixtures = ["tests/household", "fixtures/phone-width/long-essentials", "fixtures/empty-and-one/big-household"];
+  const seen = atPhoneWidth(fixtures, () => {
+    const look = where => ({ where, width: innerWidth, scroll: document.documentElement.scrollWidth,
+      bars: [...document.querySelectorAll(`#v-${S.view} .ess-blk .bar`)].map(b => b.getBoundingClientRect().width),
+      rowBars: [...document.querySelectorAll(`#v-${S.view} .hz-row > .bar`)].map(b => b.getBoundingClientRect().width) });
+    S.view = "overview"; S.showOff = true; S.openHz = new Set(HAZARDS.map(h => h.id)); render();
+    const views = [look("opened emergencies")];
+    for (const k of S.kits) { S.view = "kits"; S.openKit = k.id; render(); views.push(look(`kit ${k.name}`)); }
+    return views;
+  });
+  for (const f of fixtures) {
+    const views = seen.get(f);
+    assert.ok(views && views[0].bars.length > 0 && views[0].rowBars.length > 0, `${f}: no blocks or rows in its opened emergencies`);
+    for (const v of views) {
+      assert.equal(v.width, 390, `${f}, ${v.where}: the viewport isn't 390px`);
+      assert.ok(v.scroll <= v.width, `${f}, ${v.where}: scrolls sideways (${v.scroll}px wide)`);
+      assert.ok(v.bars.every(w => w > 0), `${f}, ${v.where}: a block's bar is hidden (widths ${v.bars.join(", ")})`);
+      assert.ok(v.rowBars.every(w => w === 0), `${f}, ${v.where}: an emergency row's own bar shows on a phone`);
+    }
+  }
+});
