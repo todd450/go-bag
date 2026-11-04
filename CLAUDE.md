@@ -13,7 +13,8 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
   script parses, then `node --test tests/*.test.js`. Tests load the page's script into a Node
   context with a stand-in DOM (`tests/load.js`) and call its functions directly, so they need no
   browser and no claude.ai. Reach for a standard validator, linter or browser test before writing
-  a check by hand.
+  a check by hand. A Stop hook (`.claude/hooks/check-on-stop.sh`) also runs it when a session
+  ends its turn with the page, tests or fixtures changed, and hands any failure back to fix.
 - **Decisions:** an issue labelled `needs-founder` waits on the founder, and `decided` is their
   yes. Technical one-way doors (a framework or none, a build step, how it deploys, its stack, how
   it stores data, a dependency that ships, an outside service) are the founder's; each is
