@@ -299,3 +299,29 @@ test("at 390px every kit's Contents panel shows 4 tiles a row and nothing scroll
     if (f.includes("long-essentials")) assert.ok(full > 0, `${f}: no zone filled a row of 4`);
   }
 });
+
+test("at 390px a tile shows its whole kcal note and its ×N badge never touches the icon, however big the numbers", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
+  const seen = atPhoneWidth(["tests/household"], () => {
+    [1000, 10000, 43200, 900000, 9999999, 99999999].forEach((n, i) => S.items.push(
+      { id: "k" + i, kitId: "home", name: "Ration bars", category: "food", qty: 1, kcal: n },
+      { id: "q" + i, kitId: "home", name: "Water jugs", category: "water", qty: n, liters: n },
+      { id: "b" + i, kitId: "home", name: "Rice and beans in bulk", category: "food", qty: n, kcal: n * 100 }));
+    S.view = "kits"; S.openKit = "home"; render();
+    const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    return [...document.querySelectorAll("#v-kits .fl-tile")].map(t => {
+      const tr = t.getBoundingClientRect(), ic = t.querySelector(".ic").getBoundingClientRect();
+      const q = t.querySelector(".fl-q"), note = t.querySelector(".fl-note"), qr = q && q.getBoundingClientRect();
+      return {
+        id: t.dataset.id, qty: q && q.textContent, note: note && note.textContent,
+        noteWhole: !note || (note.scrollWidth <= note.clientWidth + 1 && note.scrollHeight <= note.clientHeight + 1),
+        apart: !qr || !hit(qr, ic), qInside: !qr || (qr.left >= tr.left && qr.right <= tr.right),
+      };
+    });
+  }).get("tests/household");
+  assert.ok(seen.length >= 18, "the big-number tiles rendered");
+  for (const t of seen) {
+    assert.ok(t.noteWhole, `${t.id}: "${t.note}" is cut off`);
+    assert.ok(t.apart, `${t.id}: the badge "${t.qty}" overlaps the icon`);
+    assert.ok(t.qInside, `${t.id}: the badge "${t.qty}" runs out of its tile`);
+  }
+});
