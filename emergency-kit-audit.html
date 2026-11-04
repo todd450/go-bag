@@ -430,6 +430,32 @@ const CATS = {
   kids: ["Kids' comfort", "comfort toy, cards, books, crayons, games for children"],
   other: ["Other", "anything that fits nowhere else"],
 };
+/* The named essentials a kit needs in five checklist categories. An item's `essential` stores one of these ids,
+   or "none" when the household said it is not one of them. Ids are saved in item docs, so they never change once
+   shipped: new ones can be added, and an id taken off the list just reads as untagged. `perMed` is needed once
+   for each person on daily medication. */
+const ESSENTIALS = {
+  documents: [{ id: "id_copies", label: "ID copies" }, { id: "insurance", label: "Insurance cards" }, { id: "cash", label: "Cash" }, { id: "records", label: "Records (USB or printed)" }],
+  fire_safety: [{ id: "extinguisher", label: "Fire extinguisher" }, { id: "fire_blanket", label: "Fire blanket" }, { id: "escape_ladder", label: "Escape ladder" }],
+  communication: [{ id: "radio", label: "Emergency radio" }, { id: "whistle", label: "Whistle" }, { id: "contact_list", label: "Printed contact list" }],
+  tools: [{ id: "multitool", label: "Multi-tool or knife" }, { id: "duct_tape", label: "Duct tape" }, { id: "shutoff_wrench", label: "Utility shut-off wrench" }, { id: "fire_starter", label: "Lighter or matches" }],
+  medications: [{ id: "pain_reliever", label: "Pain or fever reliever" }, { id: "allergy_med", label: "Allergy medicine" }, { id: "prescriptions", label: "Prescriptions", perMed: true }],
+};
+const essentialList = cat => Object.hasOwn(ESSENTIALS, cat) ? ESSENTIALS[cat] : [];
+/* The essential an item is: an id on its current category's list, "none", or "" (untagged) for anything else. */
+function essentialOf(it) {
+  const e = it?.essential;
+  if (e === "none") return "none";
+  return typeof e === "string" && essentialList(it.category).some(x => x.id === e) ? e : "";
+}
+/* The essentials one checklist row needs for household `h`. One person's prescriptions carry their name;
+   with several, no label says whose is in the kit. */
+function essentialsFor(cat, h) {
+  const onMeds = (Array.isArray(h?.members) ? h.members : []).map((m, i) => [m, i]).filter(([m]) => m && onDailyMeds(m));
+  return essentialList(cat).flatMap(({ id, label, perMed }) => !perMed ? [{ id, label }]
+    : onMeds.length === 1 ? [{ id, label: `${personName(...onMeds[0])}'s prescriptions` }]
+    : onMeds.map((_, n) => ({ id, label: `${label} (${n + 1} of ${onMeds.length})` })));
+}
 /* Line icons, one per category plus a few for setup steps. 24×24, drawn with the current text colour. */
 const ICONS = {
   water: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
