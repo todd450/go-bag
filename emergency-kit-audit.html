@@ -406,14 +406,14 @@ const CATS = {
   cpr: ["CPR & airway", "CPR face shield or pocket mask, AED"],
   allergy: ["Allergy & anaphylaxis", "epinephrine auto-injectors, antihistamines"],
   breathing: ["Breathing", "rescue inhaler (albuterol), spacer, nebulizer and its medicine"],
-  aspirin: ["Heart attack aid", "chewable 81 mg aspirin, prescribed nitroglycerin"],
+  aspirin: ["Heart attack aid", "chewable 81 mg aspirin (prescribed nitroglycerin goes under Medications)"],
   naloxone: ["Overdose reversal", "naloxone (Narcan) nasal spray"],
   seizure: ["Seizure rescue", "prescribed seizure rescue medication (nasal midazolam or diazepam, rectal diazepam), written seizure action plan"],
   co_alarm: ["CO alarm", "battery or plug-in carbon monoxide alarm"],
   bites: ["Bites & stings", "tick remover, sting relief wipes, hydrocortisone cream, instant cold pack"],
   poison: ["Poison safety", "Poison Control number saved and posted, locking medicine box, cabinet latches"],
   diagnostics: ["Health monitoring", "thermometer, pulse oximeter, blood-pressure cuff, glucose meter and test strips"],
-  medications: ["Medications", "prescriptions, pain relievers, allergy meds, spare glasses"],
+  medications: ["Medications", "prescriptions such as nitroglycerin, pain relievers, allergy meds, spare glasses"],
   light: ["Light", "flashlights, headlamps, lanterns, light sticks"],
   power: ["Power", "batteries, power banks, solar or crank chargers, cables"],
   communication: ["Comms", "NOAA or hand-crank radio, whistle, two-way radios, printed contact list"],
@@ -481,7 +481,7 @@ const ICONS = {
 const icon = (k, cls = "ic") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ICONS.other}</svg>`;
 const KIT_ICON = { go: "bag", home: "home", car: "car" };
 const TAB_ICON = { overview: "gauge", kits: "bag", shop: "cart", household: "person", plan: "flag" };
-const KIND_ICON = { setup: "home", hazards: "pin", refill: "medications", ages: "person", plan: "flag", shop: "list" };
+const KIND_ICON = { setup: "home", hazards: "pin", refill: "medications", refile: "list", ages: "person", plan: "flag", shop: "list" };
 const AGE = { adult: ["Adult", 2000], teen: ["Teen (13–17)", 2200], child: ["Child (3–12)", 1600], infant: ["Under 3", 1000], senior: ["Senior (65+)", 1800] };
 /* An exact age, when given, decides the group and the calories (roughly the USDA estimates for a
    moderately active person); without one the saved group is used. */
@@ -513,6 +513,9 @@ const CONDITIONS = {
   device: "Uses a powered medical device",
   mobility: "Limited mobility",
 };
+/* Conditions that mean someone takes medication every day, so a pharmacy closing cuts them off. */
+const DAILY_MEDS = ["meds", "diabetes", "seizures", "opioids"];
+const onDailyMeds = m => Array.isArray(m.conditions) && m.conditions.some(c => DAILY_MEDS.includes(c));
 const KIT_TYPES = { go: "Go-bag", home: "Home supply", car: "Vehicle kit" };
 const MODES = {
   evacuate: { label: "Evacuate", kits: ["go", "car"] },
@@ -559,7 +562,7 @@ const HAZARDS = [
   { id: "cardiac", group: "health", name: "Cardiac arrest", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.heart || h.seniors ? "moderate" : "low", needs: ["cpr", "communication"] },
   { id: "poison", group: "health", name: "Poisoning", severity: "serious", mode: "anywhere", kits: ["home"], days: 1, when: "Mostly at home · call Poison Control first", base: h => h.kids || h.infants ? "moderate" : "low", needs: ["poison", "communication"] },
   { id: "overdose", group: "health", name: "Opioid overdose", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.opioids ? "moderate" : "low", needs: ["naloxone", "cpr", "communication"] },
-  { id: "co", group: "health", name: "Carbon monoxide poisoning", severity: "critical", mode: "anywhere", kits: ["home"], days: 1, when: "At home · worst in outages, with generators and heaters", base: () => "low", needs: ["co_alarm"] },
+  { id: "co", group: "health", name: "Carbon monoxide poisoning", severity: "critical", mode: "anywhere", kits: ["home"], days: 1, when: "At home · worst in outages, with generators and heaters", base: h => /^(House|Townhouse|Mobile home)$/.test(h.home) ? "moderate" : "low", needs: ["co_alarm"] },
   { id: "bites", group: "health", name: "Bites and stings", severity: "minor", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Pets, outdoors · first hour", base: h => h.pets || h.kids ? "moderate" : "low", needs: ["bites", "wound", "medications"] },
   { id: "anaphylaxis", group: "health", name: "Severe allergic reaction", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · first minutes", base: h => h.allergic ? "high" : "none", needs: ["allergy", "communication", "first_aid"] },
   { id: "illness", group: "health", name: "Serious illness at home", severity: "serious", mode: "shelter", days: 3, when: "At home · 72 h", base: () => "moderate", needs: ["diagnostics", "medications", "hygiene", "masks", "water", "food"] },
@@ -667,7 +670,7 @@ function household() {
   const members = Array.isArray(p.members) && p.members.length ? p.members : [{ age: "adult" }];
   const has = (...cs) => members.filter(m => Array.isArray(m.conditions) && cs.some(c => m.conditions.includes(c))).length;
   return {
-    dailyMeds: has("meds", "diabetes"), allergic: has("allergy"), diabetes: has("diabetes"),
+    dailyMeds: has(...DAILY_MEDS), allergic: has("allergy"), diabetes: has("diabetes"),
     heart: has("heart"), devices: has("device"), mobility: has("mobility"),
     asthma: has("asthma"), seizures: has("seizures"), opioids: has("opioids"),
     seniors: members.filter(m => groupOf(m) === "senior").length,
@@ -678,6 +681,7 @@ function household() {
     infants: members.filter(m => groupOf(m) === "infant").length,
     kids: members.filter(m => groupOf(m) === "child").length,
     vehicles: num(p.vehicles),
+    home: typeof p.home === "string" ? p.home : "",
   };
 }
 function relevance(hz, h) {
@@ -792,6 +796,18 @@ function scoreIfShopped(M, es) {
   return es.every(e => shopKit(e)) ? scoreIfBought(es) : overallIf(M, new Set(es.map(e => e.cat)));
 }
 const scoreIfFilled = (M, gaps) => scoreIfShopped(M, gaps.map(g => shopFromGap(g, M.h)));
+/* Items saved before their supply type had a category of its own: the name says what it is, so Next steps
+   offers to move them. Nothing moves until that button is tapped. Pain-reliever aspirin stays a medication. */
+const REFILE = [
+  [/\b(inhaler|albuterol|ventolin|proair|nebuli[sz]er)\b/i, "breathing", ["medications", "first_aid", "other"]],
+  [/\b(narcan|naloxone)\b/i, "naloxone", ["medications", "poison", "first_aid", "other"]],
+  [/\b(chewable|low[- ]dose|baby|81 ?mg)\b.*\baspirin\b|\baspirin\b.*\b(chewable|low[- ]dose|81 ?mg)\b/i, "aspirin", ["medications", "first_aid", "other"]],
+  [/\b(midazolam|nayzilam|valtoco|diastat)\b/i, "seizure", ["medications", "other"]],
+  [/\b(carbon monoxide|co (alarm|detector))\b/i, "co_alarm", ["poison", "fire_safety", "tools", "other"]],
+];
+function refileable(items = S.items) {
+  return items.flatMap(it => { const r = REFILE.find(([re, , from]) => from.includes(it.category) && re.test(String(it.name || ""))); return r ? [{ it, to: r[1] }] : []; });
+}
 /* Up to three things to do next: setup that changes every number first, then the gaps worth the most points. */
 function nextActions(M) {
   const p = S.profile, out = [];
@@ -801,6 +817,9 @@ function nextActions(M) {
   const plan = S.plan || {};
   const due = (Array.isArray(plan.meds) ? plan.meds : []).map(x => ({ x, st: refillState(x) })).filter(o => o.st.days != null && o.st.days <= 7).sort((a, b) => a.st.days - b.st.days)[0];
   if (due && out.length < 2) out.push({ kind: "refill", title: `Refill ${due.x.who ? due.x.who + "'s " : ""}${due.x.name || "medication"}`, detail: `${due.st.text}. Pharmacies close in emergencies, so try to keep a week or two spare.` });
+  const rf = refileable();
+  if (rf.length && out.length < 2) out.push({ kind: "refile", title: rf.length === 1 ? `Move ${rf[0].it.name} to ${catLabel(rf[0].to)}` : `Move ${rf.length} items to their own supply types`,
+    detail: `${orList([...new Set(rf.map(x => catLabel(x.to)))], "and")} now ${new Set(rf.map(x => x.to)).size > 1 ? "have their own types" : "has its own type"}. Until ${rf.length === 1 ? "it moves, it doesn't" : "they move, they don't"} count for the emergencies ${rf.length === 1 ? "it covers" : "they cover"}.` });
   const noAge = ms.filter(m => yearsOf(m) == null);
   if (noAge.length && out.length < 2) out.push({ kind: "ages", title: noAge.length === ms.length ? "Add everyone's age" : `Add ${orList(noAge.map((m, i) => m.label || "a person"), "and")}'s age`, detail: "Food is sized by age, and toddlers and young kids need supplies of their own." });
   if (p && !p.example && !String(plan.meetNear || "").trim() && !String(plan.contactName || "").trim() && out.length < 2)
@@ -828,10 +847,13 @@ const how = (id, body) => `<details class="how" data-how="${id}" ${S.how.has(id)
 const pl = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
 const whoIs = (h, f) => h.members.map((m, i) => [m, personName(m, i)]).filter(([m]) => f(m)).map(([, n]) => n);
 const hasCond = c => m => (m.conditions || []).includes(c);
+/* A prescription-only rescue medicine: who it's for, and asking their doctor for a spare for the kit. */
+const forWho = who => who.length ? ` for ${orList(who, "and")}` : "";
+const rxAsk = (who, what, doctor = "doctor") => `Prescription only. Ask ${who.length ? orList(who, "and") + "'s" : "the"} ${doctor} for ${what}`;
 function buyGuide(cat, qty, unit, kt, h) {
   const n = Math.max(1, Math.ceil(num(qty))), q = num(qty), go = kt === "go" || kt === "car";
   const kids = whoIs(h, m => groupOf(m) === "child"), little = whoIs(h, m => groupOf(m) === "infant");
-  const allergic = whoIs(h, hasCond("allergy")), onMeds = whoIs(h, m => hasCond("meds")(m) || hasCond("diabetes")(m));
+  const allergic = whoIs(h, hasCond("allergy")), onMeds = whoIs(h, onDailyMeds);
   switch (cat) {
     case "water": {
       if (go) { const c = Math.ceil(q / 12); return { line: `${pl(c, "case")} of 24 half-litre bottles`, price: c * 6, tip: "Bottles fit in a bag and don't leak. Pick cases with a best-by date printed on them." }; }
@@ -851,12 +873,12 @@ function buyGuide(cat, qty, unit, kt, h) {
     case "burns": return { line: "Burn gel and 2 sterile burn dressings", price: 15, tip: "Cool a burn under running water for 20 minutes first. The gel comes after." };
     case "splint": return { line: "A SAM splint and 2 elastic wraps", price: 20, tip: "A SAM splint rolls flat and bends to fit an arm, leg or ankle." };
     case "cpr": return { line: "A CPR face shield or pocket mask", price: 10, tip: "A CPR class matters far more than this. Many fire stations run free ones." };
-    case "allergy": return { line: `${pl(n, "epinephrine auto-injector")}${allergic.length ? ` for ${orList(allergic, "and")}` : ""}, plus an antihistamine`, price: null,
-      tip: `Prescription only. Ask ${allergic.length ? orList(allergic, "and") + "'s" : "the"} doctor for an extra two-pack to keep in the kit, and check its expiry every year.` };
+    case "allergy": return { line: `${pl(n, "epinephrine auto-injector")}${forWho(allergic)}, plus an antihistamine`, price: null,
+      tip: `${rxAsk(allergic, "an extra two-pack to keep in the kit")}, and check its expiry every year.` };
     case "breathing": {
       const who = whoIs(h, hasCond("asthma"));
-      return { line: `${pl(n, "spare rescue inhaler")} with a spacer${who.length ? ` for ${orList(who, "and")}` : ""}`, price: null,
-        tip: `Prescription only. Ask ${who.length ? orList(who, "and") + "'s" : "the"} doctor for a spare to keep in the kit, and check its expiry every year. A spacer gets more of each puff into the lungs, and it's what makes an inhaler work for a small child.` };
+      return { line: `${pl(n, "spare rescue inhaler")} with a spacer${forWho(who)}`, price: null,
+        tip: `${rxAsk(who, "a spare to keep in the kit")}, and check its expiry every year. A spacer gets more of each puff into the lungs, and it's what makes an inhaler work for a small child.` };
     }
     case "aspirin": return { line: "A bottle of chewable 81 mg aspirin", price: 5,
       tip: "For a suspected heart attack, call 911 first, then chew 4 of them (325 mg) unless the person is allergic to aspirin or a doctor has said not to. Keep a strip in every kit." };
@@ -864,8 +886,8 @@ function buyGuide(cat, qty, unit, kt, h) {
       tip: "Sold over the counter, and it can't hurt someone who hasn't taken opioids. Call 911, give one spray in a nostril, and give the second after 2 to 3 minutes if they still aren't breathing normally. Many health departments and pharmacies give it out free." };
     case "seizure": {
       const who = whoIs(h, hasCond("seizures"));
-      return { line: `Rescue seizure medication${who.length ? ` for ${orList(who, "and")}` : ""} and a printed seizure action plan`, price: null,
-        tip: `Prescription only. Ask ${who.length ? orList(who, "and") + "'s" : "the"} neurologist for a spare dose to keep in the kit. Time every seizure: past 5 minutes, give the rescue medication and call 911.` };
+      return { line: `Rescue seizure medication${forWho(who)} and a printed seizure action plan`, price: null,
+        tip: `${rxAsk(who, "a spare dose to keep in the kit", "neurologist")}. Time every seizure: past 5 minutes, give the rescue medication and call 911.` };
     }
     case "co_alarm": return { line: pl(n, "battery carbon monoxide alarm"), price: n * 30,
       tip: "Put one on each floor and outside the bedrooms. Never run a generator, grill or camp stove indoors or in the garage, even with the door open. If it sounds, get everyone outside before calling 911." };
@@ -1141,6 +1163,7 @@ function actBtn(a, i) {
   if (a.kind === "ages") return `<button class="${b}" data-act="tab" data-v="household">Add ages</button>`;
   if (a.kind === "refill" || a.kind === "plan") return `<button class="${b}" data-act="tab" data-v="plan">Open plan</button>`;
   if (a.kind === "shop") return `<button class="${b}" data-act="tab" data-v="shop">Open list</button>`;
+  if (a.kind === "refile") return `<button class="${b}" data-act="refile" ${D()}>Move</button>`;
   return `<button class="${b}" data-act="shopAdd" data-cat="${a.g.cat}" ${D()}>Add to list</button>`;
 }
 const actRow = (a, i) => `<li class="act">
@@ -1621,7 +1644,7 @@ function viewPlan(M) {
   const filled = fields.filter(([k]) => String(p[k] || "").trim()).length;
   const ms = household().members.map((m, i) => personName(m, i));
   const meds = Array.isArray(p.meds) ? p.meds : [];
-  const onMeds = household().members.map((m, i) => [m, personName(m, i)]).filter(([m, n]) => (m.conditions || []).some(c => c === "meds" || c === "diabetes") && !meds.some(x => x.who === n)).map(([, n]) => n);
+  const onMeds = household().members.map((m, i) => [m, personName(m, i)]).filter(([m, n]) => onDailyMeds(m) && !meds.some(x => x.who === n)).map(([, n]) => n);
   const field = ([k, label, hint, ph, type]) => `<label class="f">${label}<input type="${type || "text"}" id="plan-${k}" value="${esc(p[k] || "")}" data-change="plan" data-f="${k}" placeholder="${esc(ph)}" maxlength="120" ${D()}>${hint ? `<span class="hint">${hint}</span>` : ""}</label>`;
   const med = (x, i) => { const st = refillState(x); return `<div class="med">
       <select id="med-${i}-who" data-change="planMed" data-i="${i}" data-f="who" aria-label="Who takes it" ${D()}><option value="">Who?</option>${ms.map(n => `<option ${n === x.who ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
@@ -1994,6 +2017,12 @@ function setPath(o, path, val) {
 
 /* ---------- events ---------- */
 const ACT = {
+  refile: async () => {
+    const rf = refileable();
+    try { await Promise.all(rf.map(({ it, to }) => setDoc("items", it.id, { ...strip(it), category: to }))); } catch (_) { return; }
+    toast(rf.length === 1 ? `Moved ${rf[0].it.name}` : `Moved ${rf.length} items`);
+    render();
+  },
   tab: b => { S.view = b.dataset.v; try { history.replaceState(null, "", "#" + S.view); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   addKit: () => { S.addKit = true; render(); $("#nk-name")?.focus(); },
   cancelKit: () => { S.addKit = false; render(); $(".add-kit")?.focus(); },
@@ -2004,7 +2033,7 @@ const ACT = {
   sortItems: b => { S.itemSort = b.dataset.k; render(); },
   planMedAdd: () => {
     const meds = Array.isArray(S.plan?.meds) ? S.plan.meds : [];
-    const who = household().members.map((m, i) => [m, personName(m, i)]).find(([m, n]) => (m.conditions || []).some(c => c === "meds" || c === "diabetes") && !meds.some(x => x.who === n));
+    const who = household().members.map((m, i) => [m, personName(m, i)]).find(([m, n]) => onDailyMeds(m) && !meds.some(x => x.who === n));
     savePlan({ ...(S.plan || {}), meds: [...meds, { who: who ? who[1] : "", name: "", refill: "" }] });
   },
   planMedDel: b => savePlan({ ...(S.plan || {}), meds: (S.plan?.meds || []).filter((_, i) => i !== +b.dataset.i) }),
