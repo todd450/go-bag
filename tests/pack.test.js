@@ -155,3 +155,26 @@ test("Estimate with Claude saves weights only where they're missing", async () =
   assert.deepEqual(json(`(i => [i.grams, i.ml])(S.items.find(i => i.id === "i7"))`), [50, 120], "a typed weight is kept");
   assert.equal(json("S.packEst"), null);
 });
+
+test("weights show and are typed in pounds, and saved data stays in grams and kg", async () => {
+  const app = load({ fixture: "tests/household" });
+  const { run, json, fire } = app;
+  // A 450 g first-aid kit shows as 1 lb in the kit table, under an lb column
+  const html = run(`S.openKit = "go"; viewKits(model())`);
+  assert.match(html, />lb<\/th>/);
+  assert.match(html, /id="it-i4-g" value="1"/);
+  assert.doesNotMatch(html, />kg<|in kg| kg\b/);
+  // Typing 10 lb saves 4536 g
+  await fire("change", { dataset: { change: "item", id: "i4", f: "grams" }, value: "10" });
+  assert.equal(json(`S.items.find(i => i.id === "i4").grams`), 4536);
+  // A carry limit of 20 lb is saved as kg and shows as 20 lb again
+  await fire("change", { dataset: { change: "packLim", id: "go", f: "carryKg" }, value: "20" });
+  assert.equal(json(`S.kits.find(k => k.id === "go").carryKg`), 9.07);
+  const panel = run(`(k => packPanel(k, kitReadiness(k, household(), model().active)))(S.kits.find(k => k.id === "go"))`);
+  assert.match(panel, /id="pk-carryKg-go" value="20"/);
+  assert.match(panel, /of 20 lb/);
+  assert.doesNotMatch(panel, / kg\b/);
+  // Bag size is still litres, half-litre steps
+  await fire("change", { dataset: { change: "packLim", id: "go", f: "bagL" }, value: "32.3" });
+  assert.equal(json(`S.kits.find(k => k.id === "go").bagL`), 32.5);
+});
