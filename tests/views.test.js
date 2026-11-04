@@ -95,7 +95,7 @@ test("every inventory cell with something in it is labelled for the card layout"
     run(`S.canWrite = ${w}; S.openKit = "go"`);
     tables.push(run("viewKits(model())"));
   }
-  tables.push(run(`draftTable({ rows: [{ key: "a", name: "Tent", category: "shelter", qty: 1, liters: 0, kcal: 0, kg: 2, L: 9, expires: "", shop: "" }] })`));
+  tables.push(run(`draftTable({ rows: [{ key: "a", name: "Tent", category: "shelter", qty: 1, liters: 0, kcal: 0, lb: 4.4, L: 9, expires: "", shop: "" }] })`));
   for (const html of tables) {
     const table = html.match(/<table class="inv">[\s\S]*?<\/table>/);
     assert.ok(table, "inventory table has class inv");
