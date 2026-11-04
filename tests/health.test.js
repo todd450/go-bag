@@ -112,9 +112,9 @@ test("a radio adds nothing to a health emergency, except powered medical equipme
   run(`S.profile.members[0].conditions = ["device"]`);
   const scores = () => json(`Object.fromEntries(model().results.filter(r => r.hz.group === "health").map(r => [r.hz.id, r.score]))`);
   const before = scores();
-  run(`S.items.push({ id: "c1", kitId: "home", name: "Hand-crank NOAA radio", category: "communication", qty: 1 },
-    { id: "c2", kitId: "go", name: "Hand-crank NOAA radio", category: "communication", qty: 1 },
-    { id: "c3", kitId: "car", name: "Hand-crank NOAA radio", category: "communication", qty: 1 })`);
+  run(`S.items.push({ id: "c1", kitId: "home", name: "Hand-crank NOAA radio", category: "communication", qty: 1, essential: "radio" },
+    { id: "c2", kitId: "go", name: "Hand-crank NOAA radio", category: "communication", qty: 1, essential: "radio" },
+    { id: "c3", kitId: "car", name: "Hand-crank NOAA radio", category: "communication", qty: 1, essential: "radio" })`);
   const after = scores();
   const changed = Object.keys(after).filter(id => after[id] !== before[id]);
   assert.deepEqual(changed, ["device"]);

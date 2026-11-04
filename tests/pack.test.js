@@ -67,9 +67,9 @@ test("on a small kit the best pack is the best possible", () => {
       { id: "c", kitId: "go", name: "First aid", category: "first_aid", qty: 1, grams: 450, ml: 900 },
       { id: "d", kitId: "go", name: "Torch", category: "light", qty: 2, grams: 300, ml: 400 },
       { id: "e", kitId: "go", name: "Sleeping bag", category: "shelter", qty: 1, grams: 1500, ml: 6000 },
-      { id: "f", kitId: "go", name: "Knife", category: "tools", qty: 1, grams: 400, ml: 300 },
+      { id: "f", kitId: "go", name: "Knife", category: "tools", qty: 1, essential: "multitool", grams: 400, ml: 300 },
       { id: "g", kitId: "go", name: "Jacket", category: "clothing", qty: 1, grams: 600, ml: 2500 },
-      { id: "h", kitId: "go", name: "Pills", category: "medications", qty: 1, grams: 100, ml: 100 });`);
+      { id: "h", kitId: "go", name: "Pills", category: "medications", qty: 1, essential: "pain_reliever", grams: 100, ml: 100 });`);
   const best = json(`(${PLAN}).P.best.score`);
   const brute = json(`(() => {
     const { kit, r, lim } = ${PLAN};
