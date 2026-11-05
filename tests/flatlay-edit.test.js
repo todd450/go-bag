@@ -325,12 +325,19 @@ test("a tap or Tab that saves an edited field still lands on what it was aimed a
   };
   const at = sel => ev(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); e.scrollIntoView({ block: "center" });
     const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
+  /* A finger or a button goes down, stays a moment (timers run before it lifts), and comes up; the press is done once
+     the page has had its click. A finger is raw touch points, so Chrome makes the pointer, touch, mouse and click events
+     a phone does (Linux headless Chrome's synthesizeTapGesture fires no click at all, even on a bare button). */
   const press = async (sel, how) => {
-    const [x, y] = await at(sel);
-    if (how === "touch") return page.send("Input.synthesizeTapGesture", { x, y, gestureSourceType: "touch" });
-    await page.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
-    await sleep(60); // a button stays down a moment, and timers run before it lifts
-    await page.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
+    const [x, y] = await at(sel), clicks = await ev("clicks");
+    if (how === "touch") await page.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+    else await page.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
+    await sleep(60);
+    if (how === "touch") await page.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    else await page.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
+    for (let i = 0; i < 100 && await ev("clicks") === clicks; i++) await sleep(20);
+    assert.ok(await ev("clicks") > clicks, `${how}: pressing ${sel} gave the page no click`);
+    await sleep(50); // a redraw the save owes runs in the task after the click
   };
   const key = async (key, code = key) => {
     const vk = key === "Tab" ? 9 : key.charCodeAt(0);
@@ -351,17 +358,15 @@ test("a tap or Tab that saves an edited field still lands on what it was aimed a
     await page.send("Page.navigate", { url: `file://${file}?${how}${list ? "-list" : ""}#kits` });
     await loaded;
     for (let i = 0; i < 50 && !await ev("S.loaded"); i++) await sleep(50);
-    await ev(`S.openKit = "go"; S.listKit = ${list ? '"go"' : "null"}; render()`);
+    await ev(`window.clicks = 0; addEventListener("click", () => clicks++, true); S.openKit = "go"; S.listKit = ${list ? '"go"' : "null"}; render()`);
   };
   try {
     for (const how of ["mouse", "touch"]) {
       await start(how);
       await press('.fl-ed[data-id="g3"]', how);
-      await sleep(100);
       assert.equal(await ev("S.flOpen"), "g3", `${how}: the first tap opens Ibuprofen`);
       await type("#it-g3-qty", "5");
       await press('.fl-ed[data-id="g6"]', how);
-      await sleep(150);
       assert.equal((await item("g3")).qty, 5, `${how}: the edited Qty is saved`);
       assert.equal(await ev("S.flOpen"), "g6", `${how}: the tap that saved Qty opens the tile it landed on`);
       assert.equal(await active(), "fl-g6", `${how}: focus is on the tapped tile`);
@@ -370,7 +375,6 @@ test("a tap or Tab that saves an edited field still lands on what it was aimed a
       await start(how, true);
       await type("#it-g3-qty", "4");
       await press('[data-act="kitView"][data-v="flat"]', how);
-      await sleep(150);
       assert.equal((await item("g3")).qty, 4, `${how}: List's edited Qty is saved`);
       assert.equal(await ev("S.listKit"), null, `${how}: the Flat-lay button pressed after the edit switches to Flat-lay`);
     }
@@ -379,7 +383,6 @@ test("a tap or Tab that saves an edited field still lands on what it was aimed a
     // keeps Tab, so Expires isn't driven here; a tap moving focus to a tile is checked above.)
     await start("mouse");
     await press('.fl-ed[data-id="g3"]', "mouse");
-    await sleep(100);
     await type("#it-g3-g", "2");
     await key("Tab");
     await sleep(150);
