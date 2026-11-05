@@ -156,7 +156,7 @@ ${rows.map(r => `<h2 class="${r.changed ? "" : "same"}">${r.name.replace(".png",
   return 0;
 }
 
-module.exports = { tabs };
+module.exports = { tabs, findChrome, openChrome };
 
 if (require.main === module) {
   main(process.argv.slice(2)).then(code => { process.exitCode = code; }, e => { console.error(e.message); process.exitCode = 1; });

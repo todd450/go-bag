@@ -3,9 +3,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const { load, ROOT } = require("./load");
 const { chrome, atPhoneWidth } = require("./phone");
+const { openChrome } = require("../tools/screenshots");
+const { wrap } = require("../tools/page");
 
 const scenarios = ["tests/household", ...fs.readdirSync(path.join(ROOT, "fixtures"), { recursive: true })
   .filter(f => f.endsWith(".json")).map(f => path.join("fixtures", f.slice(0, -5)))];
@@ -275,5 +278,115 @@ test("at 390px, with a tile open in each kit, the fields sit under its row acros
       assert.ok(o.inside, `${where}: a field runs out of the panel`);
       assert.equal(o.row, o.want, `${where}: the tile's row broke up`);
     }
+  }
+});
+
+// Every category, and every essential of each, is tried on one item, so every label the two selects can show is measured
+test("at 390px, an opened tile's Category and Essential show the chosen option whole, whichever it is", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
+  const fixture = "fixtures/phone-width/long-essentials";
+  const seen = atPhoneWidth([fixture], () => {
+    const out = { n: 0, longest: 0, cut: [] }, it = S.items[0], k = S.kits.find(k => k.id === it.kitId);
+    const picks = Object.keys(CATS).flatMap(c => ["", "none", ...essentialList(c).map(e => e.id)].map(e => [c, e]));
+    for (const [cat, ess] of picks) {
+      it.category = cat; it.essential = ess;
+      S.view = "kits"; S.openKit = k.id; S.listKit = null; S.flOpen = it.id; render();
+      // A copy of each select holding only its chosen option, sized to that option, beside the real one
+      for (const sel of document.querySelectorAll("#v-kits .fl-fields select")) {
+        const one = sel.cloneNode(false), opt = sel.selectedOptions[0];
+        if (opt) one.append(opt.cloneNode(true));
+        one.removeAttribute("id"); one.style.cssText = "position:absolute;visibility:hidden;width:auto";
+        sel.after(one);
+        const need = one.getBoundingClientRect().width, has = sel.getBoundingClientRect().width;
+        one.remove();
+        out.n++; if (sel.dataset.f === "essential") out.longest = Math.max(out.longest, opt ? opt.text.length : 0);
+        if (has + 0.5 < need) out.cut.push(`${cat}/${ess || "untagged"}: its ${sel.dataset.f} shows "${opt?.text}" in ${Math.round(has)}px, but needs ${Math.round(need)}px`);
+      }
+    }
+    return out;
+  });
+  const s = seen.get(fixture);
+  assert.ok(s && s.n, "nothing measured");
+  assert.deepEqual(s.cut, [], `${s.cut.length} of ${s.n} selects cut their chosen option`);
+  assert.ok(s.longest > 20, "a long essential's name was measured");
+});
+
+/* Real input, in Chrome: a field saves on blur, and the save redraws the kit. A tap or Tab that blurs the field must
+   still land where it was aimed, on the redrawn page. */
+test("a tap or Tab that saves an edited field still lands on what it was aimed at, with real mouse, touch and keyboard", { skip: !chrome && "no Chrome found (set CHROME)" }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-input-"));
+  const file = path.join(dir, "index.html");
+  fs.writeFileSync(file, wrap(undefined, "fixtures/phone-width/long-essentials"));
+  const page = await openChrome(chrome);
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const ev = async e => {
+    const r = await page.send("Runtime.evaluate", { expression: e, returnByValue: true });
+    if (r.exceptionDetails) throw new Error(`${e}: ${r.exceptionDetails.exception?.description}`);
+    return r.result.value;
+  };
+  const at = sel => ev(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); e.scrollIntoView({ block: "center" });
+    const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
+  const press = async (sel, how) => {
+    const [x, y] = await at(sel);
+    if (how === "touch") return page.send("Input.synthesizeTapGesture", { x, y, gestureSourceType: "touch" });
+    await page.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
+    await sleep(60); // a button stays down a moment, and timers run before it lifts
+    await page.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
+  };
+  const key = async (key, code = key) => {
+    const vk = key === "Tab" ? 9 : key.charCodeAt(0);
+    await page.send("Input.dispatchKeyEvent", { type: "keyDown", key, code, windowsVirtualKeyCode: vk, text: key.length === 1 ? key : undefined });
+    await page.send("Input.dispatchKeyEvent", { type: "keyUp", key, code, windowsVirtualKeyCode: vk });
+    await sleep(20);
+  };
+  const type = async (sel, text) => {
+    await ev(`(e => { e.focus(); e.select?.(); })(document.querySelector(${JSON.stringify(sel)}))`);
+    await page.send("Input.insertText", { text });
+  };
+  const item = async id => JSON.parse(await ev(`JSON.stringify(S.items.find(i => i.id === ${JSON.stringify(id)}))`));
+  const active = () => ev("document.activeElement.id || document.activeElement.tagName");
+  const start = async (how, list) => {
+    await page.send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await page.send("Emulation.setTouchEmulationEnabled", { enabled: how === "touch" });
+    const loaded = page.once("Page.loadEventFired");
+    await page.send("Page.navigate", { url: `file://${file}?${how}${list ? "-list" : ""}#kits` });
+    await loaded;
+    for (let i = 0; i < 50 && !await ev("S.loaded"); i++) await sleep(50);
+    await ev(`S.openKit = "go"; S.listKit = ${list ? '"go"' : "null"}; render()`);
+  };
+  try {
+    for (const how of ["mouse", "touch"]) {
+      await start(how);
+      await press('.fl-ed[data-id="g3"]', how);
+      await sleep(100);
+      assert.equal(await ev("S.flOpen"), "g3", `${how}: the first tap opens Ibuprofen`);
+      await type("#it-g3-qty", "5");
+      await press('.fl-ed[data-id="g6"]', how);
+      await sleep(150);
+      assert.equal((await item("g3")).qty, 5, `${how}: the edited Qty is saved`);
+      assert.equal(await ev("S.flOpen"), "g6", `${how}: the tap that saved Qty opens the tile it landed on`);
+      assert.equal(await active(), "fl-g6", `${how}: focus is on the tapped tile`);
+
+      // The same in List: a button pressed while a row's field holds an unsaved value
+      await start(how, true);
+      await type("#it-g3-qty", "4");
+      await press('[data-act="kitView"][data-v="flat"]', how);
+      await sleep(150);
+      assert.equal((await item("g3")).qty, 4, `${how}: List's edited Qty is saved`);
+      assert.equal(await ev("S.listKit"), null, `${how}: the Flat-lay button pressed after the edit switches to Flat-lay`);
+    }
+
+    // Tab out of an edited field lands on the next field. (Headless Chrome's month field takes no typed keys and
+    // keeps Tab, so Expires isn't driven here; a tap moving focus to a tile is checked above.)
+    await start("mouse");
+    await press('.fl-ed[data-id="g3"]', "mouse");
+    await sleep(100);
+    await type("#it-g3-g", "2");
+    await key("Tab");
+    await sleep(150);
+    assert.equal((await item("g3")).grams, await ev("gOfLb(2)"), "Tab saves lb");
+    assert.equal(await active(), "it-g3-ml", "Tab from lb lands on Size L");
+  } finally {
+    await page.close();
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
   }
 });

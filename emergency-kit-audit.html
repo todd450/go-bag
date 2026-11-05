@@ -427,7 +427,7 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 .fl-f { display: flex; flex: 1 1 64px; flex-flow: column; gap: 2px; min-width: 0; }
 .fl-f::before { content: attr(data-label); font-size: .7rem; color: var(--ink-2); }
 .fl-f[data-label="Item"] { flex-basis: 100%; }
-.fl-f.cat-td, .fl-f.ess-td { flex-basis: 140px; } .fl-f[data-label="Expires"] { flex: 0 1 200px; }
+.fl-f.cat-td, .fl-f.ess-td { flex-basis: auto; } .fl-f[data-label="Expires"] { flex: 0 1 200px; }
 .fl-f.cat-td { flex-flow: row wrap; } .fl-f.cat-td::before { flex-basis: 100%; }
 .fl-f input, .fl-f select { width: 100%; } .fl-f.cat-td select { flex: 1; width: auto; }
 .fl-f a { align-self: flex-start; } .fl-f .flag { font-size: .78rem; font-weight: 500; }
@@ -2236,10 +2236,19 @@ function formatReview(t) {
 
 /* ---------- render ---------- */
 let tabIcon = null;
+/* A field saves on blur, and saving redraws. A redraw while a press is down, or while focus is leaving a field, would
+   replace what the tap or Tab is moving to, losing the tap and dropping focus. So it waits for the click, or the next task. */
+const hold = { press: 0, blur: 0, owed: 0 };
+const unhold = k => setTimeout(() => { hold[k] = 0; if (hold.owed) render(); });
+for (const t of ["pointerdown", "mousedown"]) document.addEventListener(t, () => { hold.press = 1; }, true);
+for (const t of ["pointerup", "pointercancel", "mouseup", "dragend", "contextmenu"]) document.addEventListener(t, () => unhold("press"), true);
+document.addEventListener("click", () => { hold.press = hold.blur = 0; }, true);
+document.addEventListener("change", () => { if (document.activeElement === document.body) { hold.blur = 1; unhold("blur"); } }, true);
 function render() {
-  const a = document.activeElement;
-  const keep = a && a.id && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.tagName === "SELECT")
-    ? { id: a.id, value: a.value, s: a.selectionStart, e: a.selectionEnd } : null;
+  if (hold.press || hold.blur) { hold.owed = 1; return; }
+  hold.owed = 0;
+  const a = document.activeElement, field = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+  const keep = a?.id ? { id: a.id, field, value: a.value, s: a.selectionStart, e: a.selectionEnd } : null;
   const M = model();
   tagReviewRows();
   if (S.sel.size) { const live = new Set(S.items.filter(i => i.kitId === S.openKit).map(i => i.id)); for (const id of S.sel) if (!live.has(id)) S.sel.delete(id); }
@@ -2263,9 +2272,9 @@ function render() {
   if (keep) {
     const n = document.getElementById(keep.id);
     if (n) {
-      if (n.value !== keep.value) n.value = keep.value;
+      if (keep.field && n.value !== keep.value) n.value = keep.value;
       n.focus({ preventScroll: true });
-      try { if (keep.s != null) n.setSelectionRange(keep.s, keep.e); } catch (_) {}
+      try { if (keep.field && keep.s != null) n.setSelectionRange(keep.s, keep.e); } catch (_) {}
     }
   }
   celebrate(M);
