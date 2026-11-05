@@ -1,17 +1,24 @@
-// Vercel only (issue #48): stands in for claude.ai's window.claude, so emergency-kit-audit.html runs
-// unchanged outside claude.ai. tools/build-web.js loads it after supabase-js and before the page.
-//   db      kits/<id>, items/<id>, household/<name> in Supabase's `docs` table, live through Realtime
-//   assets  kit photos in the private `photos` bucket, shown through /_blob/<id> (api/blob.mjs)
+// Vercel only (issues #48 and #78): stands in for claude.ai's window.claude, so emergency-kit-audit.html
+// runs unchanged outside claude.ai. tools/build-web.js loads it after supabase-js and web/signin.js,
+// before the page, at /app. Everything is scoped to the signed-in account's own household:
+//   db      kits/<id>, items/<id>, household/<name> in Supabase's `docs` table, keyed by household,
+//           live through the household's private Realtime Broadcast channel (issue #74)
+//   assets  kit photos at <household_id>/<id> in the private `photos` bucket, shown through
+//           /_blob/<id> (api/blob.mjs, issue #72)
 //   sample  Claude, through api/sample.mjs
 //   user    every signed-in member can edit
-// Nothing resolves until someone on the household's allowlist is signed in; until then a sign-in
-// card covers the page.
+// Nothing resolves until someone is signed in and their household is known; until then
+// web/signin.js's card covers the page.
 (() => {
   const cfg = window.GO_BAG_CONFIG || {};
   const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
   const COLS = ["kits", "items", "household"];
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const clone = x => JSON.parse(JSON.stringify(x));
   const fail = (code, message) => Object.assign(new Error(message || code), { code });
+  const never = () => new Promise(() => {});
+  // web/signin.js's card: goBagSignIn(sb) for the form, goBagSignIn(sb, { state: "unavailable" }) otherwise.
+  const card = (...opts) => { try { window.goBagSignIn?.(sb, ...opts); } catch {} };
 
   /* ---------- sign-in ---------- */
   // Photos load as <img src="/_blob/...">, which can't carry a header, so the access token rides in a
@@ -21,72 +28,33 @@
       ? `gb_at=${s.access_token}; Path=/_blob; Max-Age=${Math.max(60, (s.expires_at || 0) - Math.floor(Date.now() / 1000))}; Secure; SameSite=Lax`
       : "gb_at=; Path=/_blob; Max-Age=0; Secure; SameSite=Lax";
   };
+  // Realtime joins a private channel with the access token, and needs each refreshed one.
+  const realtimeAuth = s => Promise.resolve(s?.access_token && sb.realtime.setAuth(s.access_token)).catch(() => {});
 
-  let card;
-  // This script runs from <head>, so the card waits for <body>.
-  const bodyReady = () => document.body ? Promise.resolve() : new Promise(r => document.addEventListener("DOMContentLoaded", r, { once: true }));
-  async function showCard(html) {
-    await bodyReady();
-    if (!card) {
-      const st = document.createElement("style");
-      st.textContent = `
-        .gb-auth{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;padding:16px;
-          background:var(--gb-bg);color:var(--gb-fg);font:16px/1.45 system-ui,-apple-system,sans-serif;
-          --gb-bg:#f6f5f1;--gb-card:#fff;--gb-fg:#1d1d1b;--gb-muted:#5f5e58;--gb-line:#d9d7cf;--gb-accent:#1f5f4a}
-        @media (prefers-color-scheme:dark){.gb-auth{--gb-bg:#161615;--gb-card:#212120;--gb-fg:#ecebe6;--gb-muted:#a5a39b;--gb-line:#3a3936;--gb-accent:#7fc4a8}}
-        .gb-auth form,.gb-auth .gb-box{width:100%;max-width:380px;background:var(--gb-card);border:1px solid var(--gb-line);border-radius:14px;padding:24px}
-        .gb-auth h1{font-size:20px;margin:0 0 6px}.gb-auth p{margin:0 0 16px;color:var(--gb-muted)}
-        .gb-auth input{width:100%;box-sizing:border-box;font:inherit;padding:10px 12px;border:1px solid var(--gb-line);border-radius:10px;background:transparent;color:inherit;margin-bottom:12px}
-        .gb-auth button{width:100%;font:inherit;font-weight:600;padding:10px 12px;border:0;border-radius:10px;background:var(--gb-accent);color:var(--gb-card);cursor:pointer}
-        .gb-auth button[disabled]{opacity:.6;cursor:default}.gb-auth .gb-msg{margin:12px 0 0;min-height:1.4em}`;
-      document.head.append(st);
-      card = document.createElement("div");
-      card.className = "gb-auth";
-      document.body.append(card);
-    }
-    card.innerHTML = html;
-    return card;
-  }
-  const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+  // The household every read and write names. Set once, before anything resolves.
+  let hid = null;
 
-  async function signInCard() {
-    const el = await showCard(`<form novalidate>
-      <h1>Emergency Kit Audit</h1>
-      <p>Enter your email and we'll send you a link to sign in.</p>
-      <input type="email" name="email" autocomplete="email" placeholder="you@example.com" required aria-label="Email">
-      <button type="submit">Email me a sign-in link</button>
-      <p class="gb-msg" role="status"></p></form>`);
-    const form = el.querySelector("form"), msg = el.querySelector(".gb-msg"), btn = el.querySelector("button");
-    form.addEventListener("submit", async ev => {
-      ev.preventDefault();
-      const email = form.email.value.trim().toLowerCase();
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent = "Enter an email address."; return; }
-      btn.disabled = true; msg.textContent = "Sending…";
-      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + "/" } });
-      btn.disabled = false;
-      msg.textContent = error ? (error.status === 429 ? "Too many links sent. Wait a few minutes and try again." : "Couldn't send the link. Try again.")
-        : `Check ${email} for a sign-in link. You can close this tab.`;
-    });
-  }
-
-  async function notMemberCard(email) {
-    const el = await showCard(`<div class="gb-box"><h1>Not on the list yet</h1>
-      <p>${esc(email || "This account")} isn't on this household's list. Ask whoever runs it to add you, then sign in again.</p>
-      <button type="button">Use a different email</button></div>`);
-    el.querySelector("button").addEventListener("click", () => sb.auth.signOut().then(() => location.reload()));
-  }
-
-  // Resolves once a member is signed in; stays pending (with a card up) otherwise.
+  // Resolves once someone is signed in and their household is known; stays pending (with a card up)
+  // otherwise. my_household() makes the household on a first real sign-in.
   const ready = (async () => {
-    if (/[?&]signout\b/.test(location.search)) { await sb.auth.signOut().catch(() => {}); setCookie(null); history.replaceState(null, "", "/"); }
+    if (/[?&]signout\b/.test(location.search)) {
+      await sb.auth.signOut().catch(() => {});
+      setCookie(null);
+      try { history.replaceState(null, "", "/app"); } catch {}
+    }
     const { data: { session } } = await sb.auth.getSession();
-    if (!session) { setCookie(null); signInCard(); return new Promise(() => {}); }
+    if (!session) { setCookie(null); card(); return never(); }
     setCookie(session);
-    const { data: ok, error } = await sb.rpc("is_member");
-    if (error || ok !== true) { notMemberCard(session.user?.email); return new Promise(() => {}); }
+    const { data, error } = await Promise.resolve().then(() => sb.rpc("my_household")).catch(e => ({ error: e }));
+    if (error || typeof data !== "string" || !UUID.test(data)) { card({ state: "unavailable" }); return never(); }
+    hid = data.toLowerCase();
+    const uid = session.user?.id;
     sb.auth.onAuthStateChange((event, s) => {
-      if (s) setCookie(s);
-      if (event === "SIGNED_OUT") { setCookie(null); location.reload(); }
+      if (event === "SIGNED_OUT" || !s) { setCookie(null); location.reload(); return; }
+      // Another account signed in in another tab: its household isn't this one.
+      if (s.user?.id !== uid) { location.reload(); return; }
+      setCookie(s);
+      realtimeAuth(s);
     });
     return session;
   })();
@@ -97,11 +65,12 @@
   const metadata = { fromCache: false, hasPendingWrites: false };
   let loaded = false, loading = null;
   const notify = col => { for (const s of subs) if (s.col === col) s.fire(); };
+  const docs = () => sb.from("docs");
 
   async function loadAll() {
     const fresh = Object.fromEntries(COLS.map(c => [c, new Map()]));
     for (let from = 0; ; from += 1000) {
-      const { data, error } = await sb.from("docs").select("col,id,data").order("col").order("id").range(from, from + 999);
+      const { data, error } = await docs().select("col,id,data").eq("household_id", hid).order("col").order("id").range(from, from + 999);
       if (error) throw fail("unavailable", error.message);
       for (const r of data) fresh[r.col]?.set(r.id, r.data);
       if (data.length < 1000) break;
@@ -112,15 +81,32 @@
   }
   const ensureLoaded = () => loading || (loading = loadAll().catch(e => { loading = null; for (const s of subs) s.err?.(e); throw e; }));
 
-  function listen() {
+  // Each message is only {col, id}: the doc itself is always read through the docs table's RLS. The
+  // newest message for a doc wins, so a read that comes back late never undoes a later change.
+  const seq = new Map();
+  async function changed(event, p) {
+    const col = p?.col, id = p?.id;
+    if (!store[col] || typeof id !== "string" || !id) return;
+    const key = col + "/" + id, mine = (seq.get(key) || 0) + 1;
+    seq.set(key, mine);
+    let found;
+    if (event !== "delete") {
+      const { data, error } = await docs().select("data").eq("household_id", hid).eq("col", col).eq("id", id).maybeSingle();
+      if (error || seq.get(key) !== mine) return;
+      found = data;
+    }
+    if (found) store[col].set(id, found.data);
+    else if (!store[col].delete(id)) return;
+    notify(col);
+  }
+
+  async function listen(session) {
     let joined = false;
-    sb.channel("docs")
-      .on("postgres_changes", { event: "*", schema: "public", table: "docs" }, p => {
-        if (p.eventType === "DELETE") { const { col, id } = p.old || {}; if (store[col]?.delete(id)) notify(col); }
-        else { const { col, id, data } = p.new || {}; if (store[col]) { store[col].set(id, data); notify(col); } }
-      })
-      // Changes made while the socket was down never arrive, so a rejoin reloads everything.
-      .subscribe(status => { if (status === "SUBSCRIBED") { if (joined) loadAll().catch(() => {}); joined = true; } });
+    await realtimeAuth(session);
+    const ch = sb.channel(`household:${hid}`, { config: { private: true } });
+    for (const event of ["insert", "update", "delete"]) ch.on("broadcast", { event }, m => { changed(event, m?.payload).catch(() => {}); });
+    // Changes made while the socket was down never arrive, so a rejoin reloads everything.
+    ch.subscribe(status => { if (status === "SUBSCRIBED") { if (joined) loadAll().catch(() => {}); joined = true; } });
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && loaded) loadAll().catch(() => {}); });
   }
 
@@ -157,23 +143,30 @@
           const m = store[col], exists = !!m?.has(id);
           cb({ metadata, id, exists, data: () => (exists ? clone(m.get(id)) : undefined) });
         }, err),
-        set: data => write(col, id, data, () => sb.from("docs").upsert({ col, id, data, updated_at: new Date().toISOString() })),
-        delete: () => write(col, id, undefined, () => sb.from("docs").delete().eq("col", col).eq("id", id)),
+        set: data => write(col, id, data, () => docs().upsert({ household_id: hid, col, id, data, updated_at: new Date().toISOString() }, { onConflict: "household_id,col,id" })),
+        delete: () => write(col, id, undefined, () => docs().delete().eq("household_id", hid).eq("col", col).eq("id", id)),
       };
     },
   };
 
   /* ---------- assets ---------- */
+  // The page's ids stay <uuid>.<ext>; the household's folder is added here and in api/blob.mjs.
   const EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+  const PHOTO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|gif)$/;
+  const photos = () => sb.storage.from("photos");
   const assets = {
     upload: async (blob, { type } = {}) => {
       const t = EXT[type || blob.type] ? type || blob.type : "image/jpeg";
       const id = `${crypto.randomUUID()}.${EXT[t]}`;
-      const { error } = await sb.storage.from("photos").upload(id, blob, { contentType: t, cacheControl: "31536000", upsert: false });
+      const { error } = await photos().upload(`${hid}/${id}`, blob, { contentType: t, cacheControl: "31536000", upsert: false });
       if (error) throw fail("unavailable", error.message);
       return { id };
     },
-    delete: async id => { const { error } = await sb.storage.from("photos").remove([id]); if (error) throw fail("unavailable", error.message); },
+    delete: async id => {
+      if (typeof id !== "string" || !PHOTO.test(id)) throw fail("invalid_argument", "not a photo id");
+      const { error } = await photos().remove([`${hid}/${id}`]);
+      if (error) throw fail("unavailable", error.message);
+    },
   };
 
   /* ---------- sample (Claude) ---------- */
@@ -235,8 +228,8 @@
   let listening = false;
   window.claude = {
     use: async name => {
-      await ready;
-      if (name === "db" && !listening) { listening = true; listen(); }
+      const session = await ready;
+      if (name === "db" && !listening) { listening = true; listen(session).catch(() => {}); }
       return caps[name] || null;
     },
   };
