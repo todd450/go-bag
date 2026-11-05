@@ -418,6 +418,7 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 .fl-tile, .fl-add { position: relative; display: flex; flex-direction: column; gap: 1px; min-width: 0; min-height: 76px; padding: 8px 5px 6px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); color: var(--ink); font-size: .72rem; line-height: 1.25; }
 .fl-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0 4px; margin-bottom: 3px; }
 .fl-tile .ic { width: 22px; height: 22px; color: var(--ink-2); }
+.fl-pic { width: 34px; height: 34px; object-fit: contain; }
 .fl-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-weight: 500; }
 .fl-note { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .fl-note, .fl-exp { color: var(--ink-2); font-size: .68rem; }
@@ -1907,6 +1908,7 @@ function kitDetail(kit, ready, M = model()) {
   ${kitChecklist(kit, ready, M)}
   ${packPanel(kit, ready)}
   ${photos.length ? `<div class="photos">${photos.map(id => `<img src="/_blob/${esc(id)}" alt="Photo of ${esc(kit.name)}" loading="lazy">`).join("")}</div>` : ""}
+  ${photos.length && S.canWrite && sample && assets && !working && items.some(i => !i.thumb) ? `<div class="row"><button class="btn ghost sm" data-act="findPics">Add item pictures from these photos</button><span class="small muted">${pl(items.filter(i => !i.thumb).length, "item")} without one</span></div>` : ""}
   ${S.canWrite ? `<div class="panel stack" data-drop="photos">
     <div class="row" style="justify-content:space-between">
       <div><b>Photograph the contents</b><p class="small muted">Lay items out so labels face up. Add as many photos as you need, from the camera or your library, or drop them here. Claude reads them together, then you check the list before anything is saved.</p></div>
@@ -1934,15 +1936,13 @@ function contentsPanel(kit, items, list, ready, M) {
     ${list || flat + (S.canWrite ? `<div class="fl-grid"><button type="button" class="fl-add" data-act="flAdd">+ Add by hand</button></div>` : "")}
   </div>`;
 }
-/* One item's tile: its icon, name, ×N over 1, one short note (its own, else litres or kcal) and its expiry when near.
-   For a viewer who can write it is a button that opens the item's fields (itemFields) under its row, one tile at a time. */
+/* One item's tile: its picture cut from the kit's photos (else its category icon), name, ×N over 1 and its expiry when
+   near. Its note shows only in its opened fields. For a viewer who can write it is a button that opens the item's
+   fields (itemFields) under its row, one tile at a time. */
 function flTile(it) {
   const st = expState(it), q = Math.max(1, num(it.qty)), name = String(it.name ?? "").trim() || catLabel(it.category);
-  const note = typeof it.note === "string" && it.note.trim() ? it.note
-    : it.category === "water" && num(it.liters) ? f1(num(it.liters)) + " L"
-    : it.category === "food" && num(it.kcal) ? Math.round(num(it.kcal)).toLocaleString() + " kcal" : "";
-  const body = `<span class="fl-top">${icon(it.category)}${q > 1 ? `<span class="fl-q">×${f1(q)}</span>` : ""}</span>`
-    + `<span class="fl-name">${esc(name)}</span>${note ? `<span class="fl-note">${esc(note)}</span>` : ""}`
+  const pic = typeof it.thumb === "string" && it.thumb ? `<img class="fl-pic" src="/_blob/${esc(it.thumb)}" alt="" loading="lazy">` : icon(it.category);
+  const body = `<span class="fl-top">${pic}${q > 1 ? `<span class="fl-q">×${f1(q)}</span>` : ""}</span><span class="fl-name">${esc(name)}</span>`
     + `${st ? `<span class="fl-exp">${st === "expired" ? "Expired" : "Expires"} ${esc(it.expires)}</span>` : ""}`;
   const open = S.canWrite && S.flOpen === it.id;
   return `<li class="fl-tile${st ? " " + st : ""}" data-id="${esc(it.id)}">${S.canWrite ? `<button type="button" class="fl-ed" id="fl-${esc(it.id)}" data-act="flEdit" data-id="${esc(it.id)}" aria-expanded="${open}" aria-label="${esc(name + ", edit")}">${body}</button>` : body}</li>`
@@ -2371,9 +2371,9 @@ function photoPrompt(kit) {
   return `These photos show the contents of an emergency kit called "${kit.name}" (${KIT_TYPES[kit.type] || "kit"}). List every distinct supply item you can see. Combine identical units into one line with a quantity. Several photos may show the same item from different angles or distances: count each physical item once. If an item is partly hidden or you are unsure what it is, still list it and say so in the note.
 
 Reply with only a JSON array. Each element:
-{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "grams": estimated total weight of the whole line in grams including packaging, "ml": estimated total packed volume of the whole line in millilitres, "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or "", "shop": an Amazon search query for this exact product, with the brand, product name and size as printed on the label (a short generic query when there is no brand), or "" for a prescription medicine or anything you can't identify, "essential": for a line in a category listed under Essential ids, the one id on that category's list that this item is, or "" when you are unsure or it is none of them; "" for every other category}
+{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "grams": estimated total weight of the whole line in grams including packaging, "ml": estimated total packed volume of the whole line in millilitres, "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or "", "shop": an Amazon search query for this exact product, with the brand, product name and size as printed on the label (a short generic query when there is no brand), or "" for a prescription medicine or anything you can't identify, "essential": for a line in a category listed under Essential ids, the one id on that category's list that this item is, or "" when you are unsure or it is none of them; "" for every other category, "box": ${BOX_ASK}}
 
-Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"grams":12500,"ml":13500,"expires":"2027-06","note":"","shop":"Poland Spring 500 ml water bottles 24 pack","essential":""}]
+Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"grams":12500,"ml":13500,"expires":"2027-06","note":"","shop":"Poland Spring 500 ml water bottles 24 pack","essential":"","box":[1,120,340,260,610]}]
 
 Category ids:
 ${catGuide()}
@@ -2466,7 +2466,98 @@ function cleanRows(out) {
     shop: typeof x.shop === "string" ? x.shop.trim().slice(0, 120) : "",
     // Only an id on this category's list. "none" is the household's to say, never Claude's.
     essential: x.essential === "none" ? "" : essentialOf({ category, essential: x.essential }),
+    box: cleanBox(x.box),
   }; });
+}
+/* ---------- item pictures ----------
+   Claude says where each item is in the kit's photos; the page cuts that box out, keys out the surface it lies on and
+   saves a small PNG as the item's `thumb` asset. Nothing ships for this: no model, no outside service. */
+const BOX_ASK = `where the item is, as [photo number counting from 1 in the order given, left, top, right, bottom], each edge from 0 to 1000 across the photo's width or down its height, in the photo that shows it most clearly and tightly around just that item; null if you can't see it`;
+const cleanBox = b => Array.isArray(b) && b.length === 5 && b.every(v => typeof v === "number" && isFinite(v)) && b[0] >= 1 && Number.isInteger(b[0])
+  && b.slice(1).every(v => v >= 0 && v <= 1000) && b[3] - b[1] >= 5 && b[4] - b[2] >= 5 ? b : null;
+/* Clears the surface around an item in RGBA pixels {data, width, height}, in place: a flood from the edges takes every
+   pixel close in colour to the edges' median, so a plain table or floor goes and the item stays. Leaves the pixels as
+   they were and returns false when the surface isn't plain enough (under 8% cleared) or the item matched it (over 92%). */
+function keyOut({ data: d, width: w, height: h }) {
+  const n = w * h, edge = [];
+  for (let x = 0; x < w; x++) edge.push(x, n - w + x);
+  for (let y = 1; y < h - 1; y++) edge.push(y * w, y * w + w - 1);
+  const med = k => { const v = edge.map(i => d[i * 4 + k]).sort((a, b) => a - b); return v[v.length >> 1]; };
+  const ref = [med(0), med(1), med(2)], far = i => Math.hypot(d[i * 4] - ref[0], d[i * 4 + 1] - ref[1], d[i * 4 + 2] - ref[2]);
+  const spread = edge.map(far).sort((a, b) => a - b)[edge.length >> 1], tol = Math.min(70, Math.max(28, 3 * spread + 16));
+  const bg = new Uint8Array(n), todo = edge.filter(i => far(i) < tol);
+  for (const i of todo) bg[i] = 1;
+  while (todo.length) {
+    const i = todo.pop(), x = i % w;
+    for (const j of [x ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) if (j >= 0 && j < n && !bg[j] && far(j) < tol) { bg[j] = 1; todo.push(j); }
+  }
+  let off = 0; for (let i = 0; i < n; i++) off += bg[i];
+  if (off < n * 0.08 || off > n * 0.92) return false;
+  for (let i = 0; i < n; i++) if (bg[i]) d[i * 4 + 3] = 0;
+    else { const x = i % w; if ((x && bg[i - 1]) || (x < w - 1 && bg[i + 1]) || bg[i - w] || bg[i + w]) d[i * 4 + 3] = 140; }
+  return true;
+}
+const canvas = (w, h) => { const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; };
+/* Cuts `box` (cleanBox's, its photo already chosen) out of a photo blob into a PNG at most 96px on its long side, its
+   surface keyed out and trimmed to what's left. null when the browser can't (as in the tests' stand-in DOM). */
+async function cutThumb(photo, [, l, t, r, b]) {
+  try {
+    const bmp = await createImageBitmap(photo), W = bmp.width / 1000, H = bmp.height / 1000, pad = Math.max(r - l, b - t) * 0.06;
+    const x = Math.max(0, l - pad) * W, y = Math.max(0, t - pad) * H, w = (Math.min(1000, r + pad) * W) - x, h = (Math.min(1000, b + pad) * H) - y;
+    const s = Math.min(1, 200 / Math.max(w, h)), c = canvas(w * s, h * s), g = c.getContext("2d", { willReadFrequently: true });
+    g.drawImage(bmp, x, y, w, h, 0, 0, c.width, c.height);
+    const img = g.getImageData(0, 0, c.width, c.height);
+    let box = [0, 0, c.width, c.height];
+    if (keyOut(img)) {
+      g.putImageData(img, 0, 0);
+      let [x0, y0, x1, y1] = [c.width, c.height, 0, 0];
+      for (let i = 0; i < img.data.length / 4; i++) if (img.data[i * 4 + 3]) { const px = i % c.width, py = (i / c.width) | 0; x0 = Math.min(x0, px); y0 = Math.min(y0, py); x1 = Math.max(x1, px + 1); y1 = Math.max(y1, py + 1); }
+      box = [x0, y0, x1 - x0, y1 - y0];
+    }
+    const k = Math.min(1, 96 / Math.max(box[2], box[3])), out = canvas(box[2] * k, box[3] * k);
+    out.getContext("2d").drawImage(c, ...box, 0, 0, out.width, out.height);
+    return await new Promise(res => out.toBlob(res, "image/png"));
+  } catch (_) { return null; }
+}
+const upPic = async b => { try { return b && assets ? (await assets.upload(b, { type: "image/png" })).id : ""; } catch (_) { return ""; } };
+const picPrompt = items => `These photos show the contents of an emergency kit. Find each item below in them. Each line is: id | name.
+${items.map(i => `${i.id} | ${String(i.name).replace(/[|\n]/g, " ")}`).join("\n")}
+
+Reply with only a JSON array, one element per item you can see: {"id": the id exactly as given, "box": ${BOX_ASK}}`;
+/* Gives a kit's items saved without a picture one cut from the kit's saved photos. Writes only `thumb`, onto each
+   item as it is when its picture is ready, so an edit made meanwhile stays. */
+async function findPics() {
+  const kit = S.kits.find(k => k.id === S.openKit), want = S.items.filter(i => i.kitId === kit?.id && !i.thumb);
+  if (!kit?.photos?.length || !want.length || !sample || !assets || S.scan?.state === "working") return;
+  const lim = await sample.limits().catch(() => null);
+  if (!lim?.images) { toast("This view can't send photos to Claude."); return; }
+  const ctl = new AbortController(), box = {};
+  S.scan = { kitId: kit.id, state: "working", msg: "Loading the kit's photos…", ctl };
+  render();
+  try {
+    const photos = (await Promise.all(kit.photos.map(id => fetch("/_blob/" + encodeURIComponent(id)).then(r => r.ok ? r.blob() : null, () => null)))).filter(Boolean);
+    const max = lim.images.maxCount || 5;
+    for (let i = 0; i < photos.length; i += max) {
+      const left = want.filter(it => !box[it.id]), n = Math.min(max, photos.length - i);
+      if (!left.length) break;
+      S.scan.msg = `Claude is finding ${pl(left.length, "item")} in the photos…`; render();
+      const out = await sample.json(picPrompt(left), { images: photos.slice(i, i + max), signal: ctl.signal });
+      for (const x of Array.isArray(out) ? out : []) { const b = cleanBox(x?.box); if (b && b[0] <= n && left.some(it => it.id === x.id)) box[x.id] = [b[0] + i, ...b.slice(1)]; }
+    }
+    S.scan.msg = "Cutting out item pictures…"; render();
+    let done = 0;
+    for (const it of want) {
+      const thumb = box[it.id] && await upPic(await cutThumb(photos[box[it.id][0] - 1], box[it.id])), now = S.items.find(x => x.id === it.id);
+      if (thumb && now) { await setDoc("items", it.id, { ...strip(now), thumb }); done++; }
+    }
+    S.scan = null;
+    toast(done ? `Added pictures for ${pl(done, "item")}` : "Claude couldn't find these items in the photos.");
+  } catch (e) { S.scan = e?.code === "cancelled" ? null : { kitId: kit.id, state: "error", msg: sampleErr(e) }; }
+  render();
+}
+/* Gives each row with a box a `pic` blob cut from photos[box[0] - 1]. */
+async function addPics(rows, photos) {
+  for (const r of rows) if (r.box && photos[r.box[0] - 1]) r.pic = await cutThumb(photos[r.box[0] - 1], r.box);
 }
 /* Photos wait in a tray until you read them, so a kit can be shot one photo at a time (a phone
    camera takes one per pick) and Claude still sees them all together. The tray lives in memory only. */
@@ -2514,8 +2605,12 @@ async function scanPhotos(files) {
     for (let i = 0; i < blobs.length; i += max) {
       S.scan.msg = blobs.length > max ? `Claude is reading photos ${i + 1}–${Math.min(blobs.length, i + max)} of ${blobs.length}…` : "Claude is reading your photos. This can take a minute…";
       render();
-      rows = rows.concat(cleanRows(await sample.json(photoPrompt(kit), { images: blobs.slice(i, i + max), signal: ctl.signal })));
+      const got = cleanRows(await sample.json(photoPrompt(kit), { images: blobs.slice(i, i + max), signal: ctl.signal }));
+      for (const r of got) if (r.box) r.box = r.box[0] > Math.min(max, blobs.length - i) ? null : [r.box[0] + i, ...r.box.slice(1)];
+      rows = rows.concat(got);
     }
+    S.scan.msg = "Cutting out item pictures…"; render();
+    await addPics(rows, blobs);
     // Photos read while you're still checking an earlier list add to that list.
     const prev = S.draft?.kitId === kit.id ? S.draft : null;
     S.draft = { kitId: kit.id, rows: [...(prev?.rows || []), ...rows], photoIds: [...(prev?.photoIds || []), ...photoIds] };
@@ -2533,7 +2628,7 @@ async function saveDraft() {
   const now = Date.now();
   const rows = d.rows.filter(r => String(r.name).trim());
   try {
-    await Promise.all(rows.map(r => setDoc("items", uid(), { kitId: kit.id, name: r.name.trim(), category: r.category, qty: Math.max(1, Math.round(num(r.qty) || 1)), liters: num(r.liters), kcal: num(r.kcal), grams: gOfLb(r.lb), ml: Math.round(num(r.L) * 1000), expires: r.expires || "", note: r.note || "", ...(r.shop ? { shopQuery: r.shop } : {}), ...(essentialOf(r) ? { essential: essentialOf(r) } : {}), source: "photo", addedAt: now })));
+    await Promise.all(rows.map(async r => ({ r, thumb: await upPic(r.pic) }))).then(xs => Promise.all(xs.map(({ r, thumb }) => setDoc("items", uid(), { kitId: kit.id, name: r.name.trim(), category: r.category, qty: Math.max(1, Math.round(num(r.qty) || 1)), liters: num(r.liters), kcal: num(r.kcal), grams: gOfLb(r.lb), ml: Math.round(num(r.L) * 1000), expires: r.expires || "", note: r.note || "", ...(r.shop ? { shopQuery: r.shop } : {}), ...(essentialOf(r) ? { essential: essentialOf(r) } : {}), ...(thumb ? { thumb } : {}), source: "photo", addedAt: now }))));
     if (d.photoIds.length) await setDoc("kits", kit.id, { ...strip(kit), photos: [...(kit.photos || []), ...d.photoIds], updatedAt: now });
     S.draft = null;
     toast(`Added ${rows.length} item${rows.length === 1 ? "" : "s"} to ${kit.name}`);
@@ -2639,6 +2734,7 @@ const ACT = {
   cancelConfirm: () => { S.confirm = null; render(); },
   pickPhotos: () => { const i = $("#photo-input"); i.value = ""; i.click(); },
   stopScan: () => S.scan?.ctl?.abort(),
+  findPics,
   readTray: () => S.tray?.photos.length ? scanPhotos(S.tray.photos.map(p => p.file)) : undefined,
   trayDrop: b => {
     const p = S.tray?.photos.find(x => x.key === b.dataset.k);
@@ -2686,7 +2782,7 @@ const ACT = {
     const items = S.items.filter(i => i.kitId === id);
     try {
       await Promise.all(items.map(i => delDoc("items", i.id)));
-      for (const p of kit?.photos || []) assets?.delete(p).catch(() => {});
+      for (const p of [...kit?.photos || [], ...items.map(i => i.thumb).filter(Boolean)]) assets?.delete(p).catch(() => {});
       await delDoc("kits", id);
       S.openKit = null; toast(`Deleted ${kit?.name || "kit"}`);
     } catch (_) {}
