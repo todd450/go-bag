@@ -265,8 +265,10 @@ test("an empty kit says so above the photo prompt, and a one-item kit shows one 
   assert.doesNotMatch(html, /fl-empty/);
 });
 
-test("a present tile is not interactive yet", () => {
+// A writer's tile opens the item's fields (tests/flatlay-edit.test.js); a read-only viewer's does nothing
+test("a read-only viewer's present tile is not interactive", () => {
   const app = load({ fixture: "fixtures/phone-width/long-essentials" });
+  app.run("S.canWrite = false");
   const ts = tiles(kitHtml(app.run, "go"));
   assert.equal(ts.length, 12);
   for (const t of ts) assert.doesNotMatch(t.body, /<button|<input|<select|data-act|data-change/, t.id);

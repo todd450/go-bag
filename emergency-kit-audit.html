@@ -418,6 +418,19 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 .fl-tile.miss .fl-name { display: block; -webkit-line-clamp: none; line-clamp: none; overflow: visible; overflow-wrap: break-word; }
 .fl-do { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; margin: -8px -3px -6px; padding: 8px 3px 6px; border: 0; border-radius: 9px; background: none; text-align: left; cursor: pointer; }
 .fl-tile.miss:has(.fl-do):hover { border-color: var(--ink); }
+/* A present tile's button fills its tile. Its item's fields open under the tile's row, across the grid: dense packing
+   lets the rest of that row fill in before them. */
+.fl-ed { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; margin: -8px -5px -6px; padding: 8px 5px 6px; border: 0; border-radius: 9px; background: none; text-align: left; cursor: pointer; }
+.fl-tile:has(.fl-ed):hover, .fl-tile:has([aria-expanded="true"]) { border-color: var(--ink); }
+.fl-grid:has(.fl-fields) { grid-auto-flow: row dense; }
+.fl-fields { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; border: 1px solid var(--ink); border-radius: 10px; background: var(--card); }
+.fl-f { display: flex; flex: 1 1 64px; flex-flow: column; gap: 2px; min-width: 0; }
+.fl-f::before { content: attr(data-label); font-size: .7rem; color: var(--ink-2); }
+.fl-f[data-label="Item"] { flex-basis: 100%; }
+.fl-f.cat-td, .fl-f.ess-td { flex-basis: 140px; } .fl-f[data-label="Expires"] { flex: 0 1 200px; }
+.fl-f.cat-td { flex-flow: row wrap; } .fl-f.cat-td::before { flex-basis: 100%; }
+.fl-f input, .fl-f select { width: 100%; } .fl-f.cat-td select { flex: 1; width: auto; }
+.fl-f a { align-self: flex-start; } .fl-f .flag { font-size: .78rem; font-weight: 500; }
 .kit-ck > div > .ess-blk:first-child { border-top: 0; padding-top: 0; }
 .selbar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border: 1px solid var(--bad); border-radius: 12px; background: color-mix(in srgb, var(--bad) 7%, var(--card)); }
 .selbar b { font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -726,6 +739,7 @@ const S = {
   live: false, loaded: false, slow: false, canWrite: true,
   openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   listKit: null, // the kit whose Contents panel shows List; any other kit shows Flat-lay. Memory only: never saved
+  flOpen: null, // the item whose flat-lay tile shows its fields, cleared when a kit is opened. Memory only
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
   scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, tag: null, tagNoteOff: false,
   add: { cat: "water", ess: "" }, // the add-by-hand row's Category and Essential, so every redraw shows the two together
@@ -1794,6 +1808,22 @@ function viewKits(M) {
     <div class="stack">${kit ? kitDetail(kit, M.kitRes[kit.id], M) : `<div class="panel"><p class="muted">Pick a kit to see its contents, or add one.</p></div>`}</div>
   </div>`;
 }
+/* An item's fields, as [class, label, html]: its List row's cells and its opened tile's fields, so the two never drift.
+   Each writes through the data-change="item" handler. The Essential html is empty outside the five checklist categories. */
+function itemFields(it) {
+  const st = expState(it), ld = itemLoad(it), a = f => `data-change="item" data-id="${esc(it.id)}" data-f="${f}"`;
+  return [
+    ["", "Item", `<input type="text" id="it-${esc(it.id)}-name" value="${esc(it.name)}" ${a("name")} aria-label="Item name" ${D()}>${it.note ? `<div class="small muted" style="padding:0 6px">${esc(it.note)}</div>` : ""}${amazonA(it)}`],
+    ["cat-td", "Category", `${icon(it.category)}<select id="it-${esc(it.id)}-cat" ${a("category")} aria-label="Category" ${D()}>${catOptions(it.category)}</select>`],
+    ["ess-td", "Essential", essPicker(`it-${esc(it.id)}-ess`, it.category, essentialOf(it), `${a("essential")} ${D()}`)],
+    ["num", "Qty", `<input type="number" min="1" id="it-${esc(it.id)}-qty" value="${esc(Math.max(1, num(it.qty)))}" ${a("qty")} aria-label="Quantity" ${D()}>`],
+    ["num", "Water L", `<input type="number" min="0" step="0.1" id="it-${esc(it.id)}-l" value="${num(it.liters) || ""}" ${a("liters")} aria-label="Litres of water" ${D()}>`],
+    ["num", "Food kcal", `<input type="number" min="0" step="50" id="it-${esc(it.id)}-k" value="${num(it.kcal) || ""}" ${a("kcal")} aria-label="Food calories" ${D()}>`],
+    ["num", "lb", `<input type="number" min="0" step="0.1" id="it-${esc(it.id)}-g" value="${num(it.grams) ? lb1(num(it.grams)) : ""}" placeholder="${lb1(ld.estG)}" ${a("grams")} aria-label="Weight in pounds" ${D()}>`],
+    ["num", "Size L", `<input type="number" min="0" step="0.1" id="it-${esc(it.id)}-ml" value="${num(it.ml) ? num(it.ml) / 1000 : ""}" placeholder="${Math.round(ld.estMl / 100) / 10}" ${a("ml")} aria-label="Size in litres" ${D()}>`],
+    ["", "Expires", `<input type="month" id="it-${esc(it.id)}-exp" value="${esc(it.expires || "")}" ${a("expires")} aria-label="Expiry month" ${D()}>${st ? `<span class="flag ${st}">${st === "expired" ? "expired" : "expiring soon"}</span>` : ""}`],
+  ];
+}
 function kitDetail(kit, ready, M = model()) {
   const val = itemValues(kit, ready);
   const maxPts = Math.max(1, ...Object.values(val).map(v => v.pts));
@@ -1815,17 +1845,9 @@ function kitDetail(kit, ready, M = model()) {
   <div class="tbl-wrap"><table class="inv">
     <thead><tr>${S.canWrite ? `<th class="sel"><input type="checkbox" id="sel-all" data-change="selAll" aria-label="Select all items" ${items.length && items.every(i => S.sel.has(i.id)) ? "checked" : ""} ${items.length ? "" : "disabled"}></th>` : ""}<th>Item</th><th style="width:136px">${sortTh("cat", "Category")}</th><th style="width:136px">Essential</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px" title="Weight of the whole line in pounds. Grey numbers are estimates.">lb</th><th style="width:56px" title="Packed size of the whole line. Grey numbers are estimates.">Size L</th><th style="width:136px">Expires</th><th style="width:100px" title="Kit readiness points this item earns. Every item's points add up to the kit's score.">${sortTh("value", "Value")}</th><th style="width:28px"></th></tr></thead>
     <tbody>
-      ${items.map(it => { const st = expState(it); const on = S.sel.has(it.id); const ld = itemLoad(it); return `<tr class="${on ? "picked" : ""}">
+      ${items.map(it => { const on = S.sel.has(it.id); return `<tr class="${on ? "picked" : ""}">
         ${S.canWrite ? `<td class="sel"><input type="checkbox" id="sel-${esc(it.id)}" data-change="sel" data-id="${esc(it.id)}" aria-label="Select ${esc(it.name)}" ${on ? "checked" : ""}></td>` : ""}
-        <td data-label="Item"><input type="text" id="it-${esc(it.id)}-name" value="${esc(it.name)}" data-change="item" data-id="${esc(it.id)}" data-f="name" aria-label="Item name" ${D()}>${it.note ? `<div class="small muted" style="padding:0 6px">${esc(it.note)}</div>` : ""}${amazonA(it)}</td>
-        <td class="cat-td" data-label="Category">${icon(it.category)}<select id="it-${esc(it.id)}-cat" data-change="item" data-id="${esc(it.id)}" data-f="category" aria-label="Category" ${D()}>${catOptions(it.category)}</select></td>
-        <td class="ess-td" data-label="Essential">${essPicker(`it-${esc(it.id)}-ess`, it.category, essentialOf(it), `data-change="item" data-id="${esc(it.id)}" data-f="essential" ${D()}`)}</td>
-        <td class="num" data-label="Qty"><input type="number" min="1" id="it-${esc(it.id)}-qty" value="${esc(Math.max(1, num(it.qty)))}" data-change="item" data-id="${esc(it.id)}" data-f="qty" aria-label="Quantity" ${D()}></td>
-        <td class="num" data-label="Water L"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-l" value="${num(it.liters) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="liters" aria-label="Litres of water" ${D()}></td>
-        <td class="num" data-label="Food kcal"><input type="number" min="0" step="50" id="it-${esc(it.id)}-k" value="${num(it.kcal) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="kcal" aria-label="Food calories" ${D()}></td>
-        <td class="num" data-label="lb"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-g" value="${num(it.grams) ? lb1(num(it.grams)) : ""}" placeholder="${lb1(ld.estG)}" data-change="item" data-id="${esc(it.id)}" data-f="grams" aria-label="Weight in pounds" ${D()}></td>
-        <td class="num" data-label="Size L"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-ml" value="${num(it.ml) ? num(it.ml) / 1000 : ""}" placeholder="${Math.round(ld.estMl / 100) / 10}" data-change="item" data-id="${esc(it.id)}" data-f="ml" aria-label="Size in litres" ${D()}></td>
-        <td data-label="Expires"><input type="month" id="it-${esc(it.id)}-exp" value="${esc(it.expires || "")}" data-change="item" data-id="${esc(it.id)}" data-f="expires" aria-label="Expiry month" ${D()}>${st ? `<span class="flag ${st}">${st === "expired" ? "expired" : "expiring soon"}</span>` : ""}</td>
+        ${itemFields(it).map(([c, l, h]) => `<td${c ? ` class="${c}"` : ""} data-label="${l}">${h}</td>`).join("\n        ")}
         <td class="val" data-label="Value" title="${esc(val[it.id].note || `Earns ${ptsLabel(val[it.id].pts)} of this kit's ${ready.score} points`)}"><div class="val-in"><span class="vbar"><i style="width:${Math.round(100 * val[it.id].pts / maxPts)}%"></i></span><b class="mono">${ptsLabel(val[it.id].pts)}</b></div>${val[it.id].note ? `<span class="val-note">${esc(val[it.id].note)}</span>` : ""}</td>
         <td class="x-td">${S.canWrite ? `<button class="x" data-act="delItem" data-id="${esc(it.id)}" aria-label="Remove ${esc(it.name)}">×</button>` : ""}</td>
       </tr>`; }).join("")}
@@ -1886,15 +1908,19 @@ function contentsPanel(kit, items, list, ready, M) {
     ${list || flat + (S.canWrite ? `<div class="fl-grid"><button type="button" class="fl-add" data-act="flAdd">+ Add by hand</button></div>` : "")}
   </div>`;
 }
-/* One item's tile: its icon, name, ×N over 1, one short note (its own, else litres or kcal) and its expiry when near. */
+/* One item's tile: its icon, name, ×N over 1, one short note (its own, else litres or kcal) and its expiry when near.
+   For a viewer who can write it is a button that opens the item's fields (itemFields) under its row, one tile at a time. */
 function flTile(it) {
-  const st = expState(it), q = Math.max(1, num(it.qty));
+  const st = expState(it), q = Math.max(1, num(it.qty)), name = String(it.name ?? "").trim() || catLabel(it.category);
   const note = typeof it.note === "string" && it.note.trim() ? it.note
     : it.category === "water" && num(it.liters) ? f1(num(it.liters)) + " L"
     : it.category === "food" && num(it.kcal) ? Math.round(num(it.kcal)).toLocaleString() + " kcal" : "";
-  return `<li class="fl-tile${st ? " " + st : ""}" data-id="${esc(it.id)}"><span class="fl-top">${icon(it.category)}${q > 1 ? `<span class="fl-q">×${f1(q)}</span>` : ""}</span>`
-    + `<span class="fl-name">${esc(String(it.name ?? "").trim() || catLabel(it.category))}</span>${note ? `<span class="fl-note">${esc(note)}</span>` : ""}`
-    + `${st ? `<span class="fl-exp">${st === "expired" ? "Expired" : "Expires"} ${esc(it.expires)}</span>` : ""}</li>`;
+  const body = `<span class="fl-top">${icon(it.category)}${q > 1 ? `<span class="fl-q">×${f1(q)}</span>` : ""}</span>`
+    + `<span class="fl-name">${esc(name)}</span>${note ? `<span class="fl-note">${esc(note)}</span>` : ""}`
+    + `${st ? `<span class="fl-exp">${st === "expired" ? "Expired" : "Expires"} ${esc(it.expires)}</span>` : ""}`;
+  const open = S.canWrite && S.flOpen === it.id;
+  return `<li class="fl-tile${st ? " " + st : ""}" data-id="${esc(it.id)}">${S.canWrite ? `<button type="button" class="fl-ed" id="fl-${esc(it.id)}" data-act="flEdit" data-id="${esc(it.id)}" aria-expanded="${open}" aria-label="${esc(name + ", edit")}">${body}</button>` : body}</li>`
+    + (open ? `<li class="fl-fields">${itemFields(it).filter(f => f[2]).map(([c, l, h]) => `<div class="fl-f ${c}" data-label="${l}">${h}</div>`).join("")}</li>` : "");
 }
 /* A missing essential's dashed tile: its icon, its label and the points adding it adds. While it is the household gap
    Next steps' Add to list would add (`next`, by gapKey) it is that button; once on the list it says so; with no household
@@ -2557,12 +2583,13 @@ const ACT = {
   tab: b => { S.view = b.dataset.v; try { history.replaceState(null, "", "#" + S.view); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   addKit: () => { S.addKit = true; render(); $("#nk-name")?.focus(); },
   cancelKit: () => { S.addKit = false; render(); $(".add-kit")?.focus(); },
-  openKit: b => { if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.confirm = null; S.listKit = null; render(); },
-  gotoKit: b => { S.view = "kits"; if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.listKit = null; try { history.replaceState(null, "", "#kits"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
+  openKit: b => { if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.confirm = null; S.listKit = S.flOpen = null; render(); },
+  gotoKit: b => { S.view = "kits"; if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.listKit = S.flOpen = null; try { history.replaceState(null, "", "#kits"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   removeSel: () => removeItems([...S.sel]),
   clearSel: () => { S.sel.clear(); render(); },
   sortItems: b => { S.itemSort = b.dataset.k; render(); },
   kitView: b => { S.listKit = b.dataset.v === "list" ? S.openKit : null; render(); },
+  flEdit: b => { S.flOpen = S.flOpen === b.dataset.id ? null : b.dataset.id; render(); document.getElementById(b.id)?.focus(); },
   flAdd: () => { S.listKit = S.openKit; render(); $("#add-name")?.focus(); },
   planMedAdd: () => {
     const meds = Array.isArray(S.plan?.meds) ? S.plan.meds : [];
