@@ -1,8 +1,11 @@
 // Claude for the page's photo scan, hazard check, pack estimate and plan review (issue #48).
 // The browser shim (web/runtime.js) posts { mode: "text" | "json", prompt, images?, tier? } with the
 // member's Supabase access token. ANTHROPIC_API_KEY is set in Doppler (go-bag, prd), which syncs it to Vercel.
+// Every call to Claude first claims one from the household's daily allowance (issue #75). The order
+// below is membership, the key, the request's shape, the claim, and only then Claude.
 import Anthropic from "@anthropic-ai/sdk";
 import { membership, json } from "./_member.mjs";
+import { claimCall } from "./_allowance.mjs";
 import { parseJson } from "./_json.mjs";
 
 let client; // made on first use, so a missing key is reported instead of crashing the function
@@ -39,13 +42,18 @@ export async function POST(request) {
   if (who === "expired") return json({ code: "session_expired" }, 401);
   if (who !== "member") return json({ code: "not_granted" }, 403);
   if (!process.env.ANTHROPIC_API_KEY) return json({ code: "sampling_disabled", message: "ANTHROPIC_API_KEY is not set: add it to Doppler go-bag prd" }, 503);
-  client ||= new Anthropic();
 
   const body = await request.json().catch(() => null);
   const { mode, prompt, images = [], tier } = body || {};
   if (!["text", "json"].includes(mode) || typeof prompt !== "string" || !prompt || prompt.length > MAX_PROMPT) return json({ code: "invalid_argument" }, 400);
   if (!Array.isArray(images) || images.length > MAX_IMAGES) return json({ code: "images_unavailable" }, 400);
   if (images.some(i => !IMAGE_TYPES.has(i?.media_type) || typeof i?.data !== "string")) return json({ code: "image_rejected" }, 400);
+
+  // Fails closed: anything but a claimed call ends here, so a malformed request never uses one.
+  const claim = await claimCall(token);
+  if (claim === "over") return json({ code: "rate_limited" }, 429);
+  if (claim !== "ok") return json({ code: "unavailable" }, 503);
+  client ||= new Anthropic();
 
   const content = [
     ...images.map(i => ({ type: "image", source: { type: "base64", media_type: i.media_type, data: i.data } })),
