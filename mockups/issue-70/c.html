@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Issue #70 · Option C · Sign up without leaving the landing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Tokens: copied from emergency-kit-audit.html :root, light and dark. Nothing new. */
+:root {
+  --paper: #F7F7F7; --card: #FFFFFF; --ink: #222222; --ink-2: #6A6A6A; --rule: #E4E4E4; --rule-2: #C8C8C8;
+  --accent: #222222; --accent-ink: #FFFFFF; --brand: #2B59D9; --brand-track: #CCD8F6; --brand-tint: #E8EEFC;
+  --brand-deep: #1E43AE; --brand-ink: #FFFFFF; --meter: #E0612A; --good: #1F7A4A; --warn: #A86A12; --bad: #C1281B;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px rgba(0, 0, 0, .04);
+  --f-display: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121212; --card: #1C1C1C; --ink: #F2F2F2; --ink-2: #A3A3A3; --rule: #2E2E2E; --rule-2: #4A4A4A;
+    --accent: #F2F2F2; --accent-ink: #121212; --brand: #8AA8FF; --brand-track: #28385F; --brand-ink: #121212; --meter: #F07A45;
+    --good: #5BC489; --warn: #E2AE4A; --bad: #F2695C; --shadow: none; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--f-body); -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-weight: 600; text-wrap: balance; margin: 0; line-height: 1.25; letter-spacing: -.01em; }
+h2 { font-size: 1.2rem; letter-spacing: -.015em; }
+h3 { font-size: 1.05rem; }
+p { margin: 0; }
+a { color: var(--ink); text-underline-offset: 2px; }
+button, input { font: inherit; color: inherit; }
+.mono { font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-2); }
+.small { font-size: .85rem; }
+.eyebrow { font-size: .8rem; font-weight: 500; color: var(--ink-2); }
+.ell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stack { display: grid; gap: 10px; min-width: 0; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+/* App components, copied from the page */
+.top { background: var(--card); border-bottom: 1px solid var(--rule); }
+.top-in, .wrap { max-width: 1120px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
+.top-in { display: flex; align-items: center; justify-content: space-between; gap: 4px 24px; flex-wrap: wrap; padding-block: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand h1, .brand .name { font-size: 1.1rem; font-weight: 600; letter-spacing: -.01em; }
+.case { display: block; flex: none; }
+.case .ct { stroke: var(--brand-track); }
+.case .cf { stroke: var(--brand); }
+.case .cs { fill: var(--brand); }
+.panel { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 20px 24px; min-width: 0; box-shadow: var(--shadow); }
+@media (max-width: 560px) { .panel { padding: 16px; border-radius: 14px; } }
+.notice { border: 1px solid var(--rule); border-radius: 12px; background: var(--card); padding: 12px 16px; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-size: .9rem; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 8px 18px; font-weight: 600; font-size: .9rem; cursor: pointer; text-align: center; }
+.btn.ghost { background: var(--card); color: var(--ink); border-color: var(--rule-2); }
+.btn.sm { min-height: 32px; padding: 4px 14px; font-size: .82rem; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.seg { display: inline-flex; padding: 2px; border: 1px solid var(--rule-2); border-radius: 999px; background: var(--card); }
+.seg button { min-height: 30px; padding: 3px 14px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: inherit; font-size: .82rem; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 500; }
+input[type=email] { background: var(--card); border: 1px solid var(--rule-2); border-radius: 8px; padding: 7px 10px; min-width: 0; min-height: 40px; width: 100%; }
+input.focus { border-color: var(--ink); outline: none; box-shadow: 0 0 0 1px var(--ink); }
+input.err { border-color: var(--bad); box-shadow: 0 0 0 1px var(--bad); }
+label.f { display: grid; gap: 6px; font-size: .85rem; font-weight: 500; color: var(--ink-2); }
+label.f > input { color: var(--ink); font-size: .95rem; font-weight: 400; }
+.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+nav.tabs { display: flex; gap: 28px; width: 100%; }
+nav.tabs span { padding: 10px 0 12px; font-weight: 500; font-size: .92rem; color: var(--ink-2); border-bottom: 2px solid transparent; white-space: nowrap; }
+nav.tabs span.on { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
+/* The Readiness panel's parts */
+.ring { position: relative; width: 132px; height: 132px; flex: none; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 11; }
+.ring .trk { stroke: var(--rule); }
+.ring .val { stroke: var(--c); stroke-linecap: round; }
+.ring .score { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.score .num { font-family: var(--f-display); font-size: 2.6rem; font-weight: 700; line-height: .9; letter-spacing: -.04em; }
+.score .of { color: var(--ink-2); font-size: .78rem; }
+.band { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.band i { width: 9px; height: 9px; border-radius: 2px; }
+.acts { list-style: none; margin: 0; padding: 0; display: grid; }
+.act { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 6px 14px; align-items: start; padding: 14px 0; border-top: 1px solid var(--rule); }
+.act-n { width: 40px; height: 40px; border-radius: 12px; background: var(--paper); color: var(--ink); display: grid; place-items: center; }
+.act-n .ic { width: 20px; height: 20px; }
+.act-b { display: grid; gap: 2px; min-width: 0; }
+.act-b b { font-size: 1rem; font-weight: 600; }
+.act-do { display: flex; align-items: center; gap: 12px; padding-top: 2px; }
+.gain { color: var(--good); font-size: .85rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) { .act { grid-template-columns: 40px minmax(0, 1fr); } .act-do { grid-column: 2; } }
+
+/* Mockup scaffolding: frames and their labels, not product */
+.canvas { background: var(--rule); padding: 20px 0 64px; }
+.intro { max-width: 1120px; margin: 0 auto 20px; padding: 0 16px; display: grid; gap: 4px; }
+.intro h2 { font-size: 1.05rem; }
+.frame { max-width: 1408px; margin: 0 auto 28px; padding: 0 16px; display: grid; gap: 8px; }
+.frame > .eyebrow { color: var(--ink); font-weight: 600; }
+.screen { background: var(--paper); border: 1px solid var(--rule-2); border-radius: 16px; overflow: hidden; min-width: 0; }
+.note { font-size: .85rem; color: var(--ink-2); max-width: 80ch; }
+.note code, .small code { font-size: .8rem; background: var(--card); border: 1px solid var(--rule); border-radius: 6px; padding: 0 4px; }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.quad { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .pair, .quad { grid-template-columns: 1fr; } }
+.screen.pad { padding: 24px; display: grid; }
+@media (max-width: 560px) { .canvas { padding-top: 12px; } .frame { padding: 0 8px; } .screen.pad { padding: 12px; } }
+
+/* Landing, option C */
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 520px); gap: 32px 56px; align-items: start; padding-block: 48px 32px; }
+.hero h1 { font-size: 2rem; letter-spacing: -.02em; }
+.lede { color: var(--ink-2); font-size: 1rem; max-width: 52ch; }
+.hero-l { display: grid; gap: 16px; align-content: start; min-width: 0; }
+@media (max-width: 900px) { .hero { grid-template-columns: 1fr; padding-block: 24px; } }
+@media (max-width: 560px) { .hero h1 { font-size: 1.6rem; } .lede { font-size: .95rem; } }
+.signup { display: grid; gap: 14px; align-content: start; }
+.em { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+.em label.f { flex: 1 1 260px; }
+.em .btn { flex: none; }
+@media (max-width: 560px) { .em .btn { width: 100%; } }
+.err-t { color: var(--bad); font-size: .85rem; }
+.addr { font-weight: 600; overflow-wrap: anywhere; font-size: 1rem; }
+.linkbtn { background: none; border: 0; padding: 4px 2px; font-size: .85rem; font-weight: 500; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.mail { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; align-items: start; border: 1px solid var(--rule); border-radius: 12px; background: var(--card); padding: 12px 14px; }
+.mail-av { width: 36px; height: 36px; border-radius: 999px; background: var(--brand-tint); display: grid; place-items: center; }
+.mail-b { display: grid; gap: 1px; min-width: 0; }
+.mail-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.mail-top b { font-weight: 600; }
+.mail-subj { font-weight: 500; font-size: .9rem; overflow-wrap: anywhere; }
+.wait { display: flex; gap: 10px; align-items: flex-start; border-top: 1px solid var(--rule); padding-top: 12px; }
+.wait i { width: 10px; height: 10px; border-radius: 999px; border: 2px solid var(--brand); flex: none; margin-top: 5px; }
+.phone-only { display: none; }
+@media (max-width: 560px) { .phone-only { display: block; } }
+.still { pointer-events: none; display: grid; gap: 10px; }
+.still .panel { display: grid; gap: 14px; }
+.sum-row { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+.privacy { display: grid; gap: 6px; margin-bottom: 40px; max-width: 760px; }
+.foot { border-top: 1px solid var(--rule); padding-block: 16px 24px; }
+.ok-ic { width: 40px; height: 40px; border-radius: 12px; background: var(--paper); display: grid; place-items: center; color: var(--good); }
+.ok-ic .ic { width: 22px; height: 22px; stroke-width: 2.1; }
+
+/* Inbox and the designed email (outside) */
+.inbox { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--rule); border-radius: 12px; max-width: 760px; width: 100%; justify-self: center; }
+.inbox li { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) auto; gap: 2px 16px; padding: 12px 16px; border-top: 1px solid var(--rule); font-size: .9rem; align-items: baseline; }
+.inbox li:first-child { border-top: 0; }
+.inbox li.unread b { font-weight: 700; }
+.inbox li:not(.unread) { color: var(--ink-2); }
+@media (max-width: 560px) { .inbox li { grid-template-columns: minmax(0, 1fr) auto; } .inbox li .subj { grid-column: 1 / -1; grid-row: 2; } }
+.email-meta { max-width: 600px; width: 100%; justify-self: center; display: grid; gap: 2px; font-size: .85rem; color: var(--ink-2); overflow-wrap: anywhere; }
+.email-meta b { color: var(--ink); font-weight: 600; }
+.email { max-width: 600px; width: 100%; justify-self: center; background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 32px; display: grid; gap: 18px; }
+@media (max-width: 560px) { .email { padding: 20px 16px; } }
+.email h2 { font-size: 1.4rem; }
+.email .btn { justify-self: start; min-height: 48px; padding: 12px 24px; font-size: 1rem; }
+.email hr { border: 0; border-top: 1px solid var(--rule); margin: 0; width: 100%; }
+
+/* Frame 7: the welcome sheet over the app's first run */
+.app-behind { position: relative; min-height: 640px; }
+.app-behind .top-in { padding-block: 12px 0; }
+@media (max-width: 640px) { .app-behind nav.tabs { display: none; } .app-behind .top-in { padding-block: 12px; } }
+.app-main { padding-block: 24px 64px; display: grid; gap: 24px; }
+.scrim { position: absolute; inset: 0; background: color-mix(in srgb, var(--ink) 38%, transparent); display: grid; place-items: center; padding: 16px; }
+.sheet { width: 100%; max-width: 420px; display: grid; gap: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, .18); }
+.sheet .addr { font-size: inherit; }
+.sheet .row .btn { flex: 1 1 auto; }
+.cost { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+.cost ul { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 4px; }
+</style>
+</head>
+<body>
+<div class="canvas">
+
+<div class="intro">
+  <p class="eyebrow">Issue #70 · Option C · 7 stars · about four days</p>
+  <h2>Sign up without leaving the landing</h2>
+  <p class="small muted">The email form is on the landing itself. The sent step shows the email that's coming, the waiting tab moves into the app by itself, and the first arrival gets a one-time welcome. Made-up family throughout.</p>
+</div>
+
+<!-- ============ Frame 2 ============ -->
+<section class="frame">
+  <p class="eyebrow">Frame 2 · Landing, <code>/</code> · Create an account chosen</p>
+  <div class="screen">
+    <header class="top"><div class="top-in" style="flex-wrap:nowrap">
+      <div class="brand">
+        <svg class="case" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg>
+        <span class="name ell">Emergency Kit Audit</span>
+      </div>
+      <button class="btn ghost sm" style="flex:none">Log in</button>
+    </div></header>
+    <div class="wrap">
+      <div class="hero">
+        <div class="hero-l">
+          <h1>See how ready your household is for an emergency.</h1>
+          <p class="lede">Photograph what's in your kits. Emergency Kit Audit scores them for who lives with you and where you live, then turns the gaps into a shopping list and a family plan.</p>
+          <div class="panel signup">
+            <div class="seg" role="group" aria-label="Create an account or log in" style="justify-self:start"><button aria-pressed="true">Create an account</button><button aria-pressed="false">Log in</button></div>
+            <form class="em">
+              <label class="f">Your email<input type="email" autocomplete="email"></label>
+              <button class="btn" type="button">Email me a link</button>
+            </form>
+            <p class="small muted">No password. Opening the link creates your household. Already have one? The same link logs you in.</p>
+          </div>
+        </div>
+        <figure class="still" style="margin:0" aria-label="A picture of the app's Readiness panel for a made-up family">
+          <div class="panel">
+            <div class="sum-row">
+              <div class="ring" style="--c:var(--warn)">
+                <svg viewBox="0 0 132 132" aria-hidden="true"><circle class="trk" cx="66" cy="66" r="56"/><circle class="val" cx="66" cy="66" r="56" pathLength="100" stroke-dasharray="17 100"/></svg>
+                <div class="score"><span class="num" style="color:var(--warn)">17</span><span class="of">of 100</span></div>
+              </div>
+              <div class="stack" style="gap:6px">
+                <p class="eyebrow">Household readiness</p>
+                <span class="band"><i style="background:var(--warn)"></i>Low</span>
+                <p class="mono small muted">5 people · 1 pet · 3 kits · 7 items · <span style="color:var(--warn)">1 expiring</span></p>
+              </div>
+            </div>
+            <div class="stack" style="gap:2px">
+              <p class="eyebrow">Next steps</p>
+              <h2>Your next 3 steps</h2>
+              <p class="small muted">Adding the supply below takes readiness from 17 to 31.</p>
+            </div>
+            <ol class="acts">
+              <li class="act"><span class="act-n"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V3h9l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg></span><div class="act-b"><b>Tag 1 item · 1 guessed, 0 to pick</b><p class="small">Items saved before the essentials were named count toward none until they're tagged.</p></div><div class="act-do"><span class="gain mono">+1</span><span class="btn sm">Review</span></div></li>
+              <li class="act"><span class="act-n"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg></span><div class="act-b"><b>Pick a meeting place and an out-of-area contact</b><p class="small">Two minutes now saves a frantic search later.</p></div><div class="act-do"><span class="btn ghost sm">Open plan</span></div></li>
+              <li class="act"><span class="act-n"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/><path d="M7 12h2.5l1.2-2 2 4 1.3-2H17"/></svg></span><div class="act-b"><b>CPR &amp; airway: add 1</b><p class="small">Such as CPR face shield or pocket mask, AED.</p><p class="small muted">For choking and 2 other emergencies.</p></div><div class="act-do"><span class="gain mono">+14</span><span class="btn ghost sm">Add to list</span></div></li>
+            </ol>
+            <p class="small muted">39 more gaps after these.</p>
+          </div>
+          <figcaption class="small muted">A made-up family of five and a dog in Springfield, Oregon. One supply takes them from 17 to 31.</figcaption>
+        </figure>
+      </div>
+      <div class="panel privacy">
+        <h3>Private to your household</h3>
+        <p class="small">We store your kits, their photos and who lives in your household, including any health needs you add. Only people signed in to your household can see it. To have everything deleted, email <a href="mailto:hello@go-bag.example">hello@go-bag.example</a>.</p>
+        <p class="small muted">Each account gets its own household. Nobody else's account can see it.</p>
+      </div>
+      <div class="foot"><p class="small muted">Emergency Kit Audit · go-bag.example</p></div>
+    </div>
+  </div>
+  <p class="note">The form is on the page from the start: no second screen to reach it. The top bar's <b>Log in</b> flips the switch to Log in and puts the cursor in the field. On a phone the form comes before the picture, so the one thing the page asks for is above the fold. A visitor who is already signed in to <code>/</code> goes straight to <code>/app</code>.</p>
+</section>
+
+<!-- ============ Frames 4 and 4b ============ -->
+<section class="frame">
+  <p class="eyebrow">Frame 4 · The form, typing · Create an account, then Log in</p>
+  <div class="pair">
+    <div class="screen pad">
+      <div class="panel signup">
+        <div class="seg" role="group" aria-label="Create an account or log in" style="justify-self:start"><button aria-pressed="true">Create an account</button><button aria-pressed="false">Log in</button></div>
+        <form class="em">
+          <label class="f">Your email<input type="email" class="focus" value="alex@example.com"></label>
+          <button class="btn" type="button">Email me a link</button>
+        </form>
+        <p class="small muted">No password. Opening the link creates your household. Already have one? The same link logs you in.</p>
+      </div>
+    </div>
+    <div class="screen pad">
+      <div class="panel signup">
+        <div class="seg" role="group" aria-label="Create an account or log in" style="justify-self:start"><button aria-pressed="false">Create an account</button><button aria-pressed="true">Log in</button></div>
+        <form class="em">
+          <label class="f">Your email<input type="email" class="focus" value="maria.delacruz-whitfield@family-mail.example.org"></label>
+          <button class="btn" type="button">Email me a link</button>
+        </form>
+        <p class="small muted">We'll send a link to the email you signed up with. New here? The same link creates your household.</p>
+      </div>
+    </div>
+  </div>
+  <p class="note">The switch changes only the line under the button; the field, the button and what happens are the same, so the "wrong" choice does no harm. The address typed stays when the switch flips.</p>
+</section>
+
+<!-- ============ Frame 5 ============ -->
+<section class="frame">
+  <p class="eyebrow">Frame 5 · Sent, in place of the form on the landing · KEY MOMENT</p>
+  <div class="screen">
+    <div class="wrap">
+      <div class="hero">
+        <div class="hero-l">
+          <h1>See how ready your household is for an emergency.</h1>
+          <div class="panel stack" style="gap:14px">
+            <div class="stack" style="gap:4px">
+              <h2>Check your inbox</h2>
+              <p class="small muted">We sent a link to</p>
+              <p class="addr">maria.delacruz-whitfield@family-mail.example.org</p>
+            </div>
+            <div class="stack" style="gap:6px">
+              <p class="eyebrow">Look for this email</p>
+              <div class="mail" role="img" aria-label="An email from Emergency Kit Audit, subject: Your sign-in link for Emergency Kit Audit">
+                <span class="mail-av"><svg class="case" viewBox="0 0 64 64" width="22" height="22" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg></span>
+                <div class="mail-b">
+                  <div class="mail-top"><b class="ell">Emergency Kit Audit</b><span class="small muted mono">now</span></div>
+                  <p class="mail-subj">Your sign-in link for Emergency Kit Audit</p>
+                  <p class="small muted">Tap to open your household. Works once, for an hour.</p>
+                </div>
+              </div>
+              <p class="small muted">From sign-in@go-bag.example. Nothing after a few minutes? Check spam or Promotions.</p>
+            </div>
+            <div class="row">
+              <button class="btn ghost sm" disabled>Send again in 0:42</button>
+              <button class="linkbtn">Use a different email</button>
+            </div>
+            <div class="wait">
+              <i aria-hidden="true"></i>
+              <div class="stack" style="gap:4px">
+                <p class="small">Waiting for you to open the link. This tab moves on by itself if you open it in this browser.</p>
+                <p class="small muted phone-only">Opening it in your mail app? That's fine, it signs you in there.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figure class="still" style="margin:0" aria-hidden="true">
+          <div class="panel" style="opacity:.55">
+            <div class="sum-row">
+              <div class="ring" style="--c:var(--warn)">
+                <svg viewBox="0 0 132 132"><circle class="trk" cx="66" cy="66" r="56"/><circle class="val" cx="66" cy="66" r="56" pathLength="100" stroke-dasharray="17 100"/></svg>
+                <div class="score"><span class="num" style="color:var(--warn)">17</span><span class="of">of 100</span></div>
+              </div>
+              <div class="stack" style="gap:6px">
+                <p class="eyebrow">Household readiness</p>
+                <span class="band"><i style="background:var(--warn)"></i>Low</span>
+                <p class="mono small muted">5 people · 1 pet · 3 kits · 7 items</p>
+              </div>
+            </div>
+            <p class="small muted">The same picture as frame 2, unchanged. The page doesn't jump: only the form's panel changes.</p>
+          </div>
+        </figure>
+      </div>
+    </div>
+  </div>
+  <p class="note">The picture of the email is what earns the trust here: the person knows the sender, the subject and the first line before they open their mail app, so the right email is easy to find and safe to tap. The address is shown whole (it wraps by character, never clips) with a way to change it. <b>Send again</b> waits 60 seconds after each send. The waiting line is static: no spinner. The last line shows on phones only, where the link most often opens in the mail app's own browser.</p>
+</section>
+
+<!-- ============ Frame 5b ============ -->
+<section class="frame">
+  <p class="eyebrow">Frame 5b · The same tab, after the link was opened in another tab of this browser</p>
+  <div class="pair">
+    <div class="screen pad">
+      <div class="panel stack" style="gap:14px">
+        <span class="ok-ic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <div class="stack" style="gap:4px">
+          <h2>You're signed in.</h2>
+          <p class="small muted">As <b class="addr" style="font-size:inherit;color:var(--ink)">maria.delacruz-whitfield@family-mail.example.org</b>. You opened the link in another tab; this one can follow.</p>
+        </div>
+        <div><button class="btn">Open your household</button></div>
+      </div>
+    </div>
+    <div class="screen pad" style="align-content:center">
+      <p class="note">The tab listens for the sign-in that the other tab stores in this browser, then swaps the sent panel for this one. It doesn't jump to <code>/app</code> on its own: the person may be reading, and one tap is clearer than a page that moves under them. If the link was opened on another device, nothing changes here, and frame 5's last line already said so.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Frame 6 ============ -->
+<section class="frame">
+  <p class="eyebrow">Frame 6 · The inbox and the designed email (outside)</p>
+  <div class="screen pad" style="gap:16px">
+    <ul class="inbox" aria-label="An inbox">
+      <li class="unread"><b class="ell">Emergency Kit Audit</b><span class="subj ell"><b>Your sign-in link for Emergency Kit Audit</b> <span class="muted">· Tap to open your household. Works once, for an hour.</span></span><span class="small mono">8:42 PM</span></li>
+      <li><span class="ell">Springfield Schools</span><span class="subj ell">Early release on Friday · Pickup starts at 1:15</span><span class="small mono">6:10 PM</span></li>
+    </ul>
+    <div class="email-meta">
+      <span><b>Emergency Kit Audit</b> &lt;sign-in@go-bag.example&gt;</span>
+      <span>To maria.delacruz-whitfield@family-mail.example.org</span>
+    </div>
+    <div class="email">
+      <svg class="case" viewBox="0 0 64 64" width="48" height="48" aria-hidden="true"><g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg>
+      <h2>Here's your sign-in link.</h2>
+      <a class="btn" href="#frame-7" style="text-decoration:none">Open Emergency Kit Audit</a>
+      <p class="small">This link works once and expires in an hour. It was asked for at go-bag.example. If that wasn't you, ignore it: no household is made until the link is opened.</p>
+      <hr>
+      <p class="small muted">Emergency Kit Audit · go-bag.example</p>
+    </div>
+  </div>
+  <p class="note"><b>New piece, a proposal of its own:</b> an HTML sign-in email in place of Supabase's default, set in the Supabase dashboard (no product code). Inline styles with the same hex values, the mark as an inline image, light only. The inbox line "Tap to open your household..." is the email's hidden preheader. It has to be checked in Gmail, Outlook and Apple Mail before it ships, and it may land in spam or Promotions until the sending domain is verified (decision 8).</p>
+</section>
+
+<!-- ============ Frame 7 ============ -->
+<section class="frame" id="frame-7">
+  <p class="eyebrow">Frame 7 · First arrival at <code>/app</code>: the welcome sheet (new component)</p>
+  <div class="screen app-behind">
+    <header class="top"><div class="top-in">
+      <div class="brand">
+        <svg class="case" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg>
+        <span class="name ell">Emergency Kit Audit</span>
+      </div>
+      <nav class="tabs" aria-hidden="true"><span class="on">Readiness</span><span>Kits</span><span>Shopping</span><span>Household</span><span>Plan</span></nav>
+    </div></header>
+    <div class="wrap app-main" aria-hidden="true">
+      <div class="panel stack">
+        <div class="stack" style="gap:2px">
+          <p class="eyebrow">Next steps</p>
+          <h2>Your next step</h2>
+          <p class="small muted">Start here. These shape every number the app works out.</p>
+        </div>
+        <ol class="acts">
+          <li class="act"><span class="act-n"><svg class="ic" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7M6 9.5V20h12V9.5M10 20v-5h4v5"/></svg></span><div class="act-b"><b>Tell us who lives with you</b><p class="small">Where you live, everyone's age and any health needs. Four quick steps, and everything else is sized from them.</p></div><div class="act-do"><span class="btn sm">Start</span></div></li>
+        </ol>
+      </div>
+      <div class="panel"><div class="sec-h"><h2>Kits</h2></div><p class="small muted">No kits yet.</p></div>
+    </div>
+    <div class="scrim">
+      <div class="panel sheet" role="dialog" aria-labelledby="w-h">
+        <svg class="case" viewBox="0 0 64 64" width="48" height="48" aria-hidden="true"><g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg>
+        <h2 id="w-h">Your household is ready</h2>
+        <p class="small">It's private: only people signed in to it can see it. Right now that's just <b class="addr">maria.delacruz-whitfield@family-mail.example.org</b>.</p>
+        <p class="small muted">Start with who lives with you and where. It takes about two minutes, then photograph your first kit.</p>
+        <div class="row"><button class="btn">Set up my household</button><button class="btn ghost">Look around first</button></div>
+      </div>
+    </div>
+  </div>
+  <p class="note"><b>New piece, a proposal of its own:</b> a sheet <code>web/runtime.js</code> draws over the app, the way it draws the sign-in card today, in the app's tokens. Shown once, only on the sign-in that created the household (the database function has to say so). A family member signing in to the family household never sees it. <b>Set up my household</b> opens the app's own 4-step setup; <b>Look around first</b> closes the sheet on Readiness. The app page itself doesn't change.</p>
+</section>
+
+<!-- ============ Failure frames ============ -->
+<section class="frame">
+  <p class="eyebrow">Failure frames · drawn inline on the landing</p>
+  <div class="quad">
+    <div class="screen pad">
+      <div class="panel signup">
+        <p class="eyebrow">An address that isn't one</p>
+        <div class="seg" style="justify-self:start"><button aria-pressed="true">Create an account</button><button aria-pressed="false">Log in</button></div>
+        <form class="em">
+          <label class="f">Your email<input type="email" class="err" value="maria@gmail" aria-invalid="true"></label>
+          <button class="btn" type="button">Email me a link</button>
+        </form>
+        <p class="err-t">Enter a full email address, like alex@example.com</p>
+      </div>
+    </div>
+    <div class="screen pad">
+      <div class="panel signup">
+        <p class="eyebrow">Too many links asked for (429)</p>
+        <div class="seg" style="justify-self:start"><button aria-pressed="false">Create an account</button><button aria-pressed="true">Log in</button></div>
+        <form class="em">
+          <label class="f">Your email<input type="email" value="alex@example.com"></label>
+          <button class="btn" type="button" disabled>Email me a link</button>
+        </form>
+        <p class="err-t">You've asked for several links in a short time. Wait 5 minutes, then send again.</p>
+      </div>
+    </div>
+    <div class="screen pad">
+      <div class="panel signup">
+        <p class="eyebrow">The send fails</p>
+        <div class="seg" style="justify-self:start"><button aria-pressed="true">Create an account</button><button aria-pressed="false">Log in</button></div>
+        <form class="em">
+          <label class="f">Your email<input type="email" value="alex@example.com"></label>
+          <button class="btn" type="button">Email me a link</button>
+        </form>
+        <p class="err-t">Couldn't send the link. Check your connection and try again.</p>
+      </div>
+    </div>
+    <div class="screen pad">
+      <div class="panel signup">
+        <p class="eyebrow">Expired or used link: lands on <code>/</code> with the form open</p>
+        <div class="notice" role="alert"><p><b>That link has expired or was already used.</b> Send yourself a new one. Links work once, for an hour, and an email app that opens links to check them can use one up.</p></div>
+        <div class="seg" style="justify-self:start"><button aria-pressed="false">Create an account</button><button aria-pressed="true">Log in</button></div>
+        <form class="em">
+          <label class="f">Your email<input type="email" class="focus"></label>
+          <button class="btn" type="button">Email me a new link</button>
+        </form>
+        <p class="small muted">We'll send a link to the email you signed up with. New here? The same link creates your household.</p>
+      </div>
+    </div>
+  </div>
+  <p class="note">The email never arrives: frame 5's spam line and <b>Send again</b> answer it. Link opened on another device: that device is signed in, this tab stays on "Check your inbox", and its last line already said it only moves on in this browser.</p>
+</section>
+
+<!-- ============ Frames 8 and 9 ============ -->
+<section class="frame">
+  <p class="eyebrow">Frames 8 and 9 · The closet (outside), then next week</p>
+  <div class="screen pad">
+    <p class="note">They lay the hall-closet bag on the floor and photograph it: the moment everything above is the door to. Next week on the same browser, <code>/</code> goes straight to <code>/app</code>. On a new phone: <b>Log in</b> on the landing, the same email, a new link, and the same household with its kits. No welcome sheet the second time.</p>
+  </div>
+</section>
+
+<div class="cost">
+  <p class="eyebrow">What option C costs</p>
+  <ul class="small">
+    <li><b>About four days</b>, out of the two weeks the household isolation and the Claude cost cap need.</li>
+    <li>The landing talks to Supabase's auth itself (a plain request, or supabase-js, which undoes "loads no app code"): the architect's call.</li>
+    <li>The tab that moves on by itself needs a listener and only works in the same browser.</li>
+    <li>Two new pieces, each a proposal of its own: the welcome sheet in <code>web/runtime.js</code>, and the designed HTML sign-in email.</li>
+  </ul>
+</div>
+
+</div>
+</body>
+</html>
