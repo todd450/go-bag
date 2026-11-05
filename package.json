@@ -1,0 +1,14 @@
+{
+  "name": "go-bag",
+  "private": true,
+  "description": "Emergency Kit Audit. Dependencies are for the Vercel build only; ./check.sh needs none of them.",
+  "engines": { "node": "22.x" },
+  "scripts": {
+    "build": "node tools/build-web.js",
+    "check": "sh ./check.sh"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.137.0",
+    "@supabase/supabase-js": "2.118.0"
+  }
+}

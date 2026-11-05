@@ -29,6 +29,18 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
   `icon`, so the stored ones carry forward. Publish only from a green `main`, and only when the
   founder asks. The `ship` skill (`.claude/skills/ship/`) is the step-by-step for landing PRs and
   publishing, and `live-commit.sh` there tells which commit is live.
+- **Vercel version (issue #48):** the same page also runs on Vercel, signed in with Supabase magic
+  links. `web/runtime.js` stands in for `window.claude` (db, assets, sample, user) on Supabase project
+  `go-bag` (`jltxxtjlnzpxdozxovmz`) and the functions in `api/`; `tools/build-web.js` wraps the page
+  with it into `dist/` (`npm run build`, Vercel's only build step). The page file is never edited for
+  Vercel. Schema and policies are in `supabase/migrations/`; who may sign in is the
+  `allowed_emails` table. The claude.ai Artifact stays production until the founder switches over.
+  `tests/web-runtime.test.js` covers it.
+  - **Keys are in Doppler**, project `go-bag`, and set or rotated nowhere else: `dev` for this
+    machine (`doppler run -- npm run build`, from `doppler.yaml`), `prd` for Vercel production
+    through Doppler's Vercel integration. `ANTHROPIC_API_KEY` is in `prd` only and the founder
+    sets it. Never put a key in Vercel's settings, a `.env` file or the repo. `check.sh` and the
+    tests need no keys, so never wrap them in `doppler run`.
 - **Local preview:** `sh preview.sh`, which serves the page at http://127.0.0.1:8765/ wrapped the
   way claude.ai wraps it. Outside claude.ai there is no `window.claude`, so nothing saves and the
   Claude features (photo scan, hazard check, review) are off. It serves a temporary copy of the
