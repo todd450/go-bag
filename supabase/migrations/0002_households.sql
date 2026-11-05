@@ -3,6 +3,15 @@
 -- Supabase user id, one household per account (D1), and the family's addresses on allowed_emails
 -- join the family household on their first sign-in.
 -- Realtime, Storage and api/ are left as they are here: #72, #74 and #75 change them.
+--
+-- DO NOT APPLY THIS TO PROJECT go-bag ON ITS OWN. Apply it in the same step as #72, #74 and #75,
+-- or only while Supabase Auth's "Allow new users to sign up" is off for the project until all
+-- three are live. Why: after this migration is_member() means "has a household", and any account
+-- that signs in gets one by calling rpc('my_household'). Until those three land, that account:
+--   - passes 0001's photos bucket policies, so it can list and read the family's photos (#74)
+--   - passes api/_member.mjs, so api/sample.mjs spends the Anthropic key for it (#75)
+--   - receives the family's Realtime DELETE events, which RLS does not filter, and today's
+--     runtime then drops its own doc with the same col and id (#72)
 
 -- ---------- Households and who is in them ----------
 -- No API role reads or writes these tables: row level security is on with no policies, and the API
@@ -37,14 +46,16 @@ update public.allowed_emails set household_id = (select id from public.household
 alter table public.allowed_emails alter column household_id set not null;
 revoke all on table public.allowed_emails from anon, authenticated;
 
--- Accounts that already exist join now, so the family keeps working on today's web/runtime.js
--- (which asks is_member() and never calls my_household()). Same rule as my_household(): a
--- confirmed address, matched without regard to letter case.
+-- Every account that already exists with an address on allowed_emails joins now, matched without
+-- regard to letter case, so the family keeps working on today's web/runtime.js (which asks
+-- is_member() and never calls my_household()). Confirmed or not, as under 0001: an account whose
+-- link was requested but not yet clicked holds no session until it is clicked, and then it is a
+-- member, as it would have been before. Accounts made from now on join through my_household(),
+-- which asks for a confirmed address.
 insert into public.household_members (user_id, household_id)
 select u.id, a.household_id
 from auth.users u
 join public.allowed_emails a on a.email = lower(u.email)
-where u.email_confirmed_at is not null
 on conflict (user_id) do nothing;
 
 -- ---------- Which household the caller is in ----------

@@ -1,3 +1,7 @@
+# LOCAL STACK ONLY. Never run `supabase config push` from this file: its auth defaults (sign-ups
+# open, email confirmations off) would replace project go-bag's, and migration 0002 trusts a
+# confirmed email to join the family household.
+#
 # For detailed configuration reference documentation, visit:
 # https://supabase.com/docs/guides/local-development/cli/config
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
