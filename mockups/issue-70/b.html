@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Issue #70 · Option B · Show the product, then a sign-in that says what comes next</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Tokens and components copied from emergency-kit-audit.html. Mockup-only rules are marked "mk". */
+:root {
+  --paper: #F7F7F7; --card: #FFFFFF; --ink: #222222; --ink-2: #6A6A6A; --rule: #E4E4E4; --rule-2: #C8C8C8;
+  --accent: #222222; --accent-ink: #FFFFFF; --brand: #2B59D9; --brand-track: #CCD8F6; --brand-tint: #E8EEFC;
+  --brand-deep: #1E43AE; --brand-ink: #FFFFFF; --meter: #E0612A; --good: #1F7A4A; --warn: #A86A12; --bad: #C1281B;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px rgba(0, 0, 0, .04);
+  --f-display: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121212; --card: #1C1C1C; --ink: #F2F2F2; --ink-2: #A3A3A3; --rule: #2E2E2E; --rule-2: #4A4A4A;
+    --accent: #F2F2F2; --accent-ink: #121212; --brand: #8AA8FF; --brand-track: #28385F; --brand-ink: #121212; --meter: #F07A45;
+    --good: #5BC489; --warn: #E2AE4A; --bad: #F2695C; --shadow: none; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--card); color: var(--ink); font: 15px/1.5 var(--f-body); -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-weight: 600; text-wrap: balance; margin: 0; line-height: 1.25; letter-spacing: -.01em; }
+h1 { font-family: var(--f-display); }
+h2 { font-size: 1.2rem; letter-spacing: -.015em; }
+h3 { font-size: 1.05rem; }
+p { margin: 0; }
+a { color: var(--ink); text-underline-offset: 2px; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.mono { font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-2); }
+.small { font-size: .85rem; }
+.eyebrow { font-size: .8rem; font-weight: 500; color: var(--ink-2); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
+.top { background: var(--card); border-bottom: 1px solid var(--rule); }
+.top-in { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 1.1rem; font-weight: 600; letter-spacing: -.01em; }
+.case { display: block; flex: none; }
+.case .ct { stroke: var(--brand-track); }
+.case .cf { stroke: var(--brand); }
+.case .cs { fill: var(--brand); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.panel { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 20px 24px; min-width: 0; box-shadow: var(--shadow); }
+@media (max-width: 560px) { .panel { padding: 16px; border-radius: 14px; } }
+.notice { border: 1px solid var(--rule); border-radius: 12px; background: var(--card); padding: 12px 16px; font-size: .9rem; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 8px 18px; font-weight: 600; font-size: .9rem; cursor: pointer; text-decoration: none; text-align: center; }
+.btn.ghost { background: var(--card); color: var(--ink); border-color: var(--rule-2); }
+.btn.sm { min-height: 32px; padding: 4px 14px; font-size: .82rem; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.btn.full { width: 100%; }
+input[type=email] { background: var(--card); border: 1px solid var(--rule-2); border-radius: 8px; padding: 7px 10px; min-width: 0; width: 100%; }
+input[type=email]:focus { border-color: var(--ink); outline: none; box-shadow: 0 0 0 1px var(--ink); }
+input.bad { border-color: var(--bad); box-shadow: 0 0 0 1px var(--bad); }
+label.f { display: grid; gap: 6px; font-size: .85rem; font-weight: 500; color: var(--ink-2); }
+label.f > input { color: var(--ink); font-size: .95rem; font-weight: 400; }
+.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.gain { color: var(--good); font-size: .85rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.band { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 600; white-space: nowrap; }
+.band i { width: 9px; height: 9px; border-radius: 2px; background: var(--warn); }
+.bar { height: 6px; background: var(--rule); border-radius: 999px; overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--c); border-radius: 999px; }
+.score { display: flex; align-items: baseline; gap: 6px; }
+.score .num { font-family: var(--f-display); font-weight: 700; line-height: .9; letter-spacing: -.04em; }
+.score .of { color: var(--ink-2); }
+.ring { position: relative; width: 132px; height: 132px; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 11; }
+.ring .trk { stroke: var(--rule); }
+.ring .val { stroke: var(--c); stroke-linecap: round; }
+.ring .score { position: absolute; inset: 0; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.ring .score .num { font-size: 2.6rem; }
+.ring .score .of { font-size: .78rem; }
+.acts { display: grid; }
+.act { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 6px 14px; align-items: start; padding: 14px 0; border-top: 1px solid var(--rule); }
+.act-n { width: 40px; height: 40px; border-radius: 12px; background: var(--paper); color: var(--ink); display: grid; place-items: center; }
+.act-n .ic { width: 20px; height: 20px; }
+.act-b { display: grid; gap: 2px; min-width: 0; }
+.act-b b { font-size: 1rem; font-weight: 600; }
+.act-do { display: flex; align-items: center; gap: 12px; padding-top: 2px; }
+.fl-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.fl-tile { display: flex; flex-direction: column; gap: 1px; min-width: 0; min-height: 76px; padding: 8px 5px 6px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); font-size: .72rem; line-height: 1.25; }
+.fl-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0 4px; margin-bottom: 3px; }
+.fl-tile .ic { width: 22px; height: 22px; color: var(--ink-2); }
+.fl-name { overflow-wrap: break-word; font-weight: 500; }
+.step .fl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 561px) and (max-width: 860px) { .step .fl-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.fl-note, .fl-exp { color: var(--ink-2); font-size: .68rem; }
+.fl-q { font-size: .72rem; font-weight: 600; }
+.fl-tile.expired { border-color: var(--bad); box-shadow: inset 0 0 0 1px var(--bad); }
+.fl-tile.expired .fl-name { text-decoration: line-through; }
+.fl-tile.expired .fl-exp { color: var(--bad); font-weight: 500; }
+.fl-tile.miss { padding-inline: 3px; border-style: dashed; border-color: var(--rule-2); background: var(--card); color: var(--ink-2); }
+.fl-tile.miss .gain { font-size: .72rem; }
+
+/* ---------- Landing (frame 2) ---------- */
+.land h1.hero-h { font-size: 2rem; }
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 48px; align-items: center; padding-block: 56px 48px; }
+.hero-t { display: grid; gap: 18px; max-width: 34rem; }
+.hero-t > p.lead { color: var(--ink-2); max-width: 46ch; }
+.still { margin: 0; display: grid; gap: 10px; container-type: inline-size; }
+.still .panel { pointer-events: none; }
+.nx { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px 28px; }
+.nx-score { display: grid; gap: 8px; align-content: start; border-right: 1px solid var(--rule); padding-right: 24px; }
+.nx-steps { display: grid; gap: 4px; align-content: start; min-width: 0; }
+.nx-steps .acts { margin-top: 10px; }
+@container (max-width: 680px) {
+  .act { grid-template-columns: 40px minmax(0, 1fr); }
+  .act-do { grid-column: 2; }
+}
+@container (max-width: 520px) {
+  .nx { grid-template-columns: 1fr; }
+  .nx-score { border-right: 0; padding-right: 0; border-bottom: 1px solid var(--rule); padding-bottom: 16px; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 20px; }
+  .nx-score > .eyebrow { grid-column: 1 / -1; }
+  .nx-score .ring { grid-column: 1; grid-row: 2 / span 2; width: 112px; height: 112px; }
+  .nx-score .band, .nx-score > .small { grid-column: 2; align-self: end; }
+  .nx-score > .small { align-self: start; }
+}
+.sec { padding-block: 40px; display: grid; gap: 20px; }
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.step { display: grid; gap: 12px; grid-template-rows: 1fr auto auto; }
+.step .pic { border: 1px solid var(--rule); border-radius: 12px; padding: 12px; min-height: 196px; display: grid; gap: 8px; align-content: start; }
+.step h3 { display: flex; gap: 10px; align-items: baseline; }
+.step h3 .n { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: var(--card); font-size: .82rem; flex: none; transform: translateY(-1px); }
+.kit-row { display: grid; grid-template-columns: minmax(0, 1fr) 56px 36px; gap: 2px 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
+.kit-row:last-child { border-bottom: 0; }
+.kr-n { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.kr-n > span { display: grid; min-width: 0; }
+.kr-n b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kr-n .ic { color: var(--ink-2); }
+.kr-p { font-weight: 700; text-align: right; color: var(--warn); }
+.act.mini { grid-template-columns: 32px minmax(0, 1fr); padding: 10px 0; }
+.act.mini:first-child { border-top: 0; }
+.act.mini .act-n { width: 32px; height: 32px; border-radius: 10px; }
+.act.mini .act-n .ic { width: 18px; height: 18px; }
+.act.mini .act-b b { font-size: .9rem; }
+.act.mini .act-do { grid-column: 2; }
+.priv { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px 40px; align-items: start; }
+.priv .lines { display: grid; gap: 10px; }
+.foot { padding-block: 8px 48px; display: grid; gap: 14px; justify-items: start; }
+@media (max-width: 860px) {
+  .hero { grid-template-columns: 1fr; gap: 28px; padding-block: 28px 32px; }
+  .steps { grid-template-columns: 1fr; }
+  .step .pic { min-height: 0; }
+  .priv { grid-template-columns: 1fr; }
+  .sec { padding-block: 28px; }
+}
+@media (max-width: 560px) {
+  .land h1.hero-h { font-size: 1.6rem; }
+  .top-in { padding-block: 10px; }
+  .brand { font-size: 1rem; }
+  .hero-t .row .btn { flex: 1 1 auto; }
+}
+
+/* ---------- The sign-in card (frames 4, 5 and failures) ---------- */
+.gb-card { max-width: 380px; margin: 0 auto; display: grid; gap: 14px; }
+.gb-card h2 { font-size: 1.4rem; }
+.gb-card .addr { font-weight: 600; overflow-wrap: anywhere; }
+.notice.mail { display: grid; gap: 8px; background: var(--paper); }
+.notice.mail dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 0; }
+.notice.mail dt { color: var(--ink-2); }
+.notice.mail dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.notice.mail dd .muted { display: block; font-size: .85rem; }
+.bad-msg { color: var(--bad); font-weight: 500; }
+label.f + .bad-msg { margin-top: -6px; }
+
+/* ---------- mk: the mockup's own frame labels ---------- */
+.mk-head { padding-block: 20px 16px; display: grid; gap: 4px; }
+.mk-head h1 { font-size: 1.2rem; }
+.mk-frame { border-top: 1px solid var(--rule-2); }
+.mk-label { padding-block: 10px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; justify-content: space-between; }
+.mk-screen { background: var(--paper); }
+.mk-note { padding-block: 10px 16px; font-size: .85rem; color: var(--ink-2); }
+.mk-note code, .url, .mk-label code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; }
+.key { display: inline-block; border-radius: 999px; padding: 1px 8px; background: var(--brand-tint); color: var(--brand-deep); font-weight: 600; font-size: .75rem; }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 20px; padding-block: 8px 28px; align-items: start; }
+.cell { display: grid; gap: 6px; min-width: 0; }
+.url { color: var(--ink-2); background: var(--card); border: 1px solid var(--rule); border-radius: 999px; padding: 2px 10px; justify-self: start; max-width: 100%; overflow-wrap: anywhere; }
+.stage { background: var(--paper); padding: 24px 16px; border: 1px solid var(--rule); border-radius: 12px; }
+@media (max-width: 560px) { .stage { padding: 16px 10px; } }
+.outside { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 20px; padding-block: 8px 28px; align-items: start; }
+.inbox { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; }
+.inbox .ir { display: grid; grid-template-columns: minmax(0, 9.5em) minmax(0, 1fr) auto; gap: 2px 12px; padding: 12px 14px; border-top: 1px solid var(--rule); font-size: .9rem; color: var(--ink-2); }
+.inbox .ir:first-child { border-top: 0; }
+.inbox .ir.new { color: var(--ink); font-weight: 600; background: var(--brand-tint); }
+.inbox .ir span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mail-open { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 20px; display: grid; gap: 14px; max-width: 600px; }
+.mail-open .hdr { display: grid; gap: 2px; padding-bottom: 12px; border-bottom: 1px solid var(--rule); font-size: .85rem; overflow-wrap: anywhere; }
+.notif { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 12px 14px; display: grid; gap: 2px; max-width: 420px; box-shadow: var(--shadow); }
+.notif .meta { display: flex; justify-content: space-between; font-size: .78rem; color: var(--ink-2); }
+.notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding-block: 8px 28px; }
+.notes .panel { display: grid; gap: 6px; align-content: start; }
+@media (max-width: 1000px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) {
+  .cards, .outside, .notes { grid-template-columns: 1fr; }
+  .inbox .ir { grid-template-columns: minmax(0, 1fr) auto; }
+  .inbox .ir span:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+}
+</style>
+</head>
+<body>
+
+<header class="wrap mk-head">
+  <p class="eyebrow">Issue #70 · Option B · 5 stars · about two days · recommended</p>
+  <h1>Show the product, then a sign-in that says what comes next</h1>
+</header>
+
+<!-- ======================= Frame 2: the landing ======================= -->
+<section class="mk-frame" aria-label="Frame 2, the landing page">
+  <div class="wrap mk-label"><p class="eyebrow">Frame 2 · Landing, <code>/</code></p><p class="eyebrow">Static file, no app code</p></div>
+  <div class="mk-screen land">
+    <div class="top"><div class="wrap top-in">
+      <div class="brand"><svg class="case" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg><span>Emergency Kit Audit</span></div>
+      <a class="btn ghost sm" href="#f4b">Log in</a>
+    </div></div>
+
+    <div class="wrap hero">
+      <div class="hero-t">
+        <h1 class="hero-h">See how ready your household is for an emergency.</h1>
+        <p class="lead">Photograph what's in your kits. Emergency Kit Audit scores them for who lives with you and where you live, then turns the gaps into a shopping list and a family plan.</p>
+        <div class="row"><a class="btn" href="#f4">Create an account</a><a class="btn ghost" href="#f4b">Log in</a></div>
+        <p class="small muted">No password: we email you a link.</p>
+      </div>
+
+      <figure class="still" aria-label="A picture of the app's Readiness tab for a made-up family">
+        <div class="panel nx">
+          <div class="nx-score">
+            <p class="eyebrow">Household readiness</p>
+            <div class="ring" style="--c: var(--warn)"><svg viewBox="0 0 132 132" aria-hidden="true"><circle class="trk" cx="66" cy="66" r="60.5"/><circle class="val" cx="66" cy="66" r="60.5" style="stroke-dasharray: 64.6 400"/></svg>
+  <div class="score"><span class="num" style="color: var(--warn)">17</span><span class="of">of 100</span></div></div>
+            <span class="band"><i></i>Low</span>
+            <p class="small muted">5&nbsp;people · 1&nbsp;pet · 3&nbsp;kits</p>
+          </div>
+          <div class="nx-steps">
+            <p class="eyebrow">Next steps</p>
+            <h2>Your next steps</h2>
+            <p class="small muted">Adding the supply below takes readiness from 17 to 31.</p>
+            <div class="acts">
+              <div class="act"><span class="act-n"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/><path d="M7 12h2.5l1.2-2 2 4 1.3-2H17"/></svg></span><span class="act-b"><b>CPR &amp; airway: add 1</b><span class="small muted">Such as CPR face shield or pocket mask, AED.</span></span><span class="act-do"><span class="gain">+14</span><span class="btn ghost sm">Add to list</span></span></div>
+              <div class="act"><span class="act-n"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg></span><span class="act-b"><b>Pick a meeting place and an out-of-area contact</b><span class="small muted">Two minutes now saves a frantic search later.</span></span><span class="act-do"><span class="btn ghost sm">Open plan</span></span></div>
+            </div>
+            <p class="small muted">39 more gaps after these.</p>
+          </div>
+        </div>
+        <figcaption class="small muted">A made-up family of five in Springfield, Oregon. One CPR mask takes them from 17 to 31.</figcaption>
+      </figure>
+    </div>
+
+    <div class="wrap sec">
+      <h2>Three steps</h2>
+      <div class="steps">
+        <div class="panel step">
+          <div class="pic" aria-hidden="true">
+            <p class="eyebrow">Hall closet go-bag</p>
+            <ul class="fl-grid">
+              <li class="fl-tile "><span class="fl-top"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5h6v2M12 10.5v6M9 13.5h6"/></svg></span><span class="fl-name">First-aid kit</span></li>
+              <li class="fl-tile "><span class="fl-top"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span class="fl-q">×2</span></span><span class="fl-name">Headlamp</span></li>
+              <li class="fl-tile expired"><span class="fl-top"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/></svg></span><span class="fl-name">Old ibuprofen</span><span class="fl-exp">Expired 2020-01</span></li>
+              <li class="fl-tile miss"><span class="fl-top"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/></svg><span class="gain">+1</span></span><span class="fl-name">Emergency radio</span><span class="fl-note">Add to list</span></li>
+            </ul>
+          </div>
+          <h3><span class="n">1</span>Photograph your kits</h3>
+          <p class="muted">Claude reads the photo and lists what's there.</p>
+        </div>
+        <div class="panel step">
+          <div class="pic" aria-hidden="true">
+            <div class="kit-row"><span class="kr-n"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/></svg><span><b>Hall closet go-bag</b><span class="small muted">72-hour go-bag</span></span></span><span class="bar" style="--c: var(--warn)"><span style="width:6%"></span></span><span class="kr-p mono">6%</span></div>
+            <div class="kit-row"><span class="kr-n"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7M6 9.5V20h12V9.5M10 20v-5h4v5"/></svg><span><b>Basement bin</b><span class="small muted">2-week home supply</span></span></span><span class="bar" style="--c: var(--warn)"><span style="width:2%"></span></span><span class="kr-p mono">1%</span></div>
+            <div class="kit-row"><span class="kr-n"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16v-4l2.5-5h11l2.5 5v4zM4 12h16"/><circle cx="8" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/></svg><span><b>Trunk bag</b><span class="small muted">24-hour car kit</span></span></span><span class="bar" style="--c: var(--warn)"><span style="width:2%"></span></span><span class="kr-p mono">1%</span></div>
+          </div>
+          <h3><span class="n">2</span>See your gaps</h3>
+          <p class="muted">Scored for your household, your town and the emergencies you care about.</p>
+        </div>
+        <div class="panel step">
+          <div class="pic" aria-hidden="true">
+            <div class="act mini"><span class="act-n"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/><path d="M7 12h2.5l1.2-2 2 4 1.3-2H17"/></svg></span><span class="act-b"><b>CPR &amp; airway</b><span class="small muted">CPR face shield or pocket mask, AED</span></span><span class="act-do"><span class="gain">+14</span><span class="btn ghost sm">Add to list</span></span></div>
+            <div class="act mini"><span class="act-n"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/></svg></span><span class="act-b"><b>CO alarm</b><span class="small muted">Battery or plug-in carbon monoxide alarm</span></span><span class="act-do"><span class="gain">+8</span><span class="btn ghost sm">Add to list</span></span></div>
+          </div>
+          <h3><span class="n">3</span>Close them</h3>
+          <p class="muted">A shopping list and a family plan, in the order that helps most.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap sec">
+      <div class="panel priv">
+        <div class="lines"><p class="eyebrow">Your household's details</p><h2>Private to your household</h2></div>
+        <div class="lines">
+          <p>We store your kits, their photos and who lives in your household, including any health needs you add. Only people signed in to your household can see it. To have everything deleted, email <a href="mailto:hello@go-bag.example">hello@go-bag.example</a>.</p>
+          <p class="muted">Each account gets its own household. Nobody else's account can see it.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap foot">
+      <div class="row"><a class="btn" href="#f4">Create an account</a><a class="btn ghost" href="#f4b">Log in</a></div>
+      <p class="small muted">Emergency Kit Audit · go-bag.example</p>
+    </div>
+  </div>
+  <p class="wrap mk-note">Signed in already on this browser? <code>/</code> goes straight to <code>/app</code>. The stills are drawn from <code>tests/household</code>: the family's real 17 of 100, its real next step, its real kits.</p>
+</section>
+
+<!-- ======================= Frames 4 and 5: the card ======================= -->
+<section class="mk-frame" aria-label="Frames 4 and 5, the sign-in card">
+  <div class="wrap mk-label"><p class="eyebrow">Frames 4 and 5 · The sign-in card at <code>/app</code>, drawn over the app</p><p class="eyebrow">Same card, the app's tokens</p></div>
+  <div class="wrap cards">
+    <div id="f4"><div class="cell">
+    <p class="eyebrow cell-l">Frame 4 · After Create an account <span class="key">Key moment</span></p>
+    <p class="url">go-bag.example/app?start=new</p>
+    <div class="stage"><div class="panel gb-card"><svg class="case" viewBox="0 0 64 64" width="40" height="40" aria-hidden="true"><g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg>
+      <h2>Create your household</h2>
+      <p class="muted">Enter your email and we'll send you a link. Opening it creates your household. No password.</p>
+      <label class="f">Email
+        <input type="email" value="maria.delacruz-whitfield@family-mail.example.org" autocomplete="email"></label>
+      <button class="btn full" type="button">Email me a link</button>
+      
+      <p class="small muted">Already have an account? The same link logs you in.</p></div></div>
+  </div></div>
+    <div id="f4b"><div class="cell">
+    <p class="eyebrow cell-l">Frame 4b · After Log in</p>
+    <p class="url">go-bag.example/app?start=login</p>
+    <div class="stage"><div class="panel gb-card"><svg class="case" viewBox="0 0 64 64" width="40" height="40" aria-hidden="true"><g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg>
+      <h2>Log in</h2>
+      <p class="muted">Enter the email you signed up with and we'll send you a link.</p>
+      <label class="f">Email
+        <input type="email" value="alex@example.com" autocomplete="email"></label>
+      <button class="btn full" type="button">Email me a link</button>
+      
+      <p class="small muted">New here? The same link creates your household.</p></div></div>
+  </div></div>
+    <div class="cell">
+    <p class="eyebrow cell-l">Frame 5 · Sent: the card's second step <span class="key">Key moment</span></p>
+    <p class="url">go-bag.example/app?start=new</p>
+    <div class="stage"><div class="panel gb-card"><svg class="case" viewBox="0 0 64 64" width="40" height="40" aria-hidden="true"><g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg>
+      <h2>Check your inbox</h2>
+      <div><p>We sent a link to</p><p class="addr">maria.delacruz-whitfield@family-mail.example.org</p></div>
+      <div class="notice mail"><dl>
+        <dt>From</dt><dd><b>Emergency Kit Audit</b> <span class="muted">sign-in@go-bag.example</span></dd>
+        <dt>Subject</dt><dd><b>Your sign-in link for Emergency Kit Audit</b></dd>
+      </dl><p class="muted">The link works once, for one hour.</p></div>
+      <p class="small muted">Nothing after a few minutes? Check spam or Promotions.</p>
+      
+      <div class="row"><button class="btn ghost" type="button" disabled>Send again in 0:42</button>
+        <a href="#f4">Use a different email</a></div>
+      <p class="small muted">You can close this tab. The link opens the app wherever you tap it.</p></div></div>
+  </div>
+  </div>
+</section>
+
+<section class="mk-frame" aria-label="Frame 5, later and failures">
+  <div class="wrap mk-label"><p class="eyebrow">Frame 5, a minute later, and the ways it fails</p><p class="eyebrow">Each drawn as the card</p></div>
+  <div class="wrap cards">
+    <div class="cell">
+    <p class="eyebrow cell-l">5b · 60 seconds on: Send it again opens</p>
+    <p class="url">go-bag.example/app?start=login</p>
+    <div class="stage"><div class="panel gb-card"><svg class="case" viewBox="0 0 64 64" width="40" height="40" aria-hidden="true"><g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg>
+      <h2>Check your inbox</h2>
+      <div><p>We sent a link to</p><p class="addr">alex@example.com</p></div>
+      <div class="notice mail"><dl>
+        <dt>From</dt><dd><b>Emergency Kit Audit</b> <span class="muted">sign-in@go-bag.example</span></dd>
+        <dt>Subject</dt><dd><b>Your sign-in link for Emergency Kit Audit</b></dd>
+      </dl><p class="muted">The link works once, for one hour.</p></div>
+      <p class="small muted">Nothing after a few minutes? Check spam or Promotions.</p>
+      
+      <div class="row"><button class="btn ghost" type="button">Send it again</button>
+        <a href="#f4">Use a different email</a></div>
+      <p class="small muted">You can close this tab. The link opens the app wherever you tap it.</p></div></div>
+  </div>
+    <div class="cell">
+    <p class="eyebrow cell-l">Too many links (Supabase answers 429)</p>
+    <p class="url">go-bag.example/app?start=login</p>
+    <div class="stage"><div class="panel gb-card"><svg class="case" viewBox="0 0 64 64" width="40" height="40" aria-hidden="true"><g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg>
+      <h2>Check your inbox</h2>
+      <div><p>We sent a link to</p><p class="addr">alex@example.com</p></div>
+      <div class="notice mail"><dl>
+        <dt>From</dt><dd><b>Emergency Kit Audit</b> <span class="muted">sign-in@go-bag.example</span></dd>
+        <dt>Subject</dt><dd><b>Your sign-in link for Emergency Kit Audit</b></dd>
+      </dl><p class="muted">The link works once, for one hour.</p></div>
+      <p class="small muted">Nothing after a few minutes? Check spam or Promotions.</p>
+      <p class="small bad-msg" role="alert">You've asked for several links in a short time. Wait 5 minutes, then send again.</p>
+      <div class="row"><button class="btn ghost" type="button" disabled>Send again in 4:59</button>
+        <a href="#f4">Use a different email</a></div>
+      <p class="small muted">You can close this tab. The link opens the app wherever you tap it.</p></div></div>
+  </div>
+    <div class="cell">
+    <p class="eyebrow cell-l">Not a whole address</p>
+    <p class="url">go-bag.example/app?start=new</p>
+    <div class="stage"><div class="panel gb-card"><svg class="case" viewBox="0 0 64 64" width="40" height="40" aria-hidden="true"><g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg>
+      <h2>Create your household</h2>
+      <p class="muted">Enter your email and we'll send you a link. Opening it creates your household. No password.</p>
+      <label class="f">Email
+        <input type="email" value="maria@gmail" aria-invalid="true" class="bad" autocomplete="email"></label><p class="small bad-msg" role="alert">Enter a full email address, like alex@example.com</p>
+      <button class="btn full" type="button">Email me a link</button>
+      
+      <p class="small muted">Already have an account? The same link logs you in.</p></div></div>
+  </div>
+    <div class="cell">
+    <p class="eyebrow cell-l">The send failed</p>
+    <p class="url">go-bag.example/app?start=login</p>
+    <div class="stage"><div class="panel gb-card"><svg class="case" viewBox="0 0 64 64" width="40" height="40" aria-hidden="true"><g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg>
+      <h2>Log in</h2>
+      <p class="muted">Enter the email you signed up with and we'll send you a link.</p>
+      <label class="f">Email
+        <input type="email" value="alex@example.com" autocomplete="email"></label>
+      <button class="btn full" type="button">Email me a link</button>
+      <p class="small bad-msg" role="alert">Couldn't send the link. Check your connection and try again.</p>
+      <p class="small muted">New here? The same link creates your household.</p></div></div>
+  </div>
+    <div class="cell">
+    <p class="eyebrow cell-l">Expired or already used link</p>
+    <p class="url">go-bag.example/app?error_code=otp_expired</p>
+    <div class="stage"><div class="panel gb-card"><svg class="case" viewBox="0 0 64 64" width="40" height="40" aria-hidden="true"><g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg>
+      <h2>That link has expired</h2>
+      <p class="muted">Links work once, for an hour. A link can also be used up if your email app opened it first. Send yourself a new one.</p>
+      <label class="f">Email
+        <input type="email" placeholder="you@example.com" autocomplete="email"></label>
+      <button class="btn full" type="button">Email me a new link</button>
+      <p class="small muted">New here or coming back, the same link works.</p></div></div>
+  </div>
+    <div class="cell">
+      <p class="eyebrow cell-l">Opened on another device</p>
+      <div class="panel" style="display:grid;gap:8px">
+        <p>Asked on the laptop, tapped on the phone: the phone opens <code class="small">/app</code> signed in. The laptop tab stays on "Check your inbox", which already says the link opens the app wherever it is tapped.</p>
+        <p class="small muted">Logging in on the laptop later is the same two steps with the same email.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Frame 6: the inbox (outside) ======================= -->
+<section class="mk-frame" aria-label="Frame 6, the inbox">
+  <div class="wrap mk-label"><p class="eyebrow">Frame 6 · Inbox (outside)</p><p class="eyebrow">Supabase's template, new words set in its dashboard: no code</p></div>
+  <div class="wrap outside">
+    <div class="inbox" aria-label="An inbox">
+      <div class="ir new"><span>Emergency Kit Audit</span><span>Your sign-in link for Emergency Kit Audit</span><span class="mono">9:41 PM</span></div>
+      <div class="ir"><span>Springfield Utilities</span><span>Your November statement is ready</span><span class="mono">6:02 PM</span></div>
+      <div class="ir"><span>Lincoln Elementary</span><span>Field trip form due Friday</span><span class="mono">2:15 PM</span></div>
+    </div>
+    <div class="mail-open">
+      <div class="hdr"><b>Your sign-in link for Emergency Kit Audit</b><span class="muted">Emergency Kit Audit &lt;sign-in@go-bag.example&gt; to maria.delacruz-whitfield@family-mail.example.org</span></div>
+      <p>Here's your link to Emergency Kit Audit.</p>
+      <p><span class="btn">Open Emergency Kit Audit</span></p>
+      <p class="small muted">This link works once and expires in an hour. If you didn't ask for it, ignore this email.</p>
+    </div>
+  </div>
+  <p class="wrap mk-note">Until the sending domain is verified (decision 8) this can land in spam or Promotions, which is why frame 5 names the sender and the subject.</p>
+</section>
+
+<!-- ======================= Frames 7, 1 and 9 ======================= -->
+<section class="mk-frame" aria-label="Frames 7, 1 and 9">
+  <div class="wrap mk-label"><p class="eyebrow">Frame 7 · Arrival, and the frames around it</p></div>
+  <div class="wrap notes">
+    <div class="panel"><p class="eyebrow">Frame 7 · Back at <code>/app</code></p><p>Opens <code class="small">/app</code>: the app's own first run ("Set up in 4 quick steps"), unchanged.</p><p class="small muted">A family member lands in the family household with everything in it.</p></div>
+    <div class="panel"><p class="eyebrow">Frame 1 · A nudge (outside)</p>
+      <div class="notif"><div class="meta"><span>Messages · Jamie</span><span>8:57 PM</span></div><p>we finally checked our go-bags with this, ours was at 30% go-bag.example</p></div>
+      <p class="small muted">Most arrive on a phone, from a text: the landing is built phone-first.</p></div>
+    <div class="panel"><p class="eyebrow">Frame 9 · Next week</p><p>Same browser: <code class="small">/</code> goes straight to <code class="small">/app</code>.</p><p class="small muted">New phone: Log in, the same email, a new link, the same household and its kits.</p></div>
+  </div>
+</section>
+
+</body>
+</html>
