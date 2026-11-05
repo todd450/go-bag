@@ -11,7 +11,8 @@ const scenarios = ["tests/household", ...fs.readdirSync(path.join(ROOT, "fixture
   .filter(f => f.endsWith(".json")).map(f => path.join("fixtures", f.slice(0, -5)))];
 
 const unesc = s => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
-const text = html => unesc(html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")).trim();
+// A soft hyphen (U+00AD) and <wbr> are only places a label may break, so text leaves them out
+const text = html => unesc(html.replace(/<wbr>/g, "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").replace(/\u00ad/g, "")).trim();
 const kitHtml = (run, id) => run(`S.view = "kits"; S.openKit = ${JSON.stringify(id)}; viewKits(model())`);
 const pick = (body, re) => text((body.match(re) || ["", ""])[1]);
 
@@ -195,6 +196,41 @@ test("with two people on daily medication, tapping one prescriptions tile leaves
   assert.equal(now.filter(t => /On your list/.test(t.all)).length, 1);
 });
 
+test("with several people on daily medication, every prescriptions tap adds the tile tapped and flips that tile", () => {
+  const cases = [["tests/household", `S.items = S.items.filter(i => i.category !== "medications"); S.profile.members[0].conditions = ["meds"]`],
+    ["fixtures/empty-and-one/big-household", ""]];
+  for (const [fixture, setup] of cases) {
+    const app = load({ fixture });
+    if (setup) app.run(setup);
+    for (const kit of app.json("S.kits.map(k => k.id)")) {
+      const rx = () => dashed(kitHtml(app.run, kit)).filter(t => /^Prescriptions \(\d+ of \d+\)$/.test(t.name));
+      if (rx().length < 2) continue;
+      app.run("S.shopping = { items: [] }");
+      for (let taps = 0; ; taps++) {
+        const now = rx(), listed = now.filter(t => /On your list/.test(t.all)).map(t => t.name);
+        const t = now.find(t => t.button);
+        if (!t) {
+          assert.equal(listed.length, now.length, `${fixture} ${kit}: every prescriptions tile ends up on the list`);
+          assert.ok(taps >= 2, `${fixture} ${kit}: tapped more than one`);
+          break;
+        }
+        // Every tile that can be tapped flips itself, so try each one, last first
+        for (const b of now.filter(x => x.button).reverse()) {
+          const where = `${fixture} ${kit} ${b.name}`;
+          app.run(`globalThis.SAVED = S.shopping; ACT.shopAdd(${JSON.stringify({ dataset: b.button.dataset })})`);
+          assert.equal(app.json("shopItems().at(-1).name"), b.name, `${where}: the new line is the tile tapped`);
+          const after = rx(), me = after.find(x => x.name === b.name);
+          assert.match(me.all, /On your list/, `${where}: the tile tapped reads On your list`);
+          assert.equal(me.button, null, `${where}: and has no button`);
+          for (const n of listed) assert.match(after.find(x => x.name === n).all, /On your list/, `${where}: ${n} stays on the list`);
+          app.run("S.shopping = SAVED");
+        }
+        app.run(`ACT.shopAdd(${JSON.stringify({ dataset: t.button.dataset })})`);
+      }
+    }
+  }
+});
+
 test("a missing essential that is no household gap shows no add", () => {
   const app = load({ fixture: "tests/household" });
   // Every gap the household has for fire safety is covered: the home kit's fire blanket counts nowhere else
@@ -270,4 +306,53 @@ test("at 390px kits with many missing essentials don't scroll sideways and keep 
     }
   }
   assert.ok(n > 0, "dashed tiles were measured");
+});
+
+test("at 390px every dashed tile shows its whole label, breaking inside a word only when the word is wider than the tile", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
+  const fixtures = ["tests/household", "fixtures/phone-width/long-essentials", "fixtures/empty-and-one/big-household"];
+  const seen = atPhoneWidth(fixtures, () => {
+    const out = [];
+    for (const k of S.kits) {
+      S.view = "kits"; S.openKit = k.id; render();
+      for (const n of document.querySelectorAll("#v-kits .fl-tile.miss .fl-name")) {
+        // Each letter of the label, across its text nodes, with the line it sits on. A label may break at a space, after
+        // a hyphen or soft hyphen, and where a <wbr> splits its text: each piece between those that fits on a line stays whole.
+        const r = document.createRange(), pieces = [[]], probe = document.createElement("span");
+        for (const t of [...n.childNodes].filter(c => c.nodeType === 3)) {
+          if (pieces.at(-1).length) pieces.push([]);
+          for (let i = 0; i < t.length; i++) {
+            r.setStart(t, i); r.setEnd(t, i + 1);
+            const ch = t.data[i];
+            if (/\s/.test(ch)) { if (pieces.at(-1).length) pieces.push([]); continue; }
+            // A letter just after a line break also reports an empty box at the end of the line before: take its own box
+            const box = [...r.getClientRects()].filter(b => b.width > 0).at(-1) || r.getBoundingClientRect();
+            pieces.at(-1).push([ch, Math.round(box.top)]);
+            if (ch === "-" || ch === "\u00ad") pieces.push([]);
+          }
+        }
+        const label = n.textContent.replace(/\u00ad/g, "");
+        probe.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap";
+        n.appendChild(probe);
+        const split = [];
+        for (const p of pieces.filter(p => p.length)) {
+          probe.textContent = p.map(c => c[0]).join("").replace(/\u00ad/g, "");
+          if (probe.getBoundingClientRect().width <= n.clientWidth && new Set(p.map(c => c[1])).size > 1) split.push(probe.textContent);
+        }
+        probe.remove();
+        out.push({ where: `${k.name}: ${label}`, clipped: n.scrollHeight > n.clientHeight + 1 || n.scrollWidth > n.clientWidth + 1, split });
+      }
+    }
+    return out;
+  });
+  let n = 0;
+  for (const f of fixtures) {
+    const names = seen.get(f);
+    assert.ok(names && names.length, `${f}: no dashed tiles measured`);
+    for (const x of names) {
+      assert.ok(!x.clipped, `${f}, ${x.where}: the label is cut off`);
+      assert.deepEqual(x.split, [], `${f}, ${x.where}: a word that fits on a line breaks between letters`);
+      n++;
+    }
+  }
+  assert.ok(n > 40, "dashed tiles were measured");
 });
