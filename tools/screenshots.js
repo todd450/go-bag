@@ -54,11 +54,16 @@ async function openChrome(chrome) {
   const send = (method, params) => call(method, params, sessionId);
   const once = method => new Promise(ok => { const w = m => (m.method === method ? ok(m) : events.push(w)); events.push(w); });
   const close = async () => {
+    // Browser.close shuts down Chrome's helper processes too: on Linux a plain kill can leave them writing to
+    // the profile after the main process exits, and the folder then won't delete (ENOTEMPTY).
+    const exited = proc.exitCode !== null || proc.signalCode !== null ? Promise.resolve() : new Promise(ok => proc.once("exit", ok));
+    await Promise.race([call("Browser.close").catch(() => {}), sleep(2000)]);
     ws.close();
-    const exited = new Promise(ok => proc.once("exit", ok));
+    await Promise.race([exited, sleep(5000)]);
     proc.kill();
-    await exited; // Chrome writes to its profile until it exits
-    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5 });
+    await exited;
+    // A leftover temp folder is harmless, so cleaning it up never fails a test.
+    try { fs.rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); } catch (_) {}
   };
   await send("Page.enable");
   return { send, once, close };
