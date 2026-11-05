@@ -25,6 +25,15 @@
   --good: #1F7A4A;
   --warn: #A86A12;
   --bad: #C1281B;
+  /* The bag's band colours, one per zone of ZONES */
+  --zone-0: light-dark(#2A78D6, #3987E5);
+  --zone-1: light-dark(#EB6834, #D95926);
+  --zone-2: light-dark(#1BAF7A, #199E70);
+  --zone-3: light-dark(#EDA100, #C98500);
+  --zone-4: light-dark(#E87BA4, #D55181);
+  --zone-5: light-dark(#008300, #008300);
+  --zone-6: light-dark(#6250D6, #9085E9);
+  --zone-7: var(--ink-2);
   --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px rgba(0, 0, 0, .04);
   --f-display: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -273,11 +282,18 @@ tr.addrow td { background: var(--paper); }
 @keyframes pulse { 50% { opacity: .25; } }
 @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
 
-.pack-ms { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 28px; }
-.pack-m { display: grid; gap: 6px; }
+/* The bag: its outline up to the rim, and its bands stacked from the bottom */
+.bag { position: relative; width: min(100%, 320px); margin: 26px auto 0; }
+.bag-body, .bag-body::before { position: absolute; border: 2px solid var(--ink-2); }
+.bag-body { inset: auto 0 0; border-radius: 12px 12px 22px 22px; }
+.bag-body::before { content: ""; inset: auto 34% 100%; height: 13px; border-bottom: 0; border-radius: 10px 10px 0 0; }
+.bag-st { position: absolute; inset: 4px 5px 5px; display: flex; flex-direction: column-reverse; overflow: hidden; border-radius: 4px 4px 16px 16px; font-size: .75rem; }
+.bag-b { flex: none; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 0 8px; border-top: 2px solid var(--card); background: color-mix(in srgb, var(--c, var(--rule-2)) 40%, var(--card)); white-space: nowrap; }
+.bag-free { flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; background: repeating-linear-gradient(135deg, var(--rule) 0 2px, transparent 0 8px); color: var(--ink-2); }
+.bag-over { position: absolute; inset: 0 0 auto; border: 2px dashed var(--bad); border-bottom: 0; background: color-mix(in srgb, var(--bad) 22%, transparent); color: var(--bad); font-weight: 600; text-align: center; }
+.bag-over span { position: absolute; inset: auto 0 100%; }
 .pack-lim { display: inline-flex; align-items: center; gap: 6px; }
 .pack-lim input { width: 72px; }
-.pack-over { color: var(--bad); font-weight: 600; }
 .pack-l { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: .88rem; }
 
 /* Household */
@@ -741,7 +757,7 @@ const S = {
   listKit: null, // the kit whose Contents panel shows List; any other kit shows Flat-lay. Memory only: never saved
   flOpen: null, // the item whose flat-lay tile shows its fields, cleared when a kit is opened. Memory only
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
-  scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, tag: null, tagNoteOff: false,
+  scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, bagM: null, tag: null, tagNoteOff: false,
   add: { cat: "water", ess: "" }, // the add-by-hand row's Category and Essential, so every redraw shows the two together
 };
 let db = null, assets = null, sample = null;
@@ -1362,7 +1378,7 @@ const PACK = {
 const WATER_G = 1040, WATER_ML = 1100, FOOD_KCAL_G = 2.5, BAR_KCAL_G = 4.8, BAR_KCAL = 3600;
 /* An item's weight and size for the whole line and per unit; `est` when either is a guess. */
 function itemLoad(it) {
-  const c = CATS[it.category] ? it.category : "other", q = Math.max(1, num(it.qty)), p = PACK[c] || PACK.other;
+  const c = Object.hasOwn(CATS, it.category) ? it.category : "other", q = Math.max(1, num(it.qty)), p = Object.hasOwn(PACK, c) ? PACK[c] : PACK.other;
   const L = c === "water" ? num(it.liters) : 0, kc = c === "food" ? num(it.kcal) : 0;
   const estG = L ? L * WATER_G : kc ? kc / FOOD_KCAL_G : p.g * q;
   const estMl = L ? L * WATER_ML : kc ? kc / FOOD_KCAL_G * 1.6 : p.ml * q;
@@ -1714,6 +1730,16 @@ const lbText = g => f1(g / LB_G);
 const lb1 = g => Math.round(g / LB_G * 10) / 10;
 const gOfLb = lb => Math.round(num(lb) * LB_G);
 const kgOfLb = lb => Math.round(num(lb) / KG_LB * 100) / 100;
+/* The bag by weight (m "g") or space: bands under 18px merge into one, and a load over the limit rises above the rim */
+function bagFig(P, lim, m) {
+  const w = m === "g", k = w ? LB_G : 1e3, u = w ? " lb" : " L", max = (w ? lim.kg : lim.L) * 1e3, have = w ? P.g : P.ml;
+  const r = Math.max(1, have / max), tall = Math.round(240 * Math.min(r, 1.5)), px = tall / max / r, body = Math.round(max * px);
+  const xs = P.lines.map(l => [w ? l.g : l.ml, l.it]).sort((a, b) => b[0] - a[0]), sm = xs.filter(x => x[0] * px < 18), n = sm.length > 1 && sm.length;
+  const band = ([v, it]) => `<div class="bag-b" data-v="${Math.round(v)}" ${it ? `data-id="${esc(it.id)}" style="--c:var(--zone-${ZONES.indexOf(zoneOf(it.category))});` : `data-n="${n}" style="`}height:${Math.max(18, Math.round(v * px))}px"><span class="ell">${it ? esc(String(it.name ?? "").trim() || catLabel(it.category)) : n + " small items"}</span>${f1(v / k) + u}</div>`;
+  return `<div class="bag${r > 1 ? " over" : ""}" role="img" aria-label="${f1(have / k)} of ${f1(max / k) + u} packed" style="height:${tall}px"><div class="bag-body" style="height:${body}px"></div>
+    <div class="bag-st">${(n ? xs.filter(x => !sm.includes(x)).concat([[sm.reduce((a, x) => a + x[0], 0)]]) : xs).map(band).join("")}${r > 1 ? "" : `<div class="bag-free">${f1((max - have) / k) + u + (w ? " to spare" : " free")}</div>`}</div>
+    ${r > 1 ? `<div class="bag-over" style="height:${tall - body}px"><span>${f1((have - max) / k) + u} over</span></div>` : ""}</div>`;
+}
 function packPanel(kit, ready) {
   const lim = kitLimits(kit, ready.h);
   if (!lim || !S.items.some(i => i.kitId === kit.id)) return "";
@@ -1722,13 +1748,8 @@ function packPanel(kit, ready) {
   // The carry limit is saved in kg and typed in pounds; bag size is litres both ways
   const shown = f => f === "carryKg" ? Math.round(num(kit[f]) * KG_LB) : num(kit[f]);
   const input = (f, sugg, unit, label) => S.canWrite ? `<label class="small muted pack-lim">${label}<input type="number" min="0" step="${f === "carryKg" ? 1 : 0.5}" id="pk-${f}-${esc(kit.id)}" value="${shown(f) || ""}" placeholder="${sugg}" data-change="packLim" data-id="${esc(kit.id)}" data-f="${f}" aria-label="${label} in ${unit}">${unit}</label>` : "";
-  const meter = (label, have, max, unit, field, sugg, fieldLabel) => {
-    const over = max != null && have > max;
-    return `<div class="pack-m">
-      <div class="row" style="justify-content:space-between"><span><b>${label}</b> <span class="mono ${over ? "pack-over" : ""}">${f1(have)}${max != null ? ` of ${f1(max)}` : ""} ${unit}</span></span>${field ? input(field, sugg, unit, fieldLabel) : ""}</div>
-      ${max != null ? `<div class="bar" style="--c:${over ? "var(--bad)" : "var(--good)"}" role="img" aria-label="${label}: ${f1(have)} of ${f1(max)} ${unit}"><span style="width:${Math.min(100, Math.round(100 * have / max))}%"></span></div>` : ""}
-    </div>`;
-  };
+  const m = lim.kg && S.bagM?.id === kit.id ? S.bagM.m : lim.kg && P.g / lim.kg > P.ml / lim.L ? "g" : "ml";
+  const seg = (v, label) => `<button type="button" data-act="bagM" data-id="${esc(kit.id)}" data-m="${v}" aria-pressed="${m === v}">${label}</button>`;
   const li = (it, what, note) => `<li><b>${esc(it.name)}</b> <span>${what}</span>${note ? ` <span class="muted">· ${note}</span>` : ""}</li>`;
   const go = kit.type === "go";
   const notes = [];
@@ -1740,10 +1761,9 @@ function packPanel(kit, ready) {
       <span class="small muted">${P.estN ? `${P.estN} of ${P.lines.length} item${P.lines.length === 1 ? "" : "s"} estimated` : "Every item has its own weight and size"}${P.estN && sample && S.canWrite ? ` <button class="btn ghost sm" data-act="packEstimate" data-id="${esc(kit.id)}" ${est?.state === "working" ? "disabled" : ""}>${est?.state === "working" ? "Estimating…" : "Estimate with Claude"}</button>` : ""}</span>
     </div>
     ${est?.state === "error" ? `<p class="small" style="color:var(--bad)">${esc(est.msg)}</p>` : ""}
-    <div class="pack-ms">
-      ${meter("Weight", P.g / LB_G, lim.kg ? lim.kg * KG_LB : null, "lb", go ? "carryKg" : "", lim.suggestedKg ? Math.round(lim.suggestedKg * KG_LB) : "", "Carry limit")}
-      ${meter("Space", P.ml / 1000, lim.L, "L", "bagL", lim.suggestedL, go ? "Bag size" : "Trunk space")}
-    </div>
+    <div class="row" style="justify-content:space-between">${lim.kg ? `<div class="seg" role="group" aria-label="Show the bag by">${seg("ml", "Space")}${seg("g", "Weight")}</div>` : "<b>Space</b>"}
+      <span class="row">${go ? input("carryKg", lim.suggestedKg ? Math.round(lim.suggestedKg * KG_LB) : "", "lb", "Carry limit") : ""}${input("bagL", lim.suggestedL, "L", go ? "Bag size" : "Trunk space")}</span></div>
+    ${bagFig(P, lim, m)}
     <p class="small muted">${go ? (lim.suggestedKg ? `Suggested carry limit ${Math.round(lim.suggestedKg * KG_LB)} lb, about what ${esc(lim.carrier)} can carry (a fifth of body weight for an adult, less for children and seniors). ` : "") + `Suggested bag ${lim.suggestedL} L, a typical hiking pack.` : `Suggested ${lim.suggestedL} L, a typical trunk bin.`}</p>
     ${notes.map(n => `<p class="small">${n}</p>`).join("")}
     ${P.best ? `<div class="stack"><b>Best pack within your limits</b>
@@ -2592,11 +2612,12 @@ const ACT = {
   tab: b => { S.view = b.dataset.v; try { history.replaceState(null, "", "#" + S.view); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   addKit: () => { S.addKit = true; render(); $("#nk-name")?.focus(); },
   cancelKit: () => { S.addKit = false; render(); $(".add-kit")?.focus(); },
-  openKit: b => { if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.confirm = null; S.listKit = S.flOpen = null; render(); },
-  gotoKit: b => { S.view = "kits"; if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.listKit = S.flOpen = null; try { history.replaceState(null, "", "#kits"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
+  openKit: b => { if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.confirm = null; S.listKit = S.flOpen = S.bagM = null; render(); },
+  gotoKit: b => { S.view = "kits"; if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.listKit = S.flOpen = S.bagM = null; try { history.replaceState(null, "", "#kits"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   removeSel: () => removeItems([...S.sel]),
   clearSel: () => { S.sel.clear(); render(); },
   sortItems: b => { S.itemSort = b.dataset.k; render(); },
+  bagM: b => { S.bagM = { id: b.dataset.id, m: b.dataset.m }; render(); },
   kitView: b => { S.listKit = b.dataset.v === "list" ? S.openKit : null; render(); },
   flEdit: b => { S.flOpen = S.flOpen === b.dataset.id ? null : b.dataset.id; render(); document.getElementById(b.id)?.focus(); },
   flAdd: () => { S.listKit = S.openKit; render(); $("#add-name")?.focus(); },
