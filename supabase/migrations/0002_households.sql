@@ -4,10 +4,12 @@
 -- join the family household on their first sign-in.
 -- Realtime, Storage and api/ are left as they are here: #72, #74 and #75 change them.
 --
--- DO NOT APPLY THIS TO PROJECT go-bag ON ITS OWN. Apply it in the same step as #72, #74 and #75,
--- or only while Supabase Auth's "Allow new users to sign up" is off for the project until all
--- three are live. Why: after this migration is_member() means "has a household", and any account
--- that signs in gets one by calling rpc('my_household'). Until those three land, that account:
+-- DO NOT APPLY THIS TO PROJECT go-bag ON ITS OWN. Apply it only in the same step as #72, #74 and
+-- #75. Turning off "Allow new users to sign up" is no substitute: it stops only new accounts, and
+-- today's sign-in form (web/runtime.js) has already made an account for every address ever typed
+-- into it, listed or not.
+-- Why: after this migration is_member() means "has a household", and any account that signs in
+-- gets one by calling rpc('my_household'). Until those three land, that account:
 --   - passes 0001's photos bucket policies, so it can list and read the family's photos (#74)
 --   - passes api/_member.mjs, so api/sample.mjs spends the Anthropic key for it (#75)
 --   - receives the family's Realtime DELETE events, which RLS does not filter, and today's
