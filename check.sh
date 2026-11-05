@@ -19,8 +19,8 @@ node --check "$tmp/app.js"
 # Raised to 76,000 on 4 Nov 2026 by the founder's choice, for the flat-lay and bag-fill work (#59).
 # Raised to 77,000 on 5 Nov 2026 by the founder's choice (#64): the filled bag took the page to about
 # 76.4 KB, with no dead code left in scope to remove.
-# CI's Linux gzip reads a little more than macOS gzip for the same page (about 90 bytes on 5 Nov 2026,
-# up to 1% before): CI's number counts.
+# CI's Linux gzip and macOS gzip differ for the same page by up to about 1%, either way (CI read 29 bytes
+# less on 5 Nov 2026): CI's number counts.
 budget=77000
 size=$(gzip -9c emergency-kit-audit.html | wc -c | tr -d ' ')
 echo "check: page is $size bytes gzipped, budget $budget"

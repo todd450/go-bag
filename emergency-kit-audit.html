@@ -1733,11 +1733,16 @@ const kgOfLb = lb => Math.round(num(lb) / KG_LB * 100) / 100;
 /* The bag by weight (m "g") or space: bands under 18px merge into one, and a load over the limit rises above the rim */
 function bagFig(P, lim, m) {
   const w = m === "g", k = w ? LB_G : 1e3, u = w ? " lb" : " L", max = (w ? lim.kg : lim.L) * 1e3, have = w ? P.g : P.ml;
-  const r = Math.max(1, have / max), tall = Math.round(240 * Math.min(r, 1.5)), px = tall / max / r, body = Math.round(max * px);
+  // Bands fill the stack, which sits 4px + 5px inside the bag (.bag-st), so a full bag's bands are exactly its height.
+  const r = Math.max(1, have / max), tall = Math.round(240 * Math.min(r, 1.5)), inner = tall - 9, px = inner / max / r, body = Math.round(tall / r);
   const xs = P.lines.map(l => [w ? l.g : l.ml, l.it]).sort((a, b) => b[0] - a[0]), sm = xs.filter(x => x[0] * px < 18), n = sm.length > 1 && sm.length;
-  const band = ([v, it]) => `<div class="bag-b" data-v="${Math.round(v)}" ${it ? `data-id="${esc(it.id)}" style="--c:var(--zone-${ZONES.indexOf(zoneOf(it.category))});` : `data-n="${n}" style="`}height:${Math.max(18, Math.round(v * px))}px"><span class="ell">${it ? esc(String(it.name ?? "").trim() || catLabel(it.category)) : n + " small items"}</span>${f1(v / k) + u}</div>`;
+  const rows = n ? xs.filter(x => !sm.includes(x)).concat([[sm.reduce((a, x) => a + x[0], 0)]]) : xs;
+  // A band is at least 18px to fit its label; whatever that adds past the stack comes off the biggest band, at the bottom.
+  const hs = rows.map(([v]) => Math.max(18, Math.round(v * px))), extra = hs.reduce((a, h) => a + h, 0) - inner;
+  if (extra > 0 && hs.length) hs[0] = Math.max(18, hs[0] - extra);
+  const band = ([v, it], i) => `<div class="bag-b" data-v="${Math.round(v)}" ${it ? `data-id="${esc(it.id)}" style="--c:var(--zone-${ZONES.indexOf(zoneOf(it.category))});` : `data-n="${n}" style="`}height:${hs[i]}px"><span class="ell">${it ? esc(String(it.name ?? "").trim() || catLabel(it.category)) : n + " small items"}</span>${f1(v / k) + u}</div>`;
   return `<div class="bag${r > 1 ? " over" : ""}" role="img" aria-label="${f1(have / k)} of ${f1(max / k) + u} packed" style="height:${tall}px"><div class="bag-body" style="height:${body}px"></div>
-    <div class="bag-st">${(n ? xs.filter(x => !sm.includes(x)).concat([[sm.reduce((a, x) => a + x[0], 0)]]) : xs).map(band).join("")}${r > 1 ? "" : `<div class="bag-free">${f1((max - have) / k) + u + (w ? " to spare" : " free")}</div>`}</div>
+    <div class="bag-st">${rows.map(band).join("")}${r > 1 ? "" : `<div class="bag-free">${f1((max - have) / k) + u + (w ? " to spare" : " free")}</div>`}</div>
     ${r > 1 ? `<div class="bag-over" style="height:${tall - body}px"><span>${f1((have - max) / k) + u} over</span></div>` : ""}</div>`;
 }
 function packPanel(kit, ready) {

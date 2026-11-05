@@ -122,6 +122,21 @@ test("a go-bag over its carry limit rises above the rim in the over class; one t
   assert.match(b.free || "", /^[\d.,]+ L free$/);
 });
 
+test("a full or over bag's bands fill its stack exactly, so no band is cut off at the top", () => {
+  const app = load({ fixture: "tests/household" });
+  const sum = b => b.bands.reduce((a, x) => a + x.h, 0);
+  // 38.5 L of shelter fills the 40 L bag, with the household's 3 small items merged into one band above it
+  app.run(`S.items.push({ id: "s1", kitId: "go", name: "Sleeping bags", category: "shelter", qty: 1, grams: 3000, ml: 38500 })`);
+  let b = bag((h => (press(app, h, "Space"), kitsTab(app)))(open(app, "go")));
+  assert.ok(b.bands.every(x => x.h >= 18), "every band is tall enough for its label");
+  assert.ok(sum(b) <= b.h - 9, `bands ${sum(b)}px fit the ${b.h - 9}px stack`);
+  // Over the limit, the bands are the whole stack, rim and over band included
+  app.run(`S.items.push({ id: "s2", kitId: "go", name: "Tent", category: "shelter", qty: 1, grams: 2500, ml: 12000 })`);
+  b = bag((h => (press(app, h, "Space"), kitsTab(app)))(open(app, "go")));
+  assert.ok(b.cls.includes("over"));
+  assert.ok(Math.abs(sum(b) - (b.h - 9)) <= b.bands.length, `bands ${sum(b)}px fill the ${b.h - 9}px stack`);
+});
+
 test("a car kit shows Space only; a go-bag opens on its fuller measure, and nothing remembers the choice", () => {
   const app = load({ fixture: "tests/household" });
   let car = open(app, "car");
@@ -146,13 +161,11 @@ test("a car kit shows Space only; a go-bag opens on its fuller measure, and noth
   open(app, "car");
   assert.deepEqual(pressed(open(app, "go")), ["Weight"]);
   // A go-bag with no carry limit (nobody can carry) shows Space only
-  app.run(`S.profile.members = S.profile.members.map(m => ({ ...m, conditions: [], age: 2, birthYear: undefined })); delete S.kits.find(k => k.id === "go").carryKg;`);
-  const P = plan(app, "go");
-  if (P.lim.kg == null) {
-    go = open(app, "go");
-    assert.deepEqual(toggle(go).filter(b => b.dataset.act), [], "no Weight button without a carry limit");
-    assert.match(bag(go).label, / L packed$/);
-  }
+  app.run(`S.profile.members = S.profile.members.map(m => ({ ...m, conditions: [], years: 2 })); delete S.kits.find(k => k.id === "go").carryKg;`);
+  assert.equal(plan(app, "go").lim.kg, null, "a household of two-year-olds has no carry limit");
+  go = open(app, "go");
+  assert.deepEqual(toggle(go).filter(b => b.dataset.act), [], "no Weight button without a carry limit");
+  assert.match(bag(go).label, / L packed$/);
   // A fresh load starts on the fuller measure too
   assert.equal(load({ fixture: "tests/household" }).json("S.bagM"), null);
 });
