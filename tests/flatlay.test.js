@@ -102,7 +102,7 @@ test("tiles sort the way the table does by category, then by name", () => {
   }
 });
 
-test("a tile shows ×N only over 1, litres for water, kcal for food, else its note", () => {
+test("a tile shows ×N only over 1 and no second line: its note, litres and kcal stay in its opened fields", () => {
   const app = load({ fixture: "tests/household" });
   app.run(`S.items.push(
     { id: "q1", kitId: "go", name: "Whistle", category: "communication", qty: 1, note: "Orange, on the strap" },
@@ -115,14 +115,12 @@ test("a tile shows ×N only over 1, litres for water, kcal for food, else its no
   assert.equal(t.q2.qty, "×3");
   assert.equal(t.q5.qty, "×12");
   for (const id of ["i4", "q1", "q3", "q4"]) assert.equal(t[id].qty, "", `${id} has no badge`);
-  assert.equal(t.q1.note, "Orange, on the strap");
-  assert.match(t.q2.note, /^2[,.]?400 kcal$/);
-  assert.match(t.q3.note, /^2[.,]5 L$/);
-  assert.equal(t.q5.note, "", "litres and kcal are only for water and food");
-  assert.equal(t.i4.note, "");
+  for (const x of Object.values(t)) assert.equal(x.note, "", `${x.id} has no note line`);
+  assert.doesNotMatch(t.q1.all, /Orange/);
+  assert.doesNotMatch(t.q2.all, /kcal/);
+  assert.doesNotMatch(t.q3.all, /\bL\b/);
   const home = Object.fromEntries(tiles(kitHtml(app.run, "home")).map(x => [x.id, x]));
-  assert.equal(home.i1.note, "15 L");
-  assert.match(home.i2.note, /^3[,.]?600 kcal$/);
+  assert.equal(home.i1.all, "×4 Water jugs");
 });
 
 test("an expired tile is outlined, struck through and dated, and one expiring soon says when", () => {
@@ -141,7 +139,7 @@ test("an expired tile is outlined, struck through and dated, and one expiring so
   }
 });
 
-test("names and notes holding markup render escaped on their tiles", () => {
+test("names holding markup render escaped on their tiles, and a note holding markup never reaches one", () => {
   const app = load({ fixture: "tests/household" });
   const evil = `<img src=x onerror=alert(1)>`;
   app.run(`S.items.push({ id: "x1", kitId: "go", name: ${JSON.stringify(evil)}, category: "tools", note: ${JSON.stringify(evil + '"')} }, { id: "x2\\"><b>", kitId: "go", name: "Id", category: "light" })`);
@@ -149,7 +147,7 @@ test("names and notes holding markup render escaped on their tiles", () => {
   assert.ok(!html.includes(evil) && !html.includes('x2"><b>'));
   const t = Object.fromEntries(tiles(html).map(x => [x.id, x]));
   assert.equal(t.x1.name, evil);
-  assert.equal(t.x1.note, evil + '"');
+  assert.equal(t.x1.note, "");
   assert.ok(t['x2"><b>'], "an id holding markup stays one attribute");
 });
 
@@ -261,7 +259,7 @@ test("an empty kit says so above the photo prompt, and a one-item kit shows one 
   }
   const one = load({ fixture: "fixtures/empty-and-one/one-person" });
   const html = kitHtml(one.run, "k");
-  assert.deepEqual(tiles(html).map(t => [t.id, t.name, t.note]), [["i", "Water bottle", "1 L"]]);
+  assert.deepEqual(tiles(html).map(t => [t.id, t.name, t.note]), [["i", "Water bottle", ""]]);
   assert.doesNotMatch(html, /fl-empty/);
 });
 
@@ -313,7 +311,7 @@ test("at 390px a tile shows its whole kcal note and its ×N badge never touches 
     S.view = "kits"; S.openKit = "home"; render();
     const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
     return [...document.querySelectorAll("#v-kits .fl-tile")].map(t => {
-      const tr = t.getBoundingClientRect(), ic = t.querySelector(".ic").getBoundingClientRect();
+      const tr = t.getBoundingClientRect(), ic = t.querySelector(".fl-top > :first-child").getBoundingClientRect();
       const q = t.querySelector(".fl-q"), note = t.querySelector(".fl-note"), qr = q && q.getBoundingClientRect();
       return {
         id: t.dataset.id, qty: q && q.textContent, note: note && note.textContent,
