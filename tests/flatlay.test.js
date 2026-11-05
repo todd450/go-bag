@@ -14,11 +14,13 @@ const unesc = s => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;
 const text = html => unesc(html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")).trim();
 const kitHtml = (run, id) => run(`S.view = "kits"; S.openKit = ${JSON.stringify(id)}; viewKits(model())`);
 
-// The flat-lay in a piece of HTML: each zone's heading and its tiles, in the order shown.
+// The flat-lay in a piece of HTML: each zone's heading, how many tiles it shows, and its items' tiles in the order
+// shown. A missing essential's dashed tile (`miss`, tests/flatlay-missing.test.js) is no item's tile.
 function zones(html) {
   return [...html.matchAll(/<section class="fl-zone"[^>]*>([\s\S]*?)<\/section>/g)].map(([, z]) => ({
     label: text((z.match(/<h3[^>]*>([\s\S]*?)<\/h3>/) || ["", ""])[1]),
-    tiles: [...z.matchAll(/<li class="fl-tile([^"]*)"([^>]*)>([\s\S]*?)<\/li>/g)].map(([, cls, attrs, body]) => ({
+    n: (z.match(/<li class="fl-tile/g) || []).length,
+    tiles: [...z.matchAll(/<li class="fl-tile((?![^"]*\bmiss\b)[^"]*)"([^>]*)>([\s\S]*?)<\/li>/g)].map(([, cls, attrs, body]) => ({
       id: unesc((attrs.match(/data-id="([^"]*)"/) || ["", ""])[1]), cls: cls.trim().split(/\s+/).filter(Boolean), body,
       name: text((body.match(/<span class="fl-name"[^>]*>([\s\S]*?)<\/span>/) || ["", ""])[1]),
       qty: text((body.match(/<span class="fl-q"[^>]*>([\s\S]*?)<\/span>/) || ["", ""])[1]),
@@ -62,7 +64,7 @@ test("every kit in every scenario shows one tile per item, each in its category'
       const zs = zones(html);
       assert.deepEqual(zs.flatMap(z => z.tiles.map(t => t.id)).sort(), items.map(i => i.id).sort(), `${where}: one tile per item`);
       for (const z of zs) {
-        assert.ok(z.tiles.length, `${where}: ${z.label} has tiles`);
+        assert.ok(z.n, `${where}: ${z.label} has tiles`);
         for (const t of z.tiles) assert.equal(z.label, zoneOf(items.find(i => i.id === t.id).category), `${where}: ${t.id}`);
       }
       const order = zs.map(z => Z.findIndex(x => x.label === z.label));

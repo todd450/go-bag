@@ -413,6 +413,11 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 .fl-tile.soon .fl-exp { color: var(--warn); font-weight: 500; }
 .fl-add { align-items: center; justify-content: center; border-style: dashed; border-color: var(--rule-2); background: var(--card); font: inherit; font-size: .78rem; font-weight: 500; text-align: center; cursor: pointer; }
 .fl-add:hover { border-color: var(--ink); }
+.fl-tile.miss { padding-inline: 3px; border-style: dashed; border-color: var(--rule-2); background: var(--card); color: var(--ink-2); }
+.fl-tile.miss .gain { font-size: .72rem; }
+.fl-tile.miss .fl-name { display: block; -webkit-line-clamp: none; line-clamp: none; overflow: visible; overflow-wrap: break-word; }
+.fl-do { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; margin: -8px -3px -6px; padding: 8px 3px 6px; border: 0; border-radius: 9px; background: none; text-align: left; cursor: pointer; }
+.fl-tile.miss:has(.fl-do):hover { border-color: var(--ink); }
 .kit-ck > div > .ess-blk:first-child { border-top: 0; padding-top: 0; }
 .selbar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border: 1px solid var(--bad); border-radius: 12px; background: color-mix(in srgb, var(--bad) 7%, var(--card)); }
 .selbar b { font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -1850,7 +1855,7 @@ function kitDetail(kit, ready, M = model()) {
       : `<button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button>`) : ""}
   </div>
   ${kitReadyPanel(kit, ready, M)}
-  ${contentsPanel(kit, items, list)}
+  ${contentsPanel(kit, items, list, ready, M)}
   ${kitChecklist(kit, ready, M)}
   ${packPanel(kit, ready)}
   ${photos.length ? `<div class="photos">${photos.map(id => `<img src="/_blob/${esc(id)}" alt="Photo of ${esc(kit.name)}" loading="lazy">`).join("")}</div>` : ""}
@@ -1865,13 +1870,17 @@ function kitDetail(kit, ready, M = model()) {
   </div>` : ""}
   ${draft ? draftTable(draft) : ""}`;
 }
-/* The Contents panel: Flat-lay, one tile per item in the zones of ZONES, or List, the item table (`list`). */
-function contentsPanel(kit, items, list) {
+/* The Contents panel: Flat-lay, one tile per item in the zones of ZONES, then a dashed tile per missing essential
+   (`ready`'s rows, as the checklist shows them), or List, the item table (`list`). */
+function contentsPanel(kit, items, list, ready, M) {
   const seg = (v, label) => `<button type="button" data-act="kitView" data-v="${v}" aria-pressed="${!!list === (v === "list")}">${label}</button>`;
   const byZone = new Map(ZONES.map(z => [z, []]));
-  for (const it of [...items].sort((a, b) => String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name)))) byZone.get(zoneOf(it.category)).push(it);
-  const flat = [...byZone].filter(([, its]) => its.length).map(([z, its]) => `<section class="fl-zone"><h3 class="fl-h">${esc(z.label)}</h3><ul class="fl-grid">${its.map(flTile).join("")}</ul></section>`).join("")
-    || `<p class="fl-empty muted">Nothing in this kit yet.</p>`;
+  for (const it of [...items].sort((a, b) => String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name)))) byZone.get(zoneOf(it.category)).push(flTile(it));
+  const { off } = splitListed(M.gaps), offs = new Set(off), next = new Map();
+  for (const g of off) if (!next.has(gapKey(g))) next.set(gapKey(g), g);
+  for (const row of ready.rows) if (row.ess) for (const e of row.ess) if (!e.have) byZone.get(zoneOf(row.cat)).push(flMiss(M, row.cat, e, offs, next));
+  const flat = (items.length ? "" : `<p class="fl-empty muted">Nothing in this kit yet.</p>`)
+    + [...byZone].filter(([, ts]) => ts.length).map(([z, ts]) => `<section class="fl-zone"><h3 class="fl-h">${esc(z.label)}</h3><ul class="fl-grid">${ts.join("")}</ul></section>`).join("");
   return `<div class="panel stack">
     <div class="row" style="justify-content:space-between"><p class="eyebrow">Contents</p><div class="seg" role="group" aria-label="Show contents as">${seg("flat", "Flat-lay")}${seg("list", "List")}</div></div>
     ${list || flat + (S.canWrite ? `<div class="fl-grid"><button type="button" class="fl-add" data-act="flAdd">+ Add by hand</button></div>` : "")}
@@ -1886,6 +1895,22 @@ function flTile(it) {
   return `<li class="fl-tile${st ? " " + st : ""}" data-id="${esc(it.id)}"><span class="fl-top">${icon(it.category)}${q > 1 ? `<span class="fl-q">×${f1(q)}</span>` : ""}</span>`
     + `<span class="fl-name">${esc(String(it.name ?? "").trim() || catLabel(it.category))}</span>${note ? `<span class="fl-note">${esc(note)}</span>` : ""}`
     + `${st ? `<span class="fl-exp">${st === "expired" ? "Expired" : "Expires"} ${esc(it.expires)}</span>` : ""}</li>`;
+}
+/* A missing essential's dashed tile: its icon, its label and the points adding it adds. While it is the household gap
+   Next steps' Add to list would add (`next`, by gapKey) it is that button; once on the list it says so; with no household
+   gap there is nothing to add. Prescriptions slots share a key and shopAdd adds the first one off the list, so a later
+   slot says which to add first, and every button flips the tile it is on. The two words too wide for a phone tile get a
+   soft hyphen, since browsers don't hyphenate a capitalised word themselves; a name too wide breaks before its 's, and
+   "(1 of 2)" stays on one line. */
+const flWord = s => esc(s).replace(/(prescrip)(tions)|(extin)(guisher)/gi, (_, a, b, c, d) => `${a || c}\u00ad${b || d}`)
+  .replace(/&#39;s\b/g, "<wbr>&#39;s").replace(/\((\d+) of (\d+)\)/g, "($1\u00a0of\u00a0$2)");
+function flMiss(M, cat, e, off, next) {
+  const g = essGap(M, cat, e), gain = gapGain(M, g), first = g && next.get(gapKey(g));
+  const act = !!g && first === g && S.canWrite, before = first && first !== g && S.canWrite && off.has(g);
+  const body = `<span class="fl-top">${icon(cat)}${gain ? `<span class="gain" title="Readiness points adding it adds">+${gain}</span>` : ""}</span><span class="fl-name">${flWord(e.label)}</span>`
+    + (g && !off.has(g) ? `<span class="fl-note">On your list</span>` : act ? `<span class="fl-note">Add to list</span>`
+      : before ? `<span class="fl-note">Add ${esc((first.label.match(/\((\d+ of \d+)\)$/) || [, first.label])[1])} first</span>` : "");
+  return `<li class="fl-tile miss">${act ? `<button type="button" class="fl-do" data-act="shopAdd" data-cat="${esc(cat)}" data-essential="${esc(e.id)}" aria-label="${esc(`Add ${e.label} to your shopping list`)}">${body}</button>` : body}</li>`;
 }
 function catOptions(sel) { return Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${k === sel ? "selected" : ""}>${v[0]}</option>`).join(""); }
 /* An Essential picker's options for category `cat` with `v` chosen: "Pick one…" (left out once tagged, when `blank` is
