@@ -17,8 +17,11 @@ node --check "$tmp/app.js"
 # Raised to 72,000 on 4 Nov 2026 by the founder's choice, for the named essentials work (#29):
 # the Essential picker (#39) took the page to about 70.4 KB.
 # Raised to 76,000 on 4 Nov 2026 by the founder's choice, for the flat-lay and bag-fill work (#59).
-# CI's Linux gzip reads about 1% (some 700 bytes) more than macOS gzip for the same page: CI's number counts.
-budget=76000
+# Raised to 77,000 on 5 Nov 2026 by the founder's choice (#64): the filled bag took the page to about
+# 76.4 KB, with no dead code left in scope to remove.
+# CI's Linux gzip reads a little more than macOS gzip for the same page (about 90 bytes on 5 Nov 2026,
+# up to 1% before): CI's number counts.
+budget=77000
 size=$(gzip -9c emergency-kit-audit.html | wc -c | tr -d ' ')
 echo "check: page is $size bytes gzipped, budget $budget"
 [ "$size" -le "$budget" ] || { echo "check: the page is over its size budget by $((size - budget)) bytes gzipped. Make it smaller, or raise the budget in check.sh in its own line and say why in the PR."; exit 1; }
