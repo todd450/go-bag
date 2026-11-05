@@ -1740,9 +1740,10 @@ function bagFig(P, lim, m) {
   // A band is at least 18px to fit its label; whatever that adds past the stack comes off the biggest band, at the bottom.
   const hs = rows.map(([v]) => Math.max(18, Math.round(v * px))), extra = hs.reduce((a, h) => a + h, 0) - inner;
   if (extra > 0 && hs.length) hs[0] = Math.max(18, hs[0] - extra);
+  // The free band is what's left; under 18px its label would be cut in half, so it shows none (the bag's label has it).
   const band = ([v, it], i) => `<div class="bag-b" data-v="${Math.round(v)}" ${it ? `data-id="${esc(it.id)}" style="--c:var(--zone-${ZONES.indexOf(zoneOf(it.category))});` : `data-n="${n}" style="`}height:${hs[i]}px"><span class="ell">${it ? esc(String(it.name ?? "").trim() || catLabel(it.category)) : n + " small items"}</span>${f1(v / k) + u}</div>`;
   return `<div class="bag${r > 1 ? " over" : ""}" role="img" aria-label="${f1(have / k)} of ${f1(max / k) + u} packed" style="height:${tall}px"><div class="bag-body" style="height:${body}px"></div>
-    <div class="bag-st">${rows.map(band).join("")}${r > 1 ? "" : `<div class="bag-free">${f1((max - have) / k) + u + (w ? " to spare" : " free")}</div>`}</div>
+    <div class="bag-st">${rows.map(band).join("")}${r > 1 ? "" : `<div class="bag-free">${extra <= -18 ? f1((max - have) / k) + u + (w ? " to spare" : " free") : ""}</div>`}</div>
     ${r > 1 ? `<div class="bag-over" style="height:${tall - body}px"><span>${f1((have - max) / k) + u} over</span></div>` : ""}</div>`;
 }
 function packPanel(kit, ready) {

@@ -125,11 +125,15 @@ test("a go-bag over its carry limit rises above the rim in the over class; one t
 test("a full or over bag's bands fill its stack exactly, so no band is cut off at the top", () => {
   const app = load({ fixture: "tests/household" });
   const sum = b => b.bands.reduce((a, x) => a + x.h, 0);
-  // 38.5 L of shelter fills the 40 L bag, with the household's 3 small items merged into one band above it
-  app.run(`S.items.push({ id: "s1", kitId: "go", name: "Sleeping bags", category: "shelter", qty: 1, grams: 3000, ml: 38500 })`);
+  // Shelter tops the household's go-bag up to 38.5 of its 40 L, with its 3 small items merged into one band above
+  const have = plan(app, "go").ml;
+  app.run(`S.items.push({ id: "s1", kitId: "go", name: "Sleeping bags", category: "shelter", qty: 1, grams: 3000, ml: ${38500 - have} })`);
   let b = bag((h => (press(app, h, "Space"), kitsTab(app)))(open(app, "go")));
+  assert.ok(!b.cls.includes("over"), "38.5 L fits the 40 L bag");
   assert.ok(b.bands.every(x => x.h >= 18), "every band is tall enough for its label");
   assert.ok(sum(b) <= b.h - 9, `bands ${sum(b)}px fit the ${b.h - 9}px stack`);
+  assert.equal(b.free, "", "1.5 L free is too thin a band for its label, so it shows none rather than half of one");
+  assert.equal(b.label, "38.5 of 40 L packed", "the bag's label still says how full it is");
   // Over the limit, the bands are the whole stack, rim and over band included
   app.run(`S.items.push({ id: "s2", kitId: "go", name: "Tent", category: "shelter", qty: 1, grams: 2500, ml: 12000 })`);
   b = bag((h => (press(app, h, "Space"), kitsTab(app)))(open(app, "go")));
