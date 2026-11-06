@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-# The whole app is one page with one inline script, published as a claude.ai Artifact.
+# The whole app is one page with one inline script, which Vercel serves as built by tools/build-web.js.
 [ "$(grep -c '<script' emergency-kit-audit.html)" = 1 ] || { echo "check: the page must have exactly one <script>"; exit 1; }
 awk '/<script>/{f=1;next}/<\/script>/{f=0}f' emergency-kit-audit.html > "$tmp/app.js"
 node --check "$tmp/app.js"
