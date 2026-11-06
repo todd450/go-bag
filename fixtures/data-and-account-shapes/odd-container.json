@@ -1,0 +1,177 @@
+{
+  "about": "Containers that did not come from the container card: none saved (null), an array, plain text, a kind the page does not know, an empty weight that is text or negative, a 300-character name, size and rating with markup and quotes in them, and a container on home supplies, which have no limits.",
+  "profile": {
+    "location": "Eugene, OR",
+    "members": [
+      {
+        "label": "Morgan",
+        "years": 44
+      },
+      {
+        "label": "Avery",
+        "years": 15
+      }
+    ],
+    "pets": [],
+    "vehicles": 1,
+    "home": "Apartment"
+  },
+  "hazards": {
+    "assessedAt": 1,
+    "levels": {},
+    "reasons": {}
+  },
+  "kits": [
+    {
+      "id": "c-null",
+      "name": "Null container bag",
+      "type": "go",
+      "createdAt": 1,
+      "container": null
+    },
+    {
+      "id": "c-array",
+      "name": "Array container trunk",
+      "type": "car",
+      "createdAt": 2,
+      "container": [
+        {
+          "kind": "box",
+          "emptyG": 900
+        }
+      ]
+    },
+    {
+      "id": "c-string",
+      "name": "Text container bag",
+      "type": "go",
+      "createdAt": 3,
+      "container": "Highland Tactical Major"
+    },
+    {
+      "id": "c-boat",
+      "name": "Unknown kind bag",
+      "type": "go",
+      "createdAt": 4,
+      "container": {
+        "kind": "boat",
+        "name": "  Dry sack  ",
+        "emptyG": "heavy"
+      }
+    },
+    {
+      "id": "c-neg",
+      "name": "Negative weight duffel",
+      "type": "go",
+      "createdAt": 5,
+      "bagL": 33.25,
+      "container": {
+        "kind": "duffel",
+        "emptyG": -500,
+        "size": "19 × 12.5 × 7.5 in",
+        "rating": "IP65"
+      }
+    },
+    {
+      "id": "c-long",
+      "name": "Long name bag",
+      "type": "go",
+      "createdAt": 6,
+      "container": {
+        "kind": "backpack",
+        "name": "Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pac",
+        "size": "Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pac",
+        "rating": "Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pack <b>Bold</b> \"Quoted\" & more Pac"
+      }
+    },
+    {
+      "id": "c-home",
+      "name": "Home bin with a container",
+      "type": "home",
+      "createdAt": 7,
+      "container": {
+        "kind": "box",
+        "name": "Garage tote",
+        "emptyG": 2000
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": "n1",
+      "kitId": "c-null",
+      "name": "Water bottles",
+      "category": "water",
+      "qty": 6,
+      "liters": 3
+    },
+    {
+      "id": "n2",
+      "kitId": "c-null",
+      "name": "Headlamp",
+      "category": "light",
+      "qty": 1
+    },
+    {
+      "id": "a1",
+      "kitId": "c-array",
+      "name": "Jumper cables",
+      "category": "car",
+      "qty": 1
+    },
+    {
+      "id": "a2",
+      "kitId": "c-array",
+      "name": "Blanket",
+      "category": "shelter",
+      "qty": 2
+    },
+    {
+      "id": "s1",
+      "kitId": "c-string",
+      "name": "First-aid kit",
+      "category": "first_aid",
+      "qty": 1,
+      "grams": 450,
+      "ml": 1800
+    },
+    {
+      "id": "b1",
+      "kitId": "c-boat",
+      "name": "Ration bars",
+      "category": "food",
+      "qty": 3,
+      "kcal": 10800
+    },
+    {
+      "id": "d1",
+      "kitId": "c-neg",
+      "name": "Radio",
+      "category": "communication",
+      "qty": 1
+    },
+    {
+      "id": "d2",
+      "kitId": "c-neg",
+      "name": "Water pouches",
+      "category": "water",
+      "qty": 10,
+      "liters": 1.25
+    },
+    {
+      "id": "l1",
+      "kitId": "c-long",
+      "name": "Rain poncho",
+      "category": "shelter",
+      "qty": 2
+    },
+    {
+      "id": "h1",
+      "kitId": "c-home",
+      "name": "Water jugs",
+      "category": "water",
+      "qty": 4,
+      "liters": 15
+    }
+  ]
+}
