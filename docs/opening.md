@@ -63,9 +63,9 @@ Strangers' sign-in links go out through Resend, on your domain (D6, D8).
 - In Supabase, Authentication → Emails → SMTP Settings, turn on custom SMTP:
   - host `smtp.resend.com`, port `465`, username `resend`, and the Resend key as the password
   - sender address the same as `SENDER_EMAIL` in step 3, such as `sign-in@go-bag.example`
-  - sender name **Emergency Kit Audit**
+  - sender name **Go Bag**
 - In Authentication → Emails → Templates, give both **Magic Link** and **Confirm signup** the
-  subject **Your sign-in link for Emergency Kit Audit**.
+  subject **Your sign-in link for Go Bag**.
 - In Authentication → Sign In / Providers → Email, set the email OTP expiry to **3600** seconds,
   so the sign-in card's "one hour" is true. Check that **Confirm email** is on: the family's
   addresses join the family household only once confirmed.
