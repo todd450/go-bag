@@ -1,0 +1,34 @@
+{
+  "about": "Made-up household whose kits live in bins, at phone width: a car kit in a 50 L camp box packed past its rim, so the over-the-rim band and its label show above the lid; a go-bag in a bin with its empty weight entered, so its grey band sits at the bottom by weight; and a home bin, which has no limits and so no figure.",
+  "profile": {
+    "location": "Flagstaff, AZ",
+    "members": [
+      { "label": "Marisol", "years": 36 },
+      { "label": "Teodoro", "years": 38 },
+      { "label": "Wren", "years": 7 }
+    ],
+    "pets": [],
+    "vehicles": 1,
+    "home": "House"
+  },
+  "hazards": { "assessedAt": 1, "levels": {}, "reasons": {} },
+  "kits": [
+    { "id": "car", "name": "Pickup bed kit", "type": "car", "createdAt": 1, "bagL": 50, "container": { "kind": "box", "name": "Camp box" } },
+    { "id": "go", "name": "Mudroom grab bin", "type": "go", "createdAt": 2, "container": { "kind": "box", "name": "Latching tote", "emptyG": 1600, "size": "20 × 14 × 12 in" } },
+    { "id": "home", "name": "Garage shelf tote", "type": "home", "createdAt": 3, "container": { "kind": "box", "name": "Garage tote", "emptyG": 2000 } }
+  ],
+  "items": [
+    { "id": "c1", "kitId": "car", "name": "Water jugs", "category": "water", "qty": 3, "liters": 15 },
+    { "id": "c2", "kitId": "car", "name": "Wool blankets", "category": "shelter", "qty": 3, "grams": 4500, "ml": 33000 },
+    { "id": "c3", "kitId": "car", "name": "Jumper cables", "category": "car", "qty": 1 },
+    { "id": "c4", "kitId": "car", "name": "Ration bars", "category": "food", "qty": 4, "kcal": 14400 },
+    { "id": "c5", "kitId": "car", "name": "Headlamp", "category": "light", "qty": 1, "grams": 90, "ml": 200 },
+    { "id": "c6", "kitId": "car", "name": "Whistle", "category": "tools", "qty": 1, "grams": 20, "ml": 30 },
+    { "id": "g1", "kitId": "go", "name": "Water pouches", "category": "water", "qty": 8, "liters": 4 },
+    { "id": "g2", "kitId": "go", "name": "First-aid kit", "category": "first_aid", "qty": 1, "grams": 450, "ml": 1800 },
+    { "id": "g3", "kitId": "go", "name": "Rain ponchos", "category": "shelter", "qty": 3 },
+    { "id": "g4", "kitId": "go", "name": "Hand-crank radio", "category": "communication", "qty": 1 },
+    { "id": "g5", "kitId": "go", "name": "Matches", "category": "fire_safety", "qty": 1, "grams": 30, "ml": 60 },
+    { "id": "h1", "kitId": "home", "name": "Water jugs", "category": "water", "qty": 4, "liters": 15 }
+  ]
+}
