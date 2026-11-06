@@ -1,0 +1,929 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Go Bag · Issue #94 · Option B: Cart sheet and an Ordered mark</title>
+<style>
+:root {
+  --paper: #F7F7F7;
+  --card: #FFFFFF;
+  --ink: #222222;
+  --ink-2: #6A6A6A;
+  --rule: #E4E4E4;
+  --rule-2: #C8C8C8;
+  --accent: #222222;
+  --accent-ink: #FFFFFF;
+  --brand: #2B59D9;
+  --brand-track: #CCD8F6;
+  --brand-tint: #E8EEFC;
+  --brand-deep: #1E43AE;
+  --brand-ink: #FFFFFF;
+  --meter: #E0612A;
+  --good: #1F7A4A;
+  --warn: #A86A12;
+  --bad: #C1281B;
+  /* The bag's band colours, one per zone of ZONES */
+  --zone-0: light-dark(#2A78D6, #3987E5);
+  --zone-1: light-dark(#EB6834, #D95926);
+  --zone-2: light-dark(#1BAF7A, #199E70);
+  --zone-3: light-dark(#EDA100, #C98500);
+  --zone-4: light-dark(#E87BA4, #D55181);
+  --zone-5: light-dark(#008300, #008300);
+  --zone-6: light-dark(#6250D6, #9085E9);
+  --zone-7: var(--ink-2);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px rgba(0, 0, 0, .04);
+  --f-display: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121212; --card: #1C1C1C; --ink: #F2F2F2; --ink-2: #A3A3A3; --rule: #2E2E2E; --rule-2: #4A4A4A;
+    --accent: #F2F2F2; --accent-ink: #121212; --brand: #8AA8FF; --brand-track: #28385F; --brand-ink: #121212; --meter: #F07A45;
+    --good: #5BC489; --warn: #E2AE4A; --bad: #F2695C; --shadow: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121212; --card: #1C1C1C; --ink: #F2F2F2; --ink-2: #A3A3A3; --rule: #2E2E2E; --rule-2: #4A4A4A;
+  --accent: #F2F2F2; --accent-ink: #121212; --brand: #8AA8FF; --brand-track: #28385F; --brand-ink: #121212; --meter: #F07A45;
+  --good: #5BC489; --warn: #E2AE4A; --bad: #F2695C; --shadow: none; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--f-body); -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--card); }
+h1, h2, h3 { font-weight: 600; text-wrap: balance; margin: 0; line-height: 1.25; letter-spacing: -.01em; }
+h1 { font-family: var(--f-display); }
+h2 { font-size: 1.2rem; letter-spacing: -.015em; }
+.wiz h2 { font-size: 1.4rem; }
+h3 { font-size: 1.05rem; }
+p { margin: 0; }
+a { color: var(--ink); text-underline-offset: 2px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.mono { font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-2); }
+.small { font-size: .85rem; }
+.how { font-size: .85rem; color: var(--ink-2); }
+.how summary { cursor: pointer; width: fit-content; text-decoration: underline dotted; text-underline-offset: 3px; }
+.how p { max-width: 70ch; margin-top: 4px; }
+.eyebrow { font-size: .8rem; font-weight: 500; color: var(--ink-2); }
+
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--card); border-bottom: 1px solid var(--rule); }
+.top-in, .wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.top-in { display: flex; align-items: center; justify-content: space-between; gap: 4px 24px; flex-wrap: wrap; padding-block: 12px 0; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark { width: 28px; height: 28px; flex: none; }
+.case { display: block; flex: none; }
+.case .ct { stroke: var(--brand-track); }
+.case .cf { stroke: var(--brand); }
+.case .cs { fill: var(--brand); }
+/* The wordmark (founder's pick E, PR #91): the case stands in for the space, so "Go [case] Bag" is one lockup.
+   Real spaces in the markup keep the heading's name "Go Bag"; the flex row lays out without them. */
+.brand h1 { display: flex; align-items: center; gap: .22em; font-size: 1.1rem; font-weight: 700; letter-spacing: -.02em; line-height: 1; white-space: nowrap; }
+.brand h1 .go { color: var(--brand); }
+.brand h1 .brand-mark { margin-top: -.12em; }
+.hdr-score { font-size: .8rem; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; background: var(--paper); border-radius: 999px; padding: 4px 14px; }
+.hdr-score:empty { display: none; }
+.hdr-score b { font-family: var(--f-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
+nav.tabs { display: flex; gap: 28px; overflow-x: auto; width: 100%; scrollbar-width: none; }
+nav.tabs button { display: flex; align-items: center; gap: 6px; background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 0 12px; font-weight: 500; font-size: .92rem; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+nav.tabs button .ic, nav.tabs .tab-n:empty { display: none; }
+nav.tabs button[aria-current="page"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
+nav.tabs button:hover { color: var(--ink); }
+@media (max-width: 640px) {
+  .top-in { padding-block: 10px; flex-wrap: nowrap; }
+  .brand { min-width: 0; }
+  .brand h1 { font-size: 1rem; }
+  .hdr-score { flex: none; padding: 3px 12px; }
+  .hdr-score .eyebrow:first-child { display: none; }
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; gap: 0; justify-content: space-around; background: var(--card); border-top: 1px solid var(--rule); padding: 6px max(8px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)); }
+  nav.tabs button { flex: 1; flex-direction: column; gap: 3px; padding: 4px 0; border-bottom: 0; font-size: .7rem; position: relative; }
+  nav.tabs button .ic { display: block; width: 22px; height: 22px; }
+  nav.tabs button[aria-current="page"] .ic { stroke-width: 2.1; }
+  nav.tabs .tab-n { position: absolute; top: 0; left: calc(50% + 8px); background: var(--brand); color: var(--brand-ink); border-radius: 999px; padding: 0 5px; font-size: .65rem; line-height: 1.5; }
+  main.wrap { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+}
+
+main.wrap { padding-block: 24px 64px; display: grid; gap: 24px; }
+section.view { display: grid; gap: 24px; min-width: 0; }
+.stack { display: grid; gap: 10px; min-width: 0; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.panel { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 20px 24px; min-width: 0; box-shadow: var(--shadow); }
+@media (max-width: 560px) { .panel { padding: 16px; border-radius: 14px; } }
+.notice { border: 1px solid var(--rule); border-radius: 12px; background: var(--card); padding: 12px 16px; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-size: .9rem; }
+.notice p { max-width: 70ch; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 8px 18px; font-weight: 600; font-size: .9rem; cursor: pointer; transition: background-color .15s, border-color .15s, transform .1s; }
+.btn:hover { background: color-mix(in srgb, var(--accent) 86%, var(--paper)); }
+.btn:active { transform: scale(.98); }
+.btn.ghost { background: var(--card); color: var(--ink); border-color: var(--rule-2); }
+.btn.ghost:hover { border-color: var(--ink); background: var(--card); }
+.btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+.btn.sm { min-height: 32px; padding: 4px 14px; font-size: .82rem; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; transform: none; }
+.x { background: none; border: 0; color: var(--ink-2); cursor: pointer; padding: 4px 8px; border-radius: 999px; font-size: 1.1rem; line-height: 1; }
+.x:hover { color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, transparent); }
+
+input[type=text], input[type=number], input[type=month], input[type=date], input[type=tel], select, textarea { background: var(--card); border: 1px solid var(--rule-2); border-radius: 8px; padding: 7px 10px; min-width: 0; }
+input[type=text]:focus, input[type=number]:focus, input[type=month]:focus, input[type=date]:focus, input[type=tel]:focus, select:focus, textarea:focus { border-color: var(--ink); outline: none; box-shadow: 0 0 0 1px var(--ink); }
+textarea { width: 100%; min-height: 64px; resize: vertical; }
+label.f { display: grid; gap: 6px; font-size: .85rem; font-weight: 500; color: var(--ink-2); }
+label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-weight: 400; }
+.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.act-n .ic { width: 20px; height: 20px; }
+.ic-s { width: 14px; height: 14px; }
+.gain { color: var(--good); font-size: .85rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; border: 1px solid transparent; background: var(--paper); color: var(--ink); border-radius: 999px; padding: 4px 11px 4px 9px; font-variant-numeric: tabular-nums; }
+.chip .ic { color: var(--ink-2); }
+.chip.full { border-color: color-mix(in srgb, var(--good) 30%, transparent); background: color-mix(in srgb, var(--good) 9%, var(--card)); }
+.chip.full .ic { color: var(--good); }
+/* Shopping */
+.shop { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--rule); }
+.shop-row { display: grid; grid-template-columns: minmax(0, 1fr) 84px 200px 28px; gap: 4px 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.shop-chk { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; min-width: 0; }
+.shop-chk input { width: 20px; height: 20px; margin: 0; accent-color: var(--ink); flex: none; cursor: pointer; }
+.shop-chk > span { display: grid; gap: 2px; min-width: 0; }
+.shop-row.done b { text-decoration: line-through; color: var(--ink-2); font-weight: 500; }
+.shop-kit select { width: 100%; font-size: .85rem; }
+.shop-meta { display: grid; justify-items: end; gap: 2px; font-variant-numeric: tabular-nums; }
+.shop-tip { color: var(--ink-2); max-width: 64ch; margin-top: 2px; }
+.shop-row.over { opacity: .55; }
+.shop-cut { padding: 14px 0 6px; border-bottom: 1px solid var(--rule-2); }
+.shop-sum { margin: 0; }
+.shop-tools { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+.shop-tools label { display: flex; gap: 8px; align-items: center; color: var(--ink-2); }
+#shop-budget { width: 88px; }
+.shop-add { display: flex; gap: 8px; }
+.shop-add input { flex: 1; }
+@media (max-width: 560px) {
+  .shop-row { grid-template-columns: minmax(0, 1fr) 28px; }
+  .shop-meta { grid-column: 1; grid-row: 2; display: flex; gap: 10px; justify-content: flex-start; padding-left: 62px; }
+  .shop-kit { grid-column: 1; grid-row: 3; padding-left: 62px; }
+  .shop-kit:empty, .shop-meta:empty { display: none; }
+  .shop-row > .x { align-self: start; }
+}
+.hdr-score.up b { color: var(--good); transition: color .2s; }
+.fly { position: fixed; z-index: 30; pointer-events: none; font-family: var(--f-display); font-weight: 700; font-size: 1.15rem; color: var(--good); background: var(--card); border: 1px solid var(--good); border-radius: 4px; padding: 0 6px; }
+.hdr-score b { transition: color .8s; }
+.shop-row.flash { animation: flash 1.4s ease-out; }
+@keyframes flash { from { background: color-mix(in srgb, var(--good) 18%, transparent); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .shop-row.flash { animation: none; } .hdr-score b { transition: none; } }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--paper); padding: 12px 18px; border-radius: 12px; z-index: 20; max-width: calc(100% - 32px); font-size: .9rem; display: flex; gap: 14px; align-items: center; box-shadow: 0 6px 20px rgba(0, 0, 0, .18); }
+.toast button { background: none; color: inherit; border: 1px solid currentColor; border-radius: 999px; padding: 4px 12px; font-weight: 600; cursor: pointer; }
+@media (max-width: 640px) { .toast { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); } }
+
+body { margin: 0; }
+/* ---- The storyboard page around the frames (not product UI) ---- */
+.sb-top { max-width: 1120px; margin: 0 auto; padding: 20px 16px 4px; display: grid; gap: 4px; }
+.sb-top h1 { font-size: 1.35rem; }
+.sb-top p { max-width: 88ch; }
+.frame { max-width: 1120px; margin: 0 auto; padding: 14px 16px 28px; display: grid; gap: 10px; }
+.frame-h { display: flex; gap: 2px 12px; align-items: baseline; flex-wrap: wrap; }
+.frame-h .eyebrow { color: var(--brand); font-weight: 600; }
+.frame-h h2 { font-size: 1.05rem; }
+.cap { font-size: .85rem; color: var(--ink-2); max-width: 88ch; }
+.cap b { color: var(--ink); font-weight: 600; }
+.screen { position: relative; overflow: hidden; border: 1px solid var(--rule-2); border-radius: 16px; background: var(--paper); }
+.screen .top { position: static; }
+.screen .toast { position: absolute; }
+.screen.vp { height: 900px; }
+.screen.vp-s { height: 760px; }
+.hand { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 20px; align-items: start; }
+.cost { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+@media (max-width: 900px) { .hand { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .frame { padding-inline: 0; }
+  .frame-h, .cap, .frame > .amz, .hand > .amz { margin-inline: 16px; }
+  .screen { border-radius: 0; border-inline: 0; }
+  .screen.vp, .screen.vp-s { height: 844px; }
+  .screen nav.tabs { position: absolute; }
+}
+
+/* ---- Option B additions to the product ---- */
+/* The pick under each line: product, quantity, and its exact page. */
+.pickl { color: var(--ink); }
+.pickl .pn { font-weight: 500; }
+.pickl .buy, .shop-tip .buy { padding: 10px 6px; margin: -10px 0; white-space: nowrap; }
+.nw { white-space: nowrap; }
+.shop-meta .muted { text-align: right; }
+.heavy { color: var(--warn); }
+/* Ordered: a chip on the row; the row stays where it is. */
+.ord { display: block; margin-top: 4px; }
+.ord .chip { background: var(--brand-tint); color: var(--ink); }
+.ord .chip .ic { color: var(--brand); }
+.lnk { background: none; border: 0; padding: 6px 2px; margin: -6px 0; font: inherit; font-weight: 600; color: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+:root[data-theme="dark"] .ord .chip { background: var(--brand-track); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ord .chip { background: var(--brand-track); } }
+/* The return prompt: today's .toast, held until answered (no timeout). */
+.toast.stay { flex-wrap: wrap; row-gap: 10px; max-width: min(560px, calc(100% - 32px)); width: max-content; }
+.toast-q { display: grid; gap: 1px; min-width: 0; }
+.toast-q span { font-size: .8rem; opacity: .8; }
+.toast-a { display: flex; gap: 8px; }
+.toast button.pri { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+.toast button { min-height: 36px; }
+@media (max-width: 640px) { .toast.stay { width: calc(100% - 32px); } .toast-a { width: 100%; } .toast-a button { flex: 1; } }
+
+/* NEW COMPONENT (proposed): the sheet. A centred panel on desktop, a bottom sheet on a phone. */
+.dim { position: absolute; inset: 0; z-index: 8; background: rgba(0, 0, 0, .38); }
+.sheet { position: absolute; z-index: 9; left: 50%; top: 32px; transform: translateX(-50%); width: min(560px, calc(100% - 32px)); max-height: calc(100% - 64px);
+  display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--rule); border-radius: 16px; box-shadow: var(--shadow), 0 16px 48px rgba(0, 0, 0, .2); }
+.sheet-grab { display: none; width: 36px; height: 4px; border-radius: 999px; background: var(--rule-2); margin: 8px auto 0; flex: none; }
+.sheet-h { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 18px 20px 14px; border-bottom: 1px solid var(--rule); flex: none; }
+.sheet-b { flex: 1; min-height: 0; overflow: auto; padding: 0 20px 8px; }
+.sheet-f { flex: none; display: grid; gap: 8px; padding: 12px 20px 16px; border-top: 1px solid var(--rule); background: var(--card); border-radius: 0 0 16px 16px; }
+.picks, .notin ul { list-style: none; margin: 0; padding: 0; }
+.pick { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.pick-l { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; min-width: 0; }
+.pick-l input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--ink); flex: none; cursor: pointer; }
+.pick-b { display: grid; gap: 2px; min-width: 0; }
+.pick-b b { font-weight: 600; }
+.pick-p { padding-top: 1px; font-weight: 600; }
+.notin { padding: 14px 0 4px; display: grid; gap: 4px; }
+.notin li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--rule); font-size: .85rem; color: var(--ink-2); }
+.notin li:last-child { border-bottom: 0; }
+.nl { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.nr { white-space: nowrap; }
+.cart-go { width: 100%; min-height: 48px; text-decoration: none; font-size: .95rem; }
+.cart-go[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+@media (max-width: 640px) {
+  .sheet { left: 0; right: 0; top: auto; bottom: 0; transform: none; width: auto; height: 88%; max-height: none; border-radius: 16px 16px 0 0; border-bottom: 0; }
+  .sheet-grab { display: block; }
+  .sheet-h { padding: 10px 16px 12px; }
+  .sheet-b { padding: 0 16px 8px; }
+  .sheet-f { padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px)); border-radius: 0; }
+}
+
+/* amazon.com, drawn as a neutral grey wireframe: not Amazon's look */
+.amz { margin: 0; border: 1px solid var(--rule-2); border-radius: 12px; background: var(--card); overflow: hidden; color: var(--ink-2); }
+.amz-bar { display: flex; gap: 8px; align-items: center; padding: 8px 10px; background: var(--paper); border-bottom: 1px solid var(--rule); }
+.amz-dots { display: flex; gap: 4px; } .amz-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--rule-2); }
+.amz-url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; background: var(--card); border: 1px solid var(--rule); border-radius: 999px; padding: 3px 10px; }
+.amz-b { display: grid; gap: 10px; padding: 14px; }
+.amz-t { font-weight: 600; color: var(--ink); font-size: .9rem; }
+.amz-ls { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.amz-l { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: .8rem; line-height: 1.3; color: var(--ink); }
+.amz-l .mono { color: var(--ink-2); white-space: nowrap; }
+.amz-img { width: 36px; height: 36px; border-radius: 6px; background: repeating-linear-gradient(135deg, var(--rule) 0 2px, var(--paper) 0 7px); }
+.amz-btn { display: block; text-align: center; padding: 9px; border-radius: 8px; background: var(--rule); color: var(--ink); font-weight: 600; font-size: .85rem; }
+.amz figcaption { padding: 10px 14px; border-top: 1px solid var(--rule); font-size: .78rem; background: var(--paper); }
+
+/* the footer's two states, side by side */
+.states { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.state { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 12px 16px; display: grid; gap: 8px; }
+
+</style>
+</head>
+<body>
+<div class="sb-top">
+  <span class="eyebrow">Issue #94 · Option B of 3 · 5 stars · about 5 days · recommended</span>
+  <h1>Cart sheet and an Ordered mark</h1>
+  <p class="small muted">The brief as written, with one fix: the “Ordered these 6?” toast asks when you come back to the tab and stays until you answer. Ordered is a chip on the row, which stays where it is. <b style="color:var(--ink);font-weight:600">The sheet is a new component, proposed as such.</b> Made-up household: Alex, Sam, Jordan, Riley, Casey and a dog, readiness 17.</p>
+</div>
+<section class="frame">
+  <div class="frame-h"><span class="eyebrow">Frame 4–5 · The hand-off · the key moment</span><h2>The sheet turns the list into one Amazon cart</h2></div>
+  <div class="hand"><div class="screen vp"><header class="top"><div class="top-in">
+  <div class="brand"><h1><span class="go">Go</span> <svg class="case brand-mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg> <span>Bag</span></h1></div>
+  <div class="hdr-score"><span class="eyebrow">Readiness</span><b>17</b><span class="eyebrow">/ 100</span></div>
+  <nav class="tabs" aria-label="Sections"><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/></svg>Readiness<span class="tab-n"></span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/></svg>Kits<span class="tab-n"></span></button><button type="button" aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Shopping<span class="tab-n">12</span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Household<span class="tab-n"></span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>Plan<span class="tab-n"></span></button></nav>
+</div></header>
+<main class="wrap"><section class="view"><div class="stack">
+    <h2>Shopping list</h2>
+    <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
+    <details class="how"><summary>How this works</summary><p>Each ticked item goes into the kit shown beside it, so your readiness rises as you shop.</p></details>
+  </div>
+  <div class="panel stack">
+    <div class="row" style="justify-content:space-between">
+      <b>12 to buy</b>
+      <div class="row">
+        <button class="btn ghost sm" type="button" aria-haspopup="dialog"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Amazon cart (7)</button>
+        <button class="btn ghost sm" type="button">Share list</button>
+      </div>
+    </div>
+    <p class="shop-sum">About <b>$388</b> plus 2 prescription items. Buying it all takes readiness from 17 to <b>58</b>.</p>
+    <div class="shop-tools">
+      <label class="small">Order <select><option>Most points first</option><option>Most points per dollar</option><option>Order added</option></select></label>
+      <label class="small">Spend up to $ <input type="number" id="shop-budget" value="" placeholder="Any" aria-label="Budget in dollars"></label>
+      
+    </div>
+    <ul class="shop"><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 7-gallon water containers, filled from your tap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 7-gallon water containers, filled from your tap</b><span class="small muted">53 L of water</span><span class="small pickl"><span class="pn">Reliance Aqua-Tainer 7-gallon water container</span> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE1" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+11</span><span class="small muted">$44</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 7-gallon water containers, filled from your tap"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 7-gallon water containers, filled from your tap from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="13" rx="2"/><path d="M12 8V5H8M12 5l4-1.5"/></svg><span><b>A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)</b><span class="small muted">Fire safety</span><span class="small pickl"><span class="pn">First Alert HOME1 rechargeable extinguisher, 2-A:10-B:C</span> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE2" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+9</span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger) from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 cases of 24 half-litre bottles"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 cases of 24 half-litre bottles</b><span class="small muted">24 L of water</span><span class="small pickl"><span class="pn">Amazon purified water, 24 × 16.9 fl oz</span> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE3" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="small heavy">Heavy to ship: often cheaper to pick up locally</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$12</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 cases of 24 half-litre bottles"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 cases of 24 half-litre bottles from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="6" ry="2.2"/><path d="M6 6v12c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V6M6 11c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2"/></svg><span><b>28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars</b><span class="small muted">50,400 kcal of food</span><span class="small muted shop-tip">Mixed groceries: <a class="buy" href="https://www.amazon.com/s?k=canned+soup+chili+beans" target="_blank" rel="noopener noreferrer">Find on Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$91</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 epinephrine auto-injectors for Riley, plus an antihistamine"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l6 6M17 7l-9 9-2.5-.5L5 13l9-9M8 16l-4 4"/></svg><span><b>2 epinephrine auto-injectors for Riley, plus an antihistamine</b><span class="small muted">Allergy</span><span class="small muted shop-tip">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+7</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 epinephrine auto-injectors for Riley, plus an antihistamine"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 epinephrine auto-injectors for Riley, plus an antihistamine from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A hand-crank NOAA emergency radio with a phone charger"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/></svg><span><b>A hand-crank NOAA emergency radio with a phone charger</b><span class="small muted">Comms</span><span class="small pickl"><span class="pn">Midland ER310 hand-crank emergency radio</span> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE4" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">$30</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A hand-crank NOAA emergency radio with a phone charger"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A hand-crank NOAA emergency radio with a phone charger from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A spare week of Sam&#x27;s prescriptions"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/></svg><span><b>A spare week of Sam&#x27;s prescriptions</b><span class="small muted">Medications</span><span class="small muted shop-tip">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A spare week of Sam&#x27;s prescriptions"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A spare week of Sam&#x27;s prescriptions from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 CAT or SOF-T tourniquets"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="6" rx="1.5"/><path d="M9 9V6.5h6V9M9 15v2.5h6V15"/></svg><span><b>2 CAT or SOF-T tourniquets</b><span class="small muted">Trauma</span><span class="small muted shop-tip">Buy from a medical supplier: counterfeits are sold on marketplaces</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+5</span><span class="small muted">$60</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 CAT or SOF-T tourniquets"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 CAT or SOF-T tourniquets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 3 packs of 10 N95 masks"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9c3-1 5-2 8-2s5 1 8 2v3c0 4-4 7-8 7s-8-3-8-7zM8 12h8M9 15h6"/></svg><span><b>3 packs of 10 N95 masks</b><span class="small muted">Masks</span><span class="small pickl"><span class="pn">3M Aura 9205+ N95 respirator, 10-pack</span> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE5" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+4</span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 packs of 10 N95 masks"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 3 packs of 10 N95 masks from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 5 reusable emergency blankets"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4L3 20h18zM12 13l-3.5 7M12 13l3.5 7"/></svg><span><b>5 reusable emergency blankets</b><span class="small muted">Shelter</span><span class="small pickl"><span class="pn">SOL heavy-duty reusable emergency blanket</span> · Qty 5 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE6" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+3</span><span class="small muted">$25</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 5 reusable emergency blankets"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 5 reusable emergency blankets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 3 LED headlamps"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span><b>3 LED headlamps</b><span class="small muted">Light</span><span class="small pickl"><span class="pn">Energizer Vision HD headlamp</span> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE7" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+3</span><span class="small muted">$36</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 LED headlamps"><option>Goes in Trunk bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 3 LED headlamps from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A change of clothes for everyone"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4L3 7l2 4 2-1v10h10V10l2 1 2-4-5-3a4 4 0 0 1-8 0z"/></svg><span><b>A change of clothes for everyone</b><span class="small muted">Clothing</span><span class="small muted shop-tip">From home: nothing to buy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+2</span><span class="small muted">From home</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A change of clothes for everyone"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A change of clothes for everyone from the list">×</button>
+</li></ul>
+    <div class="shop-add"><input type="text" placeholder="Add something else…" aria-label="Add an item to the list"><button class="btn ghost sm" type="button">Add</button></div>
+  </div>
+  </section></main><div class="dim" aria-hidden="true"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-0">
+  <div class="sheet-grab" aria-hidden="true"></div>
+  <div class="sheet-h">
+    <div class="stack" style="gap:2px"><h2 id="sh-0">Amazon cart</h2>
+      <p class="small muted">Pick what goes in this order. Nothing is bought until you check out on Amazon.</p>
+      <p class="small muted">Pre-checked: everything with a pick except the heavy water.</p></div>
+    <button class="x" type="button" aria-label="Close">×</button>
+  </div>
+  <div class="sheet-b">
+    <ul class="picks"><li class="pick"><label class="pick-l"><input type="checkbox" checked>
+      <span class="pick-b"><b>Reliance Aqua-Tainer 7-gallon water container</b><span class="small muted">Qty 2 · for: 2 7-gallon water containers, filled from your tap</span></span></label>
+      <span class="pick-p small mono">$44</span></li><li class="pick"><label class="pick-l"><input type="checkbox" checked>
+      <span class="pick-b"><b>First Alert HOME1 rechargeable extinguisher, 2-A:10-B:C</b><span class="small muted">Qty 1 · for: A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)</span></span></label>
+      <span class="pick-p small mono">$45</span></li><li class="pick"><label class="pick-l"><input type="checkbox">
+      <span class="pick-b"><b>Amazon purified water, 24 × 16.9 fl oz</b><span class="small muted">Qty 2 · for: 2 cases of 24 half-litre bottles</span><span class="small heavy">Heavy to ship: often cheaper to pick up locally</span></span></label>
+      <span class="pick-p small mono muted">$12</span></li><li class="pick"><label class="pick-l"><input type="checkbox" checked>
+      <span class="pick-b"><b>Midland ER310 hand-crank emergency radio</b><span class="small muted">Qty 1 · for: A hand-crank NOAA emergency radio with a phone charger</span></span></label>
+      <span class="pick-p small mono">$30</span></li><li class="pick"><label class="pick-l"><input type="checkbox" checked>
+      <span class="pick-b"><b>3M Aura 9205+ N95 respirator, 10-pack</b><span class="small muted">Qty 3 · for: 3 packs of 10 N95 masks</span></span></label>
+      <span class="pick-p small mono">$45</span></li><li class="pick"><label class="pick-l"><input type="checkbox" checked>
+      <span class="pick-b"><b>SOL heavy-duty reusable emergency blanket</b><span class="small muted">Qty 5 · for: 5 reusable emergency blankets</span></span></label>
+      <span class="pick-p small mono">$25</span></li><li class="pick"><label class="pick-l"><input type="checkbox" checked>
+      <span class="pick-b"><b>Energizer Vision HD headlamp</b><span class="small muted">Qty 3 · for: 3 LED headlamps</span></span></label>
+      <span class="pick-p small mono">$36</span></li></ul>
+    <div class="notin">
+      <p class="eyebrow">Not in this cart (5)</p>
+      <ul><li><span class="nl">28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars</span><span class="small muted nr">Mixed groceries</span></li><li><span class="nl">2 epinephrine auto-injectors for Riley, plus an antihistamine</span><span class="small muted nr">Prescription</span></li><li><span class="nl">A spare week of Sam&#x27;s prescriptions</span><span class="small muted nr">Prescription</span></li><li><span class="nl">2 CAT or SOF-T tourniquets</span><span class="small muted nr">Medical supplier</span></li><li><span class="nl">A change of clothes for everyone</span><span class="small muted nr">From home</span></li></ul>
+    </div>
+  </div>
+  <div class="sheet-f">
+    <p class="small"><b>About $225</b> · 15 things in all</p>
+    <a class="btn cart-go" href="https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=B0EXAMPLE1&amp;Quantity.1=2&amp;ASIN.2=B0EXAMPLE2&amp;Quantity.2=1&amp;ASIN.3=B0EXAMPLE4&amp;Quantity.3=1&amp;ASIN.4=B0EXAMPLE5&amp;Quantity.4=3&amp;ASIN.5=B0EXAMPLE6&amp;Quantity.5=5&amp;ASIN.6=B0EXAMPLE7&amp;Quantity.6=3" target="_blank" rel="noopener noreferrer">Open Amazon cart (6 items)</a>
+    <p class="small muted">A plain link that fills your Amazon cart. No tracking tag, no account.</p>
+  </div>
+</div></div><figure class="amz">
+  <div class="amz-bar"><span class="amz-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="amz-url">amazon.com/gp/aws/cart/add.html?ASIN.1=B0EXAMPLE1&amp;Quantity.1=2&amp;ASIN.2=…</span></div>
+  <div class="amz-b">
+    <p class="amz-t">Add these 6 items to your cart?</p>
+    <ul class="amz-ls"><li class="amz-l"><span class="amz-img" aria-hidden="true"></span><span>Reliance Aqua-Tainer 7-gallon water container</span><span class="mono">Qty 2</span></li><li class="amz-l"><span class="amz-img" aria-hidden="true"></span><span>First Alert HOME1 rechargeable extinguisher, 2-A:10-B:C</span><span class="mono">Qty 1</span></li><li class="amz-l"><span class="amz-img" aria-hidden="true"></span><span>Midland ER310 hand-crank emergency radio</span><span class="mono">Qty 1</span></li><li class="amz-l"><span class="amz-img" aria-hidden="true"></span><span>3M Aura 9205+ N95 respirator, 10-pack</span><span class="mono">Qty 3</span></li><li class="amz-l"><span class="amz-img" aria-hidden="true"></span><span>SOL heavy-duty reusable emergency blanket</span><span class="mono">Qty 5</span></li><li class="amz-l"><span class="amz-img" aria-hidden="true"></span><span>Energizer Vision HD headlamp</span><span class="mono">Qty 3</span></li></ul>
+    <span class="amz-btn">Add to cart</span>
+  </div>
+  <figcaption>amazon.com, outside Go Bag. A new tab. The same 6 products, in the same order and quantities as the sheet.</figcaption>
+</figure></div>
+  <p class="cap"><b>Trusting:</b> that Amazon gets exactly the 6 checked products at these quantities, with no tag and no account. <b>What earns it:</b> every line shows its product and quantity, the link counts what's checked, lines that can't go in say why, and Amazon's page lists the same 6 in the same order.</p>
+</section>
+<section class="frame">
+  <div class="frame-h"><span class="eyebrow">Frame 2 · The list</span><h2>Each line names its product, or says why it has none</h2></div>
+  <div class="screen "><header class="top"><div class="top-in">
+  <div class="brand"><h1><span class="go">Go</span> <svg class="case brand-mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg> <span>Bag</span></h1></div>
+  <div class="hdr-score"><span class="eyebrow">Readiness</span><b>17</b><span class="eyebrow">/ 100</span></div>
+  <nav class="tabs" aria-label="Sections"><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/></svg>Readiness<span class="tab-n"></span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/></svg>Kits<span class="tab-n"></span></button><button type="button" aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Shopping<span class="tab-n">12</span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Household<span class="tab-n"></span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>Plan<span class="tab-n"></span></button></nav>
+</div></header>
+<main class="wrap"><section class="view"><div class="stack">
+    <h2>Shopping list</h2>
+    <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
+    <details class="how"><summary>How this works</summary><p>Each ticked item goes into the kit shown beside it, so your readiness rises as you shop.</p></details>
+  </div>
+  <div class="panel stack">
+    <div class="row" style="justify-content:space-between">
+      <b>12 to buy</b>
+      <div class="row">
+        <button class="btn ghost sm" type="button" aria-haspopup="dialog"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Amazon cart (7)</button>
+        <button class="btn ghost sm" type="button">Share list</button>
+      </div>
+    </div>
+    <p class="shop-sum">About <b>$388</b> plus 2 prescription items. Buying it all takes readiness from 17 to <b>58</b>.</p>
+    <div class="shop-tools">
+      <label class="small">Order <select><option>Most points first</option><option>Most points per dollar</option><option>Order added</option></select></label>
+      <label class="small">Spend up to $ <input type="number" id="shop-budget" value="" placeholder="Any" aria-label="Budget in dollars"></label>
+      
+    </div>
+    <ul class="shop"><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 7-gallon water containers, filled from your tap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 7-gallon water containers, filled from your tap</b><span class="small muted">53 L of water</span><span class="small pickl"><span class="pn">Reliance Aqua-Tainer 7-gallon water container</span> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE1" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+11</span><span class="small muted">$44</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 7-gallon water containers, filled from your tap"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 7-gallon water containers, filled from your tap from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="13" rx="2"/><path d="M12 8V5H8M12 5l4-1.5"/></svg><span><b>A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)</b><span class="small muted">Fire safety</span><span class="small pickl"><span class="pn">First Alert HOME1 rechargeable extinguisher, 2-A:10-B:C</span> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE2" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+9</span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger) from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 cases of 24 half-litre bottles"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 cases of 24 half-litre bottles</b><span class="small muted">24 L of water</span><span class="small pickl"><span class="pn">Amazon purified water, 24 × 16.9 fl oz</span> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE3" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="small heavy">Heavy to ship: often cheaper to pick up locally</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$12</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 cases of 24 half-litre bottles"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 cases of 24 half-litre bottles from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="6" ry="2.2"/><path d="M6 6v12c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V6M6 11c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2"/></svg><span><b>28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars</b><span class="small muted">50,400 kcal of food</span><span class="small muted shop-tip">Mixed groceries: <a class="buy" href="https://www.amazon.com/s?k=canned+soup+chili+beans" target="_blank" rel="noopener noreferrer">Find on Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$91</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 epinephrine auto-injectors for Riley, plus an antihistamine"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l6 6M17 7l-9 9-2.5-.5L5 13l9-9M8 16l-4 4"/></svg><span><b>2 epinephrine auto-injectors for Riley, plus an antihistamine</b><span class="small muted">Allergy</span><span class="small muted shop-tip">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+7</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 epinephrine auto-injectors for Riley, plus an antihistamine"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 epinephrine auto-injectors for Riley, plus an antihistamine from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A hand-crank NOAA emergency radio with a phone charger"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/></svg><span><b>A hand-crank NOAA emergency radio with a phone charger</b><span class="small muted">Comms</span><span class="small pickl"><span class="pn">Midland ER310 hand-crank emergency radio</span> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE4" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">$30</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A hand-crank NOAA emergency radio with a phone charger"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A hand-crank NOAA emergency radio with a phone charger from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A spare week of Sam&#x27;s prescriptions"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/></svg><span><b>A spare week of Sam&#x27;s prescriptions</b><span class="small muted">Medications</span><span class="small muted shop-tip">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A spare week of Sam&#x27;s prescriptions"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A spare week of Sam&#x27;s prescriptions from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 CAT or SOF-T tourniquets"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="6" rx="1.5"/><path d="M9 9V6.5h6V9M9 15v2.5h6V15"/></svg><span><b>2 CAT or SOF-T tourniquets</b><span class="small muted">Trauma</span><span class="small muted shop-tip">Buy from a medical supplier: counterfeits are sold on marketplaces</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+5</span><span class="small muted">$60</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 CAT or SOF-T tourniquets"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 CAT or SOF-T tourniquets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 3 packs of 10 N95 masks"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9c3-1 5-2 8-2s5 1 8 2v3c0 4-4 7-8 7s-8-3-8-7zM8 12h8M9 15h6"/></svg><span><b>3 packs of 10 N95 masks</b><span class="small muted">Masks</span><span class="small pickl"><span class="pn">3M Aura 9205+ N95 respirator, 10-pack</span> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE5" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+4</span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 packs of 10 N95 masks"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 3 packs of 10 N95 masks from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 5 reusable emergency blankets"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4L3 20h18zM12 13l-3.5 7M12 13l3.5 7"/></svg><span><b>5 reusable emergency blankets</b><span class="small muted">Shelter</span><span class="small pickl"><span class="pn">SOL heavy-duty reusable emergency blanket</span> · Qty 5 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE6" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+3</span><span class="small muted">$25</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 5 reusable emergency blankets"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 5 reusable emergency blankets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 3 LED headlamps"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span><b>3 LED headlamps</b><span class="small muted">Light</span><span class="small pickl"><span class="pn">Energizer Vision HD headlamp</span> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE7" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+3</span><span class="small muted">$36</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 LED headlamps"><option>Goes in Trunk bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 3 LED headlamps from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A change of clothes for everyone"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4L3 7l2 4 2-1v10h10V10l2 1 2-4-5-3a4 4 0 0 1-8 0z"/></svg><span><b>A change of clothes for everyone</b><span class="small muted">Clothing</span><span class="small muted shop-tip">From home: nothing to buy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+2</span><span class="small muted">From home</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A change of clothes for everyone"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A change of clothes for everyone from the list">×</button>
+</li></ul>
+    <div class="shop-add"><input type="text" placeholder="Add something else…" aria-label="Add an item to the list"><button class="btn ghost sm" type="button">Add</button></div>
+  </div>
+  </section></main></div>
+  <p class="cap"><b>Trusting:</b> that each pick is the thing the line asks for. <b>What earns it:</b> the product and quantity on the line itself, an exact product page behind “On Amazon ↗”, and “Amazon cart (7)” counting only the lines that have a pick.</p>
+</section>
+<section class="frame">
+  <div class="frame-h"><span class="eyebrow">Frame 7 · Back on the tab</span><h2>The question waits for Alex, however long checkout took</h2></div>
+  <div class="screen vp-s"><header class="top"><div class="top-in">
+  <div class="brand"><h1><span class="go">Go</span> <svg class="case brand-mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg> <span>Bag</span></h1></div>
+  <div class="hdr-score"><span class="eyebrow">Readiness</span><b>17</b><span class="eyebrow">/ 100</span></div>
+  <nav class="tabs" aria-label="Sections"><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/></svg>Readiness<span class="tab-n"></span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/></svg>Kits<span class="tab-n"></span></button><button type="button" aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Shopping<span class="tab-n">12</span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Household<span class="tab-n"></span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>Plan<span class="tab-n"></span></button></nav>
+</div></header>
+<main class="wrap"><section class="view"><div class="stack">
+    <h2>Shopping list</h2>
+    <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
+    <details class="how"><summary>How this works</summary><p>Each ticked item goes into the kit shown beside it, so your readiness rises as you shop.</p></details>
+  </div>
+  <div class="panel stack">
+    <div class="row" style="justify-content:space-between">
+      <b>12 to buy</b>
+      <div class="row">
+        <button class="btn ghost sm" type="button" aria-haspopup="dialog"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Amazon cart (7)</button>
+        <button class="btn ghost sm" type="button">Share list</button>
+      </div>
+    </div>
+    <p class="shop-sum">About <b>$388</b> plus 2 prescription items. Buying it all takes readiness from 17 to <b>58</b>.</p>
+    <div class="shop-tools">
+      <label class="small">Order <select><option>Most points first</option><option>Most points per dollar</option><option>Order added</option></select></label>
+      <label class="small">Spend up to $ <input type="number" id="shop-budget" value="" placeholder="Any" aria-label="Budget in dollars"></label>
+      
+    </div>
+    <ul class="shop"><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 7-gallon water containers, filled from your tap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 7-gallon water containers, filled from your tap</b><span class="small muted">53 L of water</span><span class="small pickl"><span class="pn">Reliance Aqua-Tainer 7-gallon water container</span> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE1" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+11</span><span class="small muted">$44</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 7-gallon water containers, filled from your tap"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 7-gallon water containers, filled from your tap from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="13" rx="2"/><path d="M12 8V5H8M12 5l4-1.5"/></svg><span><b>A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)</b><span class="small muted">Fire safety</span><span class="small pickl"><span class="pn">First Alert HOME1 rechargeable extinguisher, 2-A:10-B:C</span> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE2" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+9</span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger) from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 cases of 24 half-litre bottles"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 cases of 24 half-litre bottles</b><span class="small muted">24 L of water</span><span class="small pickl"><span class="pn">Amazon purified water, 24 × 16.9 fl oz</span> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE3" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="small heavy">Heavy to ship: often cheaper to pick up locally</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$12</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 cases of 24 half-litre bottles"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 cases of 24 half-litre bottles from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="6" ry="2.2"/><path d="M6 6v12c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V6M6 11c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2"/></svg><span><b>28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars</b><span class="small muted">50,400 kcal of food</span><span class="small muted shop-tip">Mixed groceries: <a class="buy" href="https://www.amazon.com/s?k=canned+soup+chili+beans" target="_blank" rel="noopener noreferrer">Find on Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$91</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 epinephrine auto-injectors for Riley, plus an antihistamine"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l6 6M17 7l-9 9-2.5-.5L5 13l9-9M8 16l-4 4"/></svg><span><b>2 epinephrine auto-injectors for Riley, plus an antihistamine</b><span class="small muted">Allergy</span><span class="small muted shop-tip">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+7</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 epinephrine auto-injectors for Riley, plus an antihistamine"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 epinephrine auto-injectors for Riley, plus an antihistamine from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A hand-crank NOAA emergency radio with a phone charger"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/></svg><span><b>A hand-crank NOAA emergency radio with a phone charger</b><span class="small muted">Comms</span><span class="small pickl"><span class="pn">Midland ER310 hand-crank emergency radio</span> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE4" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">$30</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A hand-crank NOAA emergency radio with a phone charger"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A hand-crank NOAA emergency radio with a phone charger from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A spare week of Sam&#x27;s prescriptions"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/></svg><span><b>A spare week of Sam&#x27;s prescriptions</b><span class="small muted">Medications</span><span class="small muted shop-tip">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A spare week of Sam&#x27;s prescriptions"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A spare week of Sam&#x27;s prescriptions from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 CAT or SOF-T tourniquets"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="6" rx="1.5"/><path d="M9 9V6.5h6V9M9 15v2.5h6V15"/></svg><span><b>2 CAT or SOF-T tourniquets</b><span class="small muted">Trauma</span><span class="small muted shop-tip">Buy from a medical supplier: counterfeits are sold on marketplaces</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+5</span><span class="small muted">$60</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 CAT or SOF-T tourniquets"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 CAT or SOF-T tourniquets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 3 packs of 10 N95 masks"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9c3-1 5-2 8-2s5 1 8 2v3c0 4-4 7-8 7s-8-3-8-7zM8 12h8M9 15h6"/></svg><span><b>3 packs of 10 N95 masks</b><span class="small muted">Masks</span><span class="small pickl"><span class="pn">3M Aura 9205+ N95 respirator, 10-pack</span> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE5" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+4</span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 packs of 10 N95 masks"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 3 packs of 10 N95 masks from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 5 reusable emergency blankets"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4L3 20h18zM12 13l-3.5 7M12 13l3.5 7"/></svg><span><b>5 reusable emergency blankets</b><span class="small muted">Shelter</span><span class="small pickl"><span class="pn">SOL heavy-duty reusable emergency blanket</span> · Qty 5 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE6" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+3</span><span class="small muted">$25</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 5 reusable emergency blankets"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 5 reusable emergency blankets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 3 LED headlamps"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span><b>3 LED headlamps</b><span class="small muted">Light</span><span class="small pickl"><span class="pn">Energizer Vision HD headlamp</span> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE7" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+3</span><span class="small muted">$36</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 LED headlamps"><option>Goes in Trunk bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 3 LED headlamps from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A change of clothes for everyone"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4L3 7l2 4 2-1v10h10V10l2 1 2-4-5-3a4 4 0 0 1-8 0z"/></svg><span><b>A change of clothes for everyone</b><span class="small muted">Clothing</span><span class="small muted shop-tip">From home: nothing to buy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+2</span><span class="small muted">From home</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A change of clothes for everyone"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A change of clothes for everyone from the list">×</button>
+</li></ul>
+    <div class="shop-add"><input type="text" placeholder="Add something else…" aria-label="Add an item to the list"><button class="btn ghost sm" type="button">Add</button></div>
+  </div>
+  </section></main><div class="toast stay" role="alertdialog" aria-labelledby="t-q" aria-describedby="t-d">
+  <span class="toast-q"><b id="t-q">Ordered these 6?</b><span id="t-d">Water containers, extinguisher, radio, masks, blankets and headlamps</span></span>
+  <span class="toast-a"><button type="button" class="pri">Mark ordered</button><button type="button">Not yet</button></span>
+</div></div>
+  <p class="cap"><b>Trusting:</b> that Go Bag won't guess what happened on Amazon. <b>What earns it:</b> it asks when the tab is visible again (not when the link was tapped), names the 6 things, and stays until answered. Today's 9-second toast would be gone before checkout ends.</p>
+</section>
+<section class="frame">
+  <div class="frame-h"><span class="eyebrow">Frame 7, answered · Marked ordered</span><h2>Ordered is a chip on the row; the score stays 17</h2></div>
+  <div class="screen "><header class="top"><div class="top-in">
+  <div class="brand"><h1><span class="go">Go</span> <svg class="case brand-mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg> <span>Bag</span></h1></div>
+  <div class="hdr-score"><span class="eyebrow">Readiness</span><b>17</b><span class="eyebrow">/ 100</span></div>
+  <nav class="tabs" aria-label="Sections"><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/></svg>Readiness<span class="tab-n"></span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/></svg>Kits<span class="tab-n"></span></button><button type="button" aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Shopping<span class="tab-n">12</span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Household<span class="tab-n"></span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>Plan<span class="tab-n"></span></button></nav>
+</div></header>
+<main class="wrap"><section class="view"><div class="stack">
+    <h2>Shopping list</h2>
+    <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
+    <details class="how"><summary>How this works</summary><p>Each ticked item goes into the kit shown beside it, so your readiness rises as you shop.</p></details>
+  </div>
+  <div class="panel stack">
+    <div class="row" style="justify-content:space-between">
+      <b>12 to buy <span class="small muted" style="font-weight:400">· 6 ordered</span></b>
+      <div class="row">
+        <button class="btn ghost sm" type="button" aria-haspopup="dialog"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Amazon cart (7)</button>
+        <button class="btn ghost sm" type="button">Share list</button>
+      </div>
+    </div>
+    <p class="shop-sum">About <b>$388</b> plus 2 prescription items. Buying it all takes readiness from 17 to <b>58</b>.</p>
+    <div class="shop-tools">
+      <label class="small">Order <select><option>Most points first</option><option>Most points per dollar</option><option>Order added</option></select></label>
+      <label class="small">Spend up to $ <input type="number" id="shop-budget" value="" placeholder="Any" aria-label="Budget in dollars"></label>
+      
+    </div>
+    <ul class="shop"><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 7-gallon water containers, filled from your tap</b><span class="small muted">53 L of water</span><span class="small pickl"><span class="pn">Reliance Aqua-Tainer 7-gallon water container</span> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE1" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="ord"><span class="chip"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Ordered 6 Nov · <button type="button" class="lnk" aria-label="Undo ordered">Undo</button></span></span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Adds these points once it is ticked into a kit">+11 <span class="nw">once packed</span></span><span class="small muted">$44</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 7-gallon water containers, filled from your tap"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 7-gallon water containers, filled from your tap from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="13" rx="2"/><path d="M12 8V5H8M12 5l4-1.5"/></svg><span><b>A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)</b><span class="small muted">Fire safety</span><span class="small pickl"><span class="pn">First Alert HOME1 rechargeable extinguisher, 2-A:10-B:C</span> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE2" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="ord"><span class="chip"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Ordered 6 Nov · <button type="button" class="lnk" aria-label="Undo ordered">Undo</button></span></span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Adds these points once it is ticked into a kit">+9 <span class="nw">once packed</span></span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger) from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 cases of 24 half-litre bottles"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 cases of 24 half-litre bottles</b><span class="small muted">24 L of water</span><span class="small pickl"><span class="pn">Amazon purified water, 24 × 16.9 fl oz</span> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE3" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="small heavy">Heavy to ship: often cheaper to pick up locally</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$12</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 cases of 24 half-litre bottles"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 cases of 24 half-litre bottles from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="6" ry="2.2"/><path d="M6 6v12c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V6M6 11c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2"/></svg><span><b>28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars</b><span class="small muted">50,400 kcal of food</span><span class="small muted shop-tip">Mixed groceries: <a class="buy" href="https://www.amazon.com/s?k=canned+soup+chili+beans" target="_blank" rel="noopener noreferrer">Find on Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$91</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 epinephrine auto-injectors for Riley, plus an antihistamine"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l6 6M17 7l-9 9-2.5-.5L5 13l9-9M8 16l-4 4"/></svg><span><b>2 epinephrine auto-injectors for Riley, plus an antihistamine</b><span class="small muted">Allergy</span><span class="small muted shop-tip">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+7</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 epinephrine auto-injectors for Riley, plus an antihistamine"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 epinephrine auto-injectors for Riley, plus an antihistamine from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/></svg><span><b>A hand-crank NOAA emergency radio with a phone charger</b><span class="small muted">Comms</span><span class="small pickl"><span class="pn">Midland ER310 hand-crank emergency radio</span> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE4" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="ord"><span class="chip"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Ordered 6 Nov · <button type="button" class="lnk" aria-label="Undo ordered">Undo</button></span></span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Adds these points once it is ticked into a kit">+6 <span class="nw">once packed</span></span><span class="small muted">$30</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A hand-crank NOAA emergency radio with a phone charger"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A hand-crank NOAA emergency radio with a phone charger from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A spare week of Sam&#x27;s prescriptions"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/></svg><span><b>A spare week of Sam&#x27;s prescriptions</b><span class="small muted">Medications</span><span class="small muted shop-tip">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A spare week of Sam&#x27;s prescriptions"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A spare week of Sam&#x27;s prescriptions from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 CAT or SOF-T tourniquets"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="6" rx="1.5"/><path d="M9 9V6.5h6V9M9 15v2.5h6V15"/></svg><span><b>2 CAT or SOF-T tourniquets</b><span class="small muted">Trauma</span><span class="small muted shop-tip">Buy from a medical supplier: counterfeits are sold on marketplaces</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+5</span><span class="small muted">$60</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 CAT or SOF-T tourniquets"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 CAT or SOF-T tourniquets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9c3-1 5-2 8-2s5 1 8 2v3c0 4-4 7-8 7s-8-3-8-7zM8 12h8M9 15h6"/></svg><span><b>3 packs of 10 N95 masks</b><span class="small muted">Masks</span><span class="small pickl"><span class="pn">3M Aura 9205+ N95 respirator, 10-pack</span> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE5" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="ord"><span class="chip"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Ordered 6 Nov · <button type="button" class="lnk" aria-label="Undo ordered">Undo</button></span></span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Adds these points once it is ticked into a kit">+4 <span class="nw">once packed</span></span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 packs of 10 N95 masks"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 3 packs of 10 N95 masks from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4L3 20h18zM12 13l-3.5 7M12 13l3.5 7"/></svg><span><b>5 reusable emergency blankets</b><span class="small muted">Shelter</span><span class="small pickl"><span class="pn">SOL heavy-duty reusable emergency blanket</span> · Qty 5 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE6" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="ord"><span class="chip"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Ordered 6 Nov · <button type="button" class="lnk" aria-label="Undo ordered">Undo</button></span></span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Adds these points once it is ticked into a kit">+3 <span class="nw">once packed</span></span><span class="small muted">$25</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 5 reusable emergency blankets"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 5 reusable emergency blankets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Trunk bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span><b>3 LED headlamps</b><span class="small muted">Light</span><span class="small pickl"><span class="pn">Energizer Vision HD headlamp</span> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE7" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="ord"><span class="chip"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Ordered 6 Nov · <button type="button" class="lnk" aria-label="Undo ordered">Undo</button></span></span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Adds these points once it is ticked into a kit">+3 <span class="nw">once packed</span></span><span class="small muted">$36</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 LED headlamps"><option>Goes in Trunk bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 3 LED headlamps from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A change of clothes for everyone"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4L3 7l2 4 2-1v10h10V10l2 1 2-4-5-3a4 4 0 0 1-8 0z"/></svg><span><b>A change of clothes for everyone</b><span class="small muted">Clothing</span><span class="small muted shop-tip">From home: nothing to buy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+2</span><span class="small muted">From home</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A change of clothes for everyone"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A change of clothes for everyone from the list">×</button>
+</li></ul>
+    <div class="shop-add"><input type="text" placeholder="Add something else…" aria-label="Add an item to the list"><button class="btn ghost sm" type="button">Add</button></div>
+  </div>
+  </section></main></div>
+  <p class="cap"><b>Trusting:</b> that the score is honest: nothing counts until it's in a kit. <b>What earns it:</b> the rows stay where they were, “+11 once packed” replaces the green gain, the header still reads 17, and Undo is one tap on the chip.</p>
+</section>
+<section class="frame">
+  <div class="frame-h"><span class="eyebrow">Frame 9 · Tuesday, unpacking the box</span><h2>Two ticked into the Basement bin: 17 → 26</h2></div>
+  <div class="screen "><header class="top"><div class="top-in">
+  <div class="brand"><h1><span class="go">Go</span> <svg class="case brand-mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:26 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:26 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg> <span>Bag</span></h1></div>
+  <div class="hdr-score up"><span class="eyebrow">Readiness</span><b>26</b><span class="eyebrow">/ 100</span></div>
+  <nav class="tabs" aria-label="Sections"><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/></svg>Readiness<span class="tab-n"></span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/></svg>Kits<span class="tab-n"></span></button><button type="button" aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Shopping<span class="tab-n">10</span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Household<span class="tab-n"></span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>Plan<span class="tab-n"></span></button></nav>
+</div></header>
+<main class="wrap"><section class="view"><div class="stack">
+    <h2>Shopping list</h2>
+    <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
+    <details class="how"><summary>How this works</summary><p>Each ticked item goes into the kit shown beside it, so your readiness rises as you shop.</p></details>
+  </div>
+  <div class="panel stack">
+    <div class="row" style="justify-content:space-between">
+      <b>10 to buy <span class="small muted" style="font-weight:400">· 4 ordered</span></b>
+      <div class="row">
+        <button class="btn ghost sm" type="button" aria-haspopup="dialog"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Amazon cart (7)</button>
+        <button class="btn ghost sm" type="button">Share list</button>
+      </div>
+    </div>
+    <p class="shop-sum">About <b>$313</b> plus 2 prescription items. Buying it all takes readiness from 26 to <b>58</b>.</p>
+    <div class="shop-tools">
+      <label class="small">Order <select><option>Most points first</option><option>Most points per dollar</option><option>Order added</option></select></label>
+      <label class="small">Spend up to $ <input type="number" id="shop-budget" value="" placeholder="Any" aria-label="Budget in dollars"></label>
+      
+    </div>
+    <ul class="shop"><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 7-gallon water containers, filled from your tap</b><span class="small muted">53 L of water</span><span class="small pickl"><span class="pn">Reliance Aqua-Tainer 7-gallon water container</span> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE1" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="ord"><span class="chip"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Ordered 6 Nov · <button type="button" class="lnk" aria-label="Undo ordered">Undo</button></span></span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Adds these points once it is ticked into a kit">+11 <span class="nw">once packed</span></span><span class="small muted">$44</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 7-gallon water containers, filled from your tap"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 7-gallon water containers, filled from your tap from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 cases of 24 half-litre bottles"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 cases of 24 half-litre bottles</b><span class="small muted">24 L of water</span><span class="small pickl"><span class="pn">Amazon purified water, 24 × 16.9 fl oz</span> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE3" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="small heavy">Heavy to ship: often cheaper to pick up locally</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$12</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 cases of 24 half-litre bottles"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 cases of 24 half-litre bottles from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="6" ry="2.2"/><path d="M6 6v12c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V6M6 11c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2"/></svg><span><b>28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars</b><span class="small muted">50,400 kcal of food</span><span class="small muted shop-tip">Mixed groceries: <a class="buy" href="https://www.amazon.com/s?k=canned+soup+chili+beans" target="_blank" rel="noopener noreferrer">Find on Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$91</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 epinephrine auto-injectors for Riley, plus an antihistamine"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l6 6M17 7l-9 9-2.5-.5L5 13l9-9M8 16l-4 4"/></svg><span><b>2 epinephrine auto-injectors for Riley, plus an antihistamine</b><span class="small muted">Allergy</span><span class="small muted shop-tip">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+7</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 epinephrine auto-injectors for Riley, plus an antihistamine"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 epinephrine auto-injectors for Riley, plus an antihistamine from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A spare week of Sam&#x27;s prescriptions"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/></svg><span><b>A spare week of Sam&#x27;s prescriptions</b><span class="small muted">Medications</span><span class="small muted shop-tip">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A spare week of Sam&#x27;s prescriptions"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A spare week of Sam&#x27;s prescriptions from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 CAT or SOF-T tourniquets"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="6" rx="1.5"/><path d="M9 9V6.5h6V9M9 15v2.5h6V15"/></svg><span><b>2 CAT or SOF-T tourniquets</b><span class="small muted">Trauma</span><span class="small muted shop-tip">Buy from a medical supplier: counterfeits are sold on marketplaces</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+5</span><span class="small muted">$60</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 CAT or SOF-T tourniquets"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 CAT or SOF-T tourniquets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9c3-1 5-2 8-2s5 1 8 2v3c0 4-4 7-8 7s-8-3-8-7zM8 12h8M9 15h6"/></svg><span><b>3 packs of 10 N95 masks</b><span class="small muted">Masks</span><span class="small pickl"><span class="pn">3M Aura 9205+ N95 respirator, 10-pack</span> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE5" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="ord"><span class="chip"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Ordered 6 Nov · <button type="button" class="lnk" aria-label="Undo ordered">Undo</button></span></span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Adds these points once it is ticked into a kit">+4 <span class="nw">once packed</span></span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 packs of 10 N95 masks"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 3 packs of 10 N95 masks from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4L3 20h18zM12 13l-3.5 7M12 13l3.5 7"/></svg><span><b>5 reusable emergency blankets</b><span class="small muted">Shelter</span><span class="small pickl"><span class="pn">SOL heavy-duty reusable emergency blanket</span> · Qty 5 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE6" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="ord"><span class="chip"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Ordered 6 Nov · <button type="button" class="lnk" aria-label="Undo ordered">Undo</button></span></span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Adds these points once it is ticked into a kit">+3 <span class="nw">once packed</span></span><span class="small muted">$25</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 5 reusable emergency blankets"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 5 reusable emergency blankets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Trunk bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span><b>3 LED headlamps</b><span class="small muted">Light</span><span class="small pickl"><span class="pn">Energizer Vision HD headlamp</span> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE7" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="ord"><span class="chip"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Ordered 6 Nov · <button type="button" class="lnk" aria-label="Undo ordered">Undo</button></span></span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Adds these points once it is ticked into a kit">+3 <span class="nw">once packed</span></span><span class="small muted">$36</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 LED headlamps"><option>Goes in Trunk bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 3 LED headlamps from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A change of clothes for everyone"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4L3 7l2 4 2-1v10h10V10l2 1 2-4-5-3a4 4 0 0 1-8 0z"/></svg><span><b>A change of clothes for everyone</b><span class="small muted">Clothing</span><span class="small muted shop-tip">From home: nothing to buy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+2</span><span class="small muted">From home</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A change of clothes for everyone"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A change of clothes for everyone from the list">×</button>
+</li></ul>
+    <div class="shop-add"><input type="text" placeholder="Add something else…" aria-label="Add an item to the list"><button class="btn ghost sm" type="button">Add</button></div>
+  </div>
+  <div class="panel stack">
+    <div class="row" style="justify-content:space-between"><b>Got it (2)</b><button class="btn ghost sm" type="button">Clear these</button></div>
+    <ul class="shop"><li class="shop-row done">
+  <label class="shop-chk"><input type="checkbox" checked aria-label="Bought and in Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="13" rx="2"/><path d="M12 8V5H8M12 5l4-1.5"/></svg><span><b>A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)</b></span></label>
+  <div class="shop-meta"></div>
+  <div class="shop-kit"><span class="small muted">In Basement bin</span></div>
+  <button class="x" type="button" aria-label="Remove A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger) from the list">×</button>
+</li><li class="shop-row done">
+  <label class="shop-chk"><input type="checkbox" checked aria-label="Bought and in Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/></svg><span><b>A hand-crank NOAA emergency radio with a phone charger</b></span></label>
+  <div class="shop-meta"></div>
+  <div class="shop-kit"><span class="small muted">In Basement bin</span></div>
+  <button class="x" type="button" aria-label="Remove A hand-crank NOAA emergency radio with a phone charger from the list">×</button>
+</li></ul>
+  </div></section></main></div>
+  <p class="cap"><b>Trusting:</b> that ticking still means what it always did. <b>What earns it:</b> the same tick, the same “In Basement bin”, and the points land only now. The other 4 keep their Ordered chip until they're packed.</p>
+</section>
+<section class="frame">
+  <div class="frame-h"><span class="eyebrow">Frame 3, with a budget · Spend up to $150</span><h2>The sheet starts from the budget's own picks</h2></div>
+  <div class="screen vp"><header class="top"><div class="top-in">
+  <div class="brand"><h1><span class="go">Go</span> <svg class="case brand-mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg> <span>Bag</span></h1></div>
+  <div class="hdr-score"><span class="eyebrow">Readiness</span><b>17</b><span class="eyebrow">/ 100</span></div>
+  <nav class="tabs" aria-label="Sections"><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/></svg>Readiness<span class="tab-n"></span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/></svg>Kits<span class="tab-n"></span></button><button type="button" aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Shopping<span class="tab-n">12</span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Household<span class="tab-n"></span></button><button type="button"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>Plan<span class="tab-n"></span></button></nav>
+</div></header>
+<main class="wrap"><section class="view"><div class="stack">
+    <h2>Shopping list</h2>
+    <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
+    <details class="how"><summary>How this works</summary><p>Each ticked item goes into the kit shown beside it, so your readiness rises as you shop.</p></details>
+  </div>
+  <div class="panel stack">
+    <div class="row" style="justify-content:space-between">
+      <b>12 to buy</b>
+      <div class="row">
+        <button class="btn ghost sm" type="button" aria-haspopup="dialog"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Amazon cart (7)</button>
+        <button class="btn ghost sm" type="button">Share list</button>
+      </div>
+    </div>
+    <p class="shop-sum">About <b>$388</b> plus 2 prescription items. Buying it all takes readiness from 17 to <b>58</b>.</p>
+    <div class="shop-tools">
+      <label class="small">Order <select><option>Most points first</option><option>Most points per dollar</option><option>Order added</option></select></label>
+      <label class="small">Spend up to $ <input type="number" id="shop-budget" value="150" placeholder="Any" aria-label="Budget in dollars"></label>
+      <span class="small"><b>$131</b> buys 5 items. <button class="btn ghost sm" type="button">Clear</button></span>
+    </div>
+    <ul class="shop"><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 7-gallon water containers, filled from your tap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 7-gallon water containers, filled from your tap</b><span class="small muted">53 L of water</span><span class="small pickl"><span class="pn">Reliance Aqua-Tainer 7-gallon water container</span> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE1" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+11</span><span class="small muted">$44</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 7-gallon water containers, filled from your tap"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 7-gallon water containers, filled from your tap from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="13" rx="2"/><path d="M12 8V5H8M12 5l4-1.5"/></svg><span><b>A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)</b><span class="small muted">Fire safety</span><span class="small pickl"><span class="pn">First Alert HOME1 rechargeable extinguisher, 2-A:10-B:C</span> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE2" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+9</span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger) from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 cases of 24 half-litre bottles"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 cases of 24 half-litre bottles</b><span class="small muted">24 L of water</span><span class="small pickl"><span class="pn">Amazon purified water, 24 × 16.9 fl oz</span> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE3" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span><span class="small heavy">Heavy to ship: often cheaper to pick up locally</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$12</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 cases of 24 half-litre bottles"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 cases of 24 half-litre bottles from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A hand-crank NOAA emergency radio with a phone charger"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/></svg><span><b>A hand-crank NOAA emergency radio with a phone charger</b><span class="small muted">Comms</span><span class="small pickl"><span class="pn">Midland ER310 hand-crank emergency radio</span> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE4" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">$30</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A hand-crank NOAA emergency radio with a phone charger"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A hand-crank NOAA emergency radio with a phone charger from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A change of clothes for everyone"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4L3 7l2 4 2-1v10h10V10l2 1 2-4-5-3a4 4 0 0 1-8 0z"/></svg><span><b>A change of clothes for everyone</b><span class="small muted">Clothing</span><span class="small muted shop-tip">From home: nothing to buy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+2</span><span class="small muted">From home</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A change of clothes for everyone"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A change of clothes for everyone from the list">×</button>
+</li><li class="shop-cut small muted">Over your budget</li><li class="shop-row over">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="6" ry="2.2"/><path d="M6 6v12c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V6M6 11c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2"/></svg><span><b>28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars</b><span class="small muted">50,400 kcal of food</span><span class="small muted shop-tip">Mixed groceries: <a class="buy" href="https://www.amazon.com/s?k=canned+soup+chili+beans" target="_blank" rel="noopener noreferrer">Find on Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$91</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><option>Goes in Basement bin</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars from the list">×</button>
+</li><li class="shop-row over">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 epinephrine auto-injectors for Riley, plus an antihistamine"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l6 6M17 7l-9 9-2.5-.5L5 13l9-9M8 16l-4 4"/></svg><span><b>2 epinephrine auto-injectors for Riley, plus an antihistamine</b><span class="small muted">Allergy</span><span class="small muted shop-tip">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+7</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 epinephrine auto-injectors for Riley, plus an antihistamine"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 epinephrine auto-injectors for Riley, plus an antihistamine from the list">×</button>
+</li><li class="shop-row over">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: A spare week of Sam&#x27;s prescriptions"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/></svg><span><b>A spare week of Sam&#x27;s prescriptions</b><span class="small muted">Medications</span><span class="small muted shop-tip">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A spare week of Sam&#x27;s prescriptions"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove A spare week of Sam&#x27;s prescriptions from the list">×</button>
+</li><li class="shop-row over">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 2 CAT or SOF-T tourniquets"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="6" rx="1.5"/><path d="M9 9V6.5h6V9M9 15v2.5h6V15"/></svg><span><b>2 CAT or SOF-T tourniquets</b><span class="small muted">Trauma</span><span class="small muted shop-tip">Buy from a medical supplier: counterfeits are sold on marketplaces</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+5</span><span class="small muted">$60</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 CAT or SOF-T tourniquets"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 2 CAT or SOF-T tourniquets from the list">×</button>
+</li><li class="shop-row over">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 3 packs of 10 N95 masks"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9c3-1 5-2 8-2s5 1 8 2v3c0 4-4 7-8 7s-8-3-8-7zM8 12h8M9 15h6"/></svg><span><b>3 packs of 10 N95 masks</b><span class="small muted">Masks</span><span class="small pickl"><span class="pn">3M Aura 9205+ N95 respirator, 10-pack</span> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE5" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+4</span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 packs of 10 N95 masks"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 3 packs of 10 N95 masks from the list">×</button>
+</li><li class="shop-row over">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 5 reusable emergency blankets"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4L3 20h18zM12 13l-3.5 7M12 13l3.5 7"/></svg><span><b>5 reusable emergency blankets</b><span class="small muted">Shelter</span><span class="small pickl"><span class="pn">SOL heavy-duty reusable emergency blanket</span> · Qty 5 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE6" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+3</span><span class="small muted">$25</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 5 reusable emergency blankets"><option>Goes in Hall closet go-bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 5 reusable emergency blankets from the list">×</button>
+</li><li class="shop-row over">
+  <label class="shop-chk"><input type="checkbox" aria-label="Bought and in the kit: 3 LED headlamps"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span><b>3 LED headlamps</b><span class="small muted">Light</span><span class="small pickl"><span class="pn">Energizer Vision HD headlamp</span> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE7" target="_blank" rel="noopener noreferrer">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+3</span><span class="small muted">$36</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 LED headlamps"><option>Goes in Trunk bag</option><option>Not in a kit yet</option></select></div>
+  <button class="x" type="button" aria-label="Remove 3 LED headlamps from the list">×</button>
+</li></ul>
+    <div class="shop-add"><input type="text" placeholder="Add something else…" aria-label="Add an item to the list"><button class="btn ghost sm" type="button">Add</button></div>
+  </div>
+  </section></main><div class="dim" aria-hidden="true"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-150">
+  <div class="sheet-grab" aria-hidden="true"></div>
+  <div class="sheet-h">
+    <div class="stack" style="gap:2px"><h2 id="sh-150">Amazon cart</h2>
+      <p class="small muted">Pick what goes in this order. Nothing is bought until you check out on Amazon.</p>
+      <p class="small muted">Pre-checked from your $150 budget.</p></div>
+    <button class="x" type="button" aria-label="Close">×</button>
+  </div>
+  <div class="sheet-b">
+    <ul class="picks"><li class="pick"><label class="pick-l"><input type="checkbox" checked>
+      <span class="pick-b"><b>Reliance Aqua-Tainer 7-gallon water container</b><span class="small muted">Qty 2 · for: 2 7-gallon water containers, filled from your tap</span></span></label>
+      <span class="pick-p small mono">$44</span></li><li class="pick"><label class="pick-l"><input type="checkbox" checked>
+      <span class="pick-b"><b>First Alert HOME1 rechargeable extinguisher, 2-A:10-B:C</b><span class="small muted">Qty 1 · for: A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)</span></span></label>
+      <span class="pick-p small mono">$45</span></li><li class="pick"><label class="pick-l"><input type="checkbox">
+      <span class="pick-b"><b>Amazon purified water, 24 × 16.9 fl oz</b><span class="small muted">Qty 2 · for: 2 cases of 24 half-litre bottles</span><span class="small heavy">Heavy to ship: often cheaper to pick up locally</span></span></label>
+      <span class="pick-p small mono muted">$12</span></li><li class="pick"><label class="pick-l"><input type="checkbox" checked>
+      <span class="pick-b"><b>Midland ER310 hand-crank emergency radio</b><span class="small muted">Qty 1 · for: A hand-crank NOAA emergency radio with a phone charger</span></span></label>
+      <span class="pick-p small mono">$30</span></li><li class="pick"><label class="pick-l"><input type="checkbox">
+      <span class="pick-b"><b>3M Aura 9205+ N95 respirator, 10-pack</b><span class="small muted">Qty 3 · for: 3 packs of 10 N95 masks</span><span class="small muted">Over your $150 budget</span></span></label>
+      <span class="pick-p small mono muted">$45</span></li><li class="pick"><label class="pick-l"><input type="checkbox">
+      <span class="pick-b"><b>SOL heavy-duty reusable emergency blanket</b><span class="small muted">Qty 5 · for: 5 reusable emergency blankets</span><span class="small muted">Over your $150 budget</span></span></label>
+      <span class="pick-p small mono muted">$25</span></li><li class="pick"><label class="pick-l"><input type="checkbox">
+      <span class="pick-b"><b>Energizer Vision HD headlamp</b><span class="small muted">Qty 3 · for: 3 LED headlamps</span><span class="small muted">Over your $150 budget</span></span></label>
+      <span class="pick-p small mono muted">$36</span></li></ul>
+    <div class="notin">
+      <p class="eyebrow">Not in this cart (5)</p>
+      <ul><li><span class="nl">28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars</span><span class="small muted nr">Mixed groceries</span></li><li><span class="nl">2 epinephrine auto-injectors for Riley, plus an antihistamine</span><span class="small muted nr">Prescription</span></li><li><span class="nl">A spare week of Sam&#x27;s prescriptions</span><span class="small muted nr">Prescription</span></li><li><span class="nl">2 CAT or SOF-T tourniquets</span><span class="small muted nr">Medical supplier</span></li><li><span class="nl">A change of clothes for everyone</span><span class="small muted nr">From home</span></li></ul>
+    </div>
+  </div>
+  <div class="sheet-f">
+    <p class="small"><b>About $119</b> · 4 things in all</p>
+    <a class="btn cart-go" href="https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=B0EXAMPLE1&amp;Quantity.1=2&amp;ASIN.2=B0EXAMPLE2&amp;Quantity.2=1&amp;ASIN.3=B0EXAMPLE4&amp;Quantity.3=1" target="_blank" rel="noopener noreferrer">Open Amazon cart (3 items)</a>
+    <p class="small muted">A plain link that fills your Amazon cart. No tracking tag, no account.</p>
+  </div>
+</div></div>
+  <p class="cap"><b>Trusting:</b> that the budget still means the same thing. <b>What earns it:</b> the budget's set is unchanged ($131: clothing, water bottles, containers, extinguisher, radio). The sheet pre-checks the 3 of those that have a pick and aren't heavy; the bottles stay unchecked with their reason, and anything else is one tap away.</p>
+</section>
+<section class="frame">
+  <div class="frame-h"><span class="eyebrow">The sheet's footer · two states</span><h2>The link always says what it will send</h2></div>
+  <div class="states">
+    <div class="state"><p class="small"><b>About $225</b> · 15 things in all</p><a class="btn cart-go" href="https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=B0EXAMPLE1&amp;Quantity.1=2&amp;ASIN.2=B0EXAMPLE2&amp;Quantity.2=1&amp;ASIN.3=B0EXAMPLE4&amp;Quantity.3=1&amp;ASIN.4=B0EXAMPLE5&amp;Quantity.4=3&amp;ASIN.5=B0EXAMPLE6&amp;Quantity.5=5&amp;ASIN.6=B0EXAMPLE7&amp;Quantity.6=3" target="_blank" rel="noopener noreferrer">Open Amazon cart (6 items)</a><p class="small muted">A plain link that fills your Amazon cart. No tracking tag, no account.</p></div>
+    <div class="state"><p class="small"><b>About $0</b> · nothing checked</p><a class="btn cart-go" aria-disabled="true" role="link">Check something to open a cart</a><p class="small muted">A plain link that fills your Amazon cart. No tracking tag, no account.</p></div>
+  </div>
+  <p class="cap">The link is an <code>&lt;a&gt;</code>, not a script popup, so popup blockers let it through. The selection isn't saved: the sheet starts fresh from the list each time.</p>
+</section>
+</body>
+</html>
