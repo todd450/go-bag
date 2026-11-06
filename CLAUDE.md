@@ -2,8 +2,9 @@
 
 Photograph what is in your emergency kits and see how ready your household is: scores sized to
 who lives with you, where you live, and the emergencies you care about most, plus a shopping
-list and a family plan that close the gaps. For now it serves one family, the founder's, as a
-private page on claude.ai. *(Drafted from the founder's requests; the founder rewrites it.)*
+list and a family plan that close the gaps. For now it serves one family, the founder's, at
+https://go-bag.vercel.app behind a sign-in. *(Drafted from the founder's requests; the founder
+rewrites it.)*
 
 Built by the Founding Agents team with one founder. This file is a short map, not a rulebook: a
 rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its evidence goes in
@@ -23,19 +24,19 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
   `tests/edge.test.js` renders every tab for each one. The standard household for ordinary tests
   is `tests/household.json`.
 - **Shipping:** changes reach `main` only through a pull request. Merging to `main` deploys to
-  production: no. The integrator merges. Production is the private claude.ai Artifact
-  https://claude.ai/artifact/DXn8SMGiZhuKuQFGgKHenz, published from `emergency-kit-audit.html`
-  on `main` with the Artifact tool: pass `url` set to that link and leave out `capabilities` and
-  `icon`, so the stored ones carry forward. Publish only from a green `main`, and only when the
-  founder asks. The `ship` skill (`.claude/skills/ship/`) is the step-by-step for landing PRs and
-  publishing, and `live-commit.sh` there tells which commit is live.
-- **Vercel version (issue #48):** the same page also runs on Vercel, signed in with Supabase magic
-  links. `web/runtime.js` stands in for `window.claude` (db, assets, sample, user) on Supabase project
-  `go-bag` (`jltxxtjlnzpxdozxovmz`) and the functions in `api/`; `tools/build-web.js` wraps the page
-  with it into `dist/` (`npm run build`, Vercel's only build step). The page file is never edited for
+  production: yes. Vercel builds every push to `main` and makes it production at
+  https://go-bag.vercel.app, so the founder merges: the integrator readies each PR (up to date,
+  checks green, Vercel preview built) and hands it to them. The `ship` skill
+  (`.claude/skills/ship/`) is the step-by-step, and `live-commit.sh` there tells which commit is
+  live. The old claude.ai Artifact (https://claude.ai/artifact/DXn8SMGiZhuKuQFGgKHenz) is retired
+  (issue #48, 5 Nov 2026): it points to Vercel, and its data is a frozen copy. Never publish the
+  app to it or write to its data.
+- **How it runs on Vercel (issue #48):** signed in with Supabase magic links. `web/runtime.js`
+  stands in for `window.claude` (db, assets, sample, user) on Supabase project `go-bag`
+  (`jltxxtjlnzpxdozxovmz`) and the functions in `api/`; `tools/build-web.js` wraps the page with it
+  into `dist/` (`npm run build`, Vercel's only build step). The page file is never edited for
   Vercel. Schema and policies are in `supabase/migrations/`; who may sign in is the
-  `allowed_emails` table. The claude.ai Artifact stays production until the founder switches over.
-  `tests/web-runtime.test.js` covers it.
+  `allowed_emails` table. `tests/web-runtime.test.js` covers it.
   - **Keys are in Doppler**, project `go-bag`, and set or rotated nowhere else: `dev` for this
     machine (`doppler run -- npm run build`, from `doppler.yaml`), `prd` for Vercel production
     through Doppler's Vercel integration. `ANTHROPIC_API_KEY` is in `prd` only and the founder
@@ -57,9 +58,11 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
     with no build step (`check.sh` fails on a second `<script>`). Builders working at the same
     time will touch the same file, so run `build` on one issue at a time until the founder
     decides whether to split it.
-  - The page runs on Artifact runtime contract 0.2.96 and declares `db`, `sample`, `assets` and
-    `user`. Data lives in the Artifact's database, not in this repo: collections `kits` and
-    `items`, and the `household` docs `profile`, `hazards`, `review`, `shopping` and `plan`.
+  - The page is written to claude.ai's Artifact runtime contract 0.2.96 (`window.claude` with
+    `db`, `sample`, `assets` and `user`), which `web/runtime.js` provides on Vercel. Data lives in
+    Supabase, not in this repo: collections `kits` and `items`, and the `household` docs
+    `profile`, `hazards`, `review`, `shopping` and `plan`, all rows of the `docs` table; photos
+    are in the private `photos` bucket.
     Every capability may be missing (`claude.use()` resolves `null`), and the page must still work
     in memory, which is how the tests and the preview run it.
   - No real household's data goes in this repo or a test: fixtures use made-up people. Never
