@@ -1,7 +1,7 @@
 {
   "name": "go-bag",
   "private": true,
-  "description": "Emergency Kit Audit. Dependencies are for the Vercel build only; ./check.sh needs none of them.",
+  "description": "Go Bag. Dependencies are for the Vercel build only; ./check.sh needs none of them.",
   "engines": { "node": "22.x" },
   "scripts": {
     "build": "node tools/build-web.js",

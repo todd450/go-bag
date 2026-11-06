@@ -41,7 +41,7 @@ test("the privacy line is word for word, ending in the deletion address, or with
 test("the footer names the product with no domain", () => {
   const foot = out.match(/<footer[\s\S]*?<\/footer>/);
   assert.ok(foot, "a footer");
-  assert.ok(text(foot[0]).includes("Emergency Kit Audit"));
+  assert.ok(text(foot[0]).includes("Go Bag"));
   assert.ok(!/\b[a-z0-9-]+\.(example|com|app|org|net|io)\b/i.test(text(foot[0])), "no domain in the footer");
 });
 

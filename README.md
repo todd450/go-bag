@@ -1,4 +1,4 @@
-# Emergency Kit Audit
+# Go Bag
 
 Photograph what is in your emergency kits and see how ready your household is. Scores are sized
 to who lives with you, where you live and the emergencies that matter most to you, and the app
