@@ -4,9 +4,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
-const { execFileSync } = require("node:child_process");
 const { load, ROOT } = require("./load");
 const { chrome, atPhoneWidth } = require("./phone");
 
@@ -241,49 +239,43 @@ test("Bag size saves to 0.01 L, so 33.25 L stays 33.25", async () => {
   assert.match(panel(app, "go"), /step="0.01" id="pk-bagL-go"/);
 });
 
-// With no container, every kit's panel is what main rendered before kits had containers. This compares against
-// the base page (origin/main) while it is that page, so it runs on this change and skips once main reads containers.
-// The one intended difference: Bag size and Trunk space take 0.01 L steps.
-const base = (() => {
-  try {
-    const html = execFileSync("git", ["show", "origin/main:emergency-kit-audit.html"], { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer: 1 << 26 });
-    return /function containerOf\b/.test(html) ? null : html;
-  } catch (_) { return null; }
-})();
-test("with no container, every kit's panel and limits are byte-for-byte main's", { skip: !base && "origin/main already reads containers, or isn't fetched" }, () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-base-"));
-  try {
-    const page = path.join(dir, "page.html");
-    fs.writeFileSync(page, base);
-    // Each page renders in its own Node, since the loader reads its page once. Every kit with a saved container
-    // renders as saved ("saved"), then every kit renders with none ("none"), on each measure. The change's page
-    // keeps a saved one only when containerOf reads it as none, the case where it must still match main.
-    const render = pageFile => JSON.parse(execFileSync(process.execPath, ["-e", `
-      const { load } = require(${JSON.stringify(path.join(__dirname, "load.js"))});
-      const out = {};
-      for (const fixture of ${JSON.stringify(scenarios)}) {
-        const app = load({ fixture });
-        const ids = app.json("S.kits.map(k => k.id)");
-        const draw = (id, as) => { for (const m of [null, "g", "ml"]) out[[fixture, id, as, m].join(" ")] = app.run(\`(k => {
-          S.bagM = \${JSON.stringify(m)} && { id: k.id, m: \${JSON.stringify(m)} };
-          const lim = kitLimits(k, household()), old = lim && Object.fromEntries(Object.entries(lim).filter(([f]) => f !== "container" && f !== "emptyG"));
-          return JSON.stringify(old) + packPanel(k, kitReadiness(k, household(), model().active)); })(S.kits.find(k => k.id === \${JSON.stringify(id)}))\`); };
-        const none = app.run("typeof containerOf") === "function" ? id => app.run(\`containerOf(S.kits.find(k => k.id === \${JSON.stringify(id)})) === null\`) : () => true;
-        for (const id of ids) if (app.run(\`S.kits.find(k => k.id === \${JSON.stringify(id)}).container !== undefined\`) && none(id)) draw(id, "saved");
-        app.run("S.kits.forEach(k => delete k.container)");
-        for (const id of ids) draw(id, "none");
-      }
-      process.stdout.write(JSON.stringify(out));`], { env: { ...process.env, GO_BAG_PAGE: pageFile }, encoding: "utf8", maxBuffer: 1 << 28 }));
-    const before = render(page), after = render(path.join(ROOT, "emergency-kit-audit.html"));
-    for (const [key, html] of Object.entries(after)) {
-      assert.ok(key in before, `${key}: rendered by main`);
-      assert.equal(html, before[key].replace(/step="0\.5"( id="pk-bagL-)/g, 'step="0.01"$1'), key);
-    }
-    const kits = scenarios.reduce((a, f) => a + (JSON.parse(fs.readFileSync(path.join(ROOT, f + ".json"), "utf8")).kits || []).length, 0);
-    assert.ok(kits > 10, `only ${kits} kits`);
-    assert.equal(Object.keys(after).filter(k => / none /.test(k)).length, kits * 3, "every kit of every scenario, on each measure");
-    assert.ok(Object.keys(after).some(k => k.startsWith(`${ODD} c-array saved`)), "the odd containers that read as none are compared as saved");
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+// With no container, every kit's panel is what main rendered before kits had containers. Main's panels are recorded in
+// MAIN, so CI compares against them with no git history. The one intended difference: Bag size and Trunk space take
+// 0.01 L steps. To record them again from a page, which only a change to a panel's no-container markup should need:
+//   GO_BAG_PAGE=<page.html> node tests/container-weight.test.js --record
+const MAIN = path.join(__dirname, "container-weight.main.json");
+// Every kit whose saved container reads as none (on main, every saved container) as saved, then every kit of every
+// scenario with no container, each on the default measure, Weight and Space: its limits without the two new fields,
+// then its panel. The clock is fixed, so an expiry date never moves what a panel says.
+function panels() {
+  const out = {}, now = Date.UTC(2026, 10, 6);
+  for (const fixture of scenarios) {
+    const app = load({ fixture });
+    app.run(`(D => { globalThis.Date = class extends D { constructor(...a) { super(...(a.length ? a : [${now}])); } static now() { return ${now}; } }; })(Date)`);
+    const ids = app.json("S.kits.map(k => k.id)"), kit = id => `S.kits.find(k => k.id === ${JSON.stringify(id)})`;
+    const draw = (id, as) => { for (const m of [null, "g", "ml"]) out[[fixture, id, as, m].join(" ")] = app.run(`(k => {
+      S.bagM = ${JSON.stringify(m)} && { id: k.id, m: ${JSON.stringify(m)} };
+      const lim = kitLimits(k, household()), old = lim && Object.fromEntries(Object.entries(lim).filter(([f]) => f !== "container" && f !== "emptyG"));
+      return JSON.stringify(old) + packPanel(k, kitReadiness(k, household(), model().active)); })(${kit(id)})`); };
+    const none = app.run("typeof containerOf") === "function" ? id => app.run(`containerOf(${kit(id)}) === null`) : () => true;
+    for (const id of ids) if (app.run(`${kit(id)}.container !== undefined`) && none(id)) draw(id, "saved");
+    app.run("S.kits.forEach(k => delete k.container)");
+    for (const id of ids) draw(id, "none");
+  }
+  return out;
+}
+if (process.argv.includes("--record")) { fs.writeFileSync(MAIN, JSON.stringify(panels(), null, 1) + "\n"); process.exit(0); }
+
+test("with no container, every kit's panel and limits are byte-for-byte main's", () => {
+  const main = JSON.parse(fs.readFileSync(MAIN, "utf8")), now = panels();
+  // Every kit main rendered with no container still renders, and every panel main has a record of is unchanged
+  for (const key of Object.keys(main)) if (/ none /.test(key)) assert.ok(key in now, `${key}: not rendered any more`);
+  const compared = Object.keys(now).filter(key => key in main);
+  for (const key of compared) assert.equal(now[key], main[key].replace(/step="0\.5"( id="pk-bagL-)/g, 'step="0.01"$1'), key);
+  const kits = new Set(compared.filter(k => / none /.test(k)).map(k => k.split(" ").slice(0, 2).join(" ")));
+  assert.ok(kits.size > 10, `only ${kits.size} kits`);
+  assert.ok(kits.has("tests/household go") && kits.has("tests/household car"), "the household's go-bag and car kit");
+  for (const id of ["c-null", "c-array", "c-string"]) assert.ok(compared.includes(`${ODD} ${id} saved g`), `${id}: a saved container that reads as none`);
 });
 
 test("at 390px the odd containers' panels, bag band included, never scroll sideways", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
