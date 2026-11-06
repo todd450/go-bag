@@ -174,7 +174,7 @@ test("weights show and are typed in pounds, and saved data stays in grams and kg
   assert.match(panel, /id="pk-carryKg-go" value="20"/);
   assert.match(panel, /of 20 lb/);
   assert.doesNotMatch(panel, / kg\b/);
-  // Bag size is still litres, half-litre steps
+  // Bag size is still litres, in 0.01 L steps, as real containers are sized (#99)
   await fire("change", { dataset: { change: "packLim", id: "go", f: "bagL" }, value: "32.3" });
-  assert.equal(json(`S.kits.find(k => k.id === "go").bagL`), 32.5);
+  assert.equal(json(`S.kits.find(k => k.id === "go").bagL`), 32.3);
 });
