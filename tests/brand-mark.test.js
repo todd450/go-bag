@@ -181,6 +181,17 @@ test("the brand is Cobalt, and Partway's orange stays the meter's", () => {
   }
 });
 
+// The wordmark (PR #91, the founder's pick E): "Go [case] Bag", with the case between the words. The
+// heading still reads "Go Bag" to a screen reader, and the case in it is the one that fills to the score.
+test("the header reads Go Bag with the case between the words", () => {
+  const h1 = html.match(/<div class="brand"><h1>([\s\S]*?)<\/h1><\/div>/);
+  assert.ok(h1, "the brand holds one h1");
+  const parts = h1[1].match(/<span[^>]*>[^<]*<\/span>/g);
+  assert.deepEqual(parts, ['<span class="go">Go</span>', '<span class="brand-mark" aria-hidden="true"></span>', "<span>Bag</span>"], "Go, the case, Bag");
+  assert.equal(h1[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(), "Go Bag", "the heading's text is Go Bag");
+  assert.match(html.match(/<title>([^<]*)<\/title>/)[1], /^Go Bag$/);
+});
+
 // In a real browser: the stand-in DOM finds a link anywhere and lays nothing out, so where the icon
 // link sits and how much room a kit name gets can only be seen in Chrome.
 function findChrome() {
