@@ -354,6 +354,7 @@ tr.addrow td { background: var(--paper); }
   .shop-kit { grid-column: 1; grid-row: 3; padding-left: 62px; }
   .shop-kit:empty, .shop-meta:empty { display: none; }
   .shop-row > .x { align-self: start; }
+  .shop-chk .buy { display: inline-flex; align-items: center; min-height: 40px; }
 }
 .reasons { display: grid; gap: 0; }
 .reasons div { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
@@ -1194,6 +1195,28 @@ const ESS_BUY = {
   shutoff_wrench: ["A gas and water shut-off wrench", 12, "Hang it by the gas meter, and note where it is on the Plan tab. Only shut the gas off if you smell or hear a leak: the gas company has to turn it back on."],
   fire_starter: ["A lighter and waterproof matches", 8, "Keep them dry in a zip-top bag. After an earthquake, never strike one indoors until you know there's no gas leak."],
 };
+/* The checked Amazon product for a shopping line (issue #97): one pick is one unit of what the line counts.
+   A product is a plain /dp/ page with no tag; `q` is a fixed search for a line that isn't one product.
+   Changed only through a pull request, and never built from a line's text, which can name household members. */
+const PICKS = {
+  water_home: { name: "Reliance Aqua-Tainer 7-gallon container", url: "https://www.amazon.com/dp/B001QC31G6" },
+  water_go: { name: "Crystal Geyser Alpine Spring Water", url: "https://www.amazon.com/dp/B0CMV9PF5Y", heavy: true },
+  food_go: { name: "Datrex 3,600-calorie ration bar", url: "https://www.amazon.com/dp/B0014EL48S" },
+  food_home: { q: "canned soup chili beans" },
+  extinguisher: { name: "Amerex B500 5 lb ABC extinguisher, 2-A:10-B:C", url: "https://www.amazon.com/dp/B0777R7JVF" },
+  radio: { name: "Midland ER210 hand-crank NOAA radio", url: "https://www.amazon.com/dp/B015QICDD2" },
+  masks: { name: "3M 8511 N95 respirators, box of 10", url: "https://www.amazon.com/dp/B0002YKBV2" },
+  blanket_go: { name: "UST Survival Blanket 2.0, reusable", url: "https://www.amazon.com/dp/B00YDQJ9EK" },
+  light: { name: "Petzl Tikkina headlamp", url: "https://www.amazon.com/dp/B01KYTR76Q" },
+  first_aid: { name: "Be Smart Get Prepared 110-piece first-aid kit", url: "https://www.amazon.com/dp/B00CYBXH7G" },
+  co_alarm: { name: "Kidde battery carbon monoxide alarm", url: "https://www.amazon.com/dp/B004Y6V6K4" },
+  fire_blanket: { name: "Tonyko fiberglass fire blanket", url: "https://www.amazon.com/dp/B076X7CRGH" },
+  escape_ladder: { name: "Kidde fire escape ladder", url: "https://www.amazon.com/dp/B00005OU7B" },
+  whistle: { name: "Fox 40 Sonik Blast CMG whistle", url: "https://www.amazon.com/dp/B00FOJCL1S" },
+  multitool: { name: "Leatherman Wave+ multi-tool", url: "https://www.amazon.com/dp/B079MJ6MLV" },
+  duct_tape: { name: "Scotch 2930 multi-use duct tape", url: "https://www.amazon.com/dp/B0013B1XHE" },
+  shutoff_wrench: { name: "Green Goods gas and water shut-off tool", url: "https://www.amazon.com/dp/B001CSCC7I" },
+};
 /* Prescriptions are one line per person on daily medication. With several, every line names them all and
    none says whose is already in a kit, since the kit doesn't record whose an item is. */
 function essentialGuide(id, h) {
@@ -1207,8 +1230,10 @@ function essentialGuide(id, h) {
     ? { line: `A spare week of prescriptions for ${orList(onMeds)}`, price: null, tip: `Prescription only. ${orList(onMeds, "and")} each need a spare week of their own, one line each. Ask each pharmacy about an early refill, swap the spare into daily use before it expires, and track refills on the Plan tab.` }
     : { line: `A spare week of ${onMeds.length ? onMeds[0] + "'s " : ""}prescriptions`, price: null, tip: `${rxAsk(onMeds, "a spare week to keep in the kit", "pharmacy")}. Swap it into daily use before it expires, and track refills on the Plan tab.` };
   const [line, price, tip] = ESS_BUY[id];
-  return { line, price, tip };
+  return { line, price, tip, ...(PICKS[id] ? { pick: id, qty: 1 } : {}) };
 }
+/* A line that is `qty` of one product names its pick; a count of none (water or food of 0) names nothing. */
+const pk = (pick, qty) => qty >= 1 ? { pick, qty } : {};
 /* A line for a named essential (`ess`, on the category's own list) gets that essential's suggestion;
    anything else, including old lines saved without one, gets the category's. */
 function buyGuide(cat, qty, unit, kt, h, ess) {
@@ -1218,19 +1243,19 @@ function buyGuide(cat, qty, unit, kt, h, ess) {
   const allergic = whoIs(h, hasCond("allergy")), onMeds = whoIs(h, onDailyMeds);
   switch (cat) {
     case "water": {
-      if (go) { const c = Math.ceil(q / 12); return { line: `${pl(c, "case")} of 24 half-litre bottles`, price: c * 6, tip: "Bottles fit in a bag and don't leak. Pick cases with a best-by date printed on them." }; }
+      if (go) { const c = Math.ceil(q / 12); return { line: `${pl(c, "case")} of 24 half-litre bottles`, price: c * 6, ...pk("water_go", c), tip: "Bottles fit in a bag and don't leak. Pick cases with a best-by date printed on them." }; }
       const j = Math.ceil(q / 26.5), g1 = Math.ceil(q / 3.785);
-      return { line: `${pl(j, "7-gallon water container")}, filled from your tap`, price: j * 22, tip: `The cheapest way to store a lot of water. Keep them out of sunlight and refill every 6 months. Or buy ${g1} one-gallon jugs, about $${Math.round(g1 * 1.5)}, which are easier to carry.` };
+      return { line: `${pl(j, "7-gallon water container")}, filled from your tap`, price: j * 22, ...pk("water_home", j), tip: `The cheapest way to store a lot of water. Keep them out of sunlight and refill every 6 months. Or buy ${g1} one-gallon jugs, about $${Math.round(g1 * 1.5)}, which are easier to carry.` };
     }
     case "food": {
-      if (go) { const b = Math.ceil(q / 3600); return { line: pl(b, "3,600-calorie ration bar"), price: b * 10, tip: "They last 5 years, need no water or cooking, and won't make you thirsty." }; }
+      if (go) { const b = Math.ceil(q / 3600); return { line: pl(b, "3,600-calorie ration bar"), price: b * 10, ...pk("food_go", b), tip: "They last 5 years, need no water or cooking, and won't make you thirsty." }; }
       const safe = allergic.length > 0;
       const cans = Math.ceil(q * .35 / 450), jars = Math.ceil(q * .25 / 6700), crack = Math.ceil(q * .2 / 1800), snack = Math.ceil(q * .2 / (safe ? 1900 : 2700));
       return { line: `${pl(cans, "can")} of soup, chili and beans, ${pl(jars, "big jar")} of ${safe ? "sunflower seed butter" : "peanut butter"}, ${pl(crack, "box", "boxes")} of crackers and ${safe ? pl(snack, "box", "boxes") + " of nut-free granola bars" : pl(snack, "bag") + " of trail mix"}`,
-        price: Math.round(cans * 1.8 + jars * 6 + crack * 4 + snack * (safe ? 5 : 8)),
+        price: Math.round(cans * 1.8 + jars * 6 + crack * 4 + snack * (safe ? 5 : 8)), pick: "food_home",
         tip: `${safe ? `Nut-free picks because ${orList(allergic, "and")} ${allergic.length > 1 ? "have" : "has"} a severe allergy. Check every label. ` : ""}Choose food that needs no cooking and that you already eat, and get ring-pull cans or a manual can opener. Eat and replace it before it expires.` };
     }
-    case "first_aid": return { line: n > 1 ? pl(n, "family first-aid kit") : "A family first-aid kit (around 100 pieces)", price: n * 25, tip: "Get one with a printed contents list, so you can see what's been used and restock it." };
+    case "first_aid": return { line: n > 1 ? pl(n, "family first-aid kit") : "A family first-aid kit (around 100 pieces)", price: n * 25, ...pk("first_aid", n), tip: "Get one with a printed contents list, so you can see what's been used and restock it." };
     case "trauma": return { line: pl(n, "CAT or SOF-T tourniquet"), price: n * 30, tip: "Buy from a medical supplier rather than a marketplace seller: counterfeit tourniquets break. A one-hour Stop the Bleed class shows you how to use one." };
     case "burns": return { line: "Burn gel and 2 sterile burn dressings", price: 15, tip: "Cool a burn under running water for 20 minutes first. The gel comes after." };
     case "splint": return { line: "A SAM splint and 2 elastic wraps", price: 20, tip: "A SAM splint rolls flat and bends to fit an arm, leg or ankle." };
@@ -1256,7 +1281,7 @@ function buyGuide(cat, qty, unit, kt, h, ess) {
       return { line: `Rescue seizure medication${forWho(who)} and a printed seizure action plan`, price: null,
         tip: `${rxAsk(who, "a spare dose to keep in the kit", "neurologist")}. Time every seizure: past 5 minutes, give the rescue medication and call 911.` };
     }
-    case "co_alarm": return { line: pl(n, "battery carbon monoxide alarm"), price: n * 30,
+    case "co_alarm": return { line: pl(n, "battery carbon monoxide alarm"), price: n * 30, ...pk("co_alarm", n),
       tip: "Put one on each floor and outside the bedrooms. Never run a generator, grill or camp stove indoors or in the garage, even with the door open. If it sounds, get everyone outside before calling 911." };
     case "diagnostics": {
       const dia = whoIs(h, hasCond("diabetes"));
@@ -1268,19 +1293,19 @@ function buyGuide(cat, qty, unit, kt, h, ess) {
       return { line: `Pain relievers, an antihistamine and anti-diarrhea tablets${kidsMed.length ? `, plus children's ibuprofen for ${orList(kidsMed, "and")}` : ""}`, price: kidsMed.length ? 30 : 20,
         tip: onMeds.length ? `${orList(onMeds, "and")} also ${onMeds.length > 1 ? "need" : "needs"} a spare week of daily medication. Ask the pharmacy about an early refill, and track it on the Plan tab.` : "Store-brand versions work the same and cost much less. Spare glasses go here too." };
     }
-    case "light": return { line: pl(n, "LED headlamp"), price: n * 12, tip: "Headlamps keep both hands free. Get ones that take the same AA or AAA batteries as your radio." };
+    case "light": return { line: pl(n, "LED headlamp"), price: n * 12, ...pk("light", n), tip: "Headlamps keep both hands free. Get ones that take the same AA or AAA batteries as your radio." };
     case "power": return { line: "A 20,000 mAh power bank and a pack of lithium AA batteries", price: 40,
       tip: h.devices ? "Someone uses a powered medical device. Ask its supplier for a backup battery sized for it: a power bank won't be enough." : "Charge the power bank every 3 months. Lithium AAs keep for about 20 years in storage." };
-    case "communication": return { line: "A hand-crank NOAA weather radio", price: 30, tip: "Pick one with a USB port so it can charge a phone. Put a printed contact list next to it." };
+    case "communication": return { line: "A hand-crank NOAA weather radio", price: 30, ...pk("radio", 1), tip: "Pick one with a USB port so it can charge a phone. Put a printed contact list next to it." };
     case "documents": return { line: "A waterproof document pouch, a USB drive and cash in small bills", price: 15, tip: "Copy IDs, insurance and prescriptions onto the drive. Card machines stop working when the power's out. The cash isn't in the price." };
-    case "shelter": return go ? { line: pl(n, "reusable emergency blanket"), price: n * 5, tip: "The thicker reusable kind lasts. Thin foil ones tear the first time." }
+    case "shelter": return go ? { line: pl(n, "reusable emergency blanket"), price: n * 5, ...pk("blanket_go", n), tip: "The thicker reusable kind lasts. Thin foil ones tear the first time." }
       : { line: pl(n, "warm blanket or sleeping bag", "warm blankets or sleeping bags"), price: 0, tip: "Spare bedding from home counts. Put it in the bin and add it to the kit." };
     case "clothing": return { line: n > 1 ? `A change of clothes for ${h.members.length <= n ? "everyone" : n + " people"}` : "A change of clothes", price: 0, tip: `From your closet: sturdy shoes, socks, a rain jacket and a warm layer.${kids.length + little.length ? " Size kids' clothes up each year." : ""}` };
     case "hygiene": return { line: "Wet wipes, hand sanitizer, soap and travel toothbrushes", price: 20, tip: "Add menstrual products and any skin or eye care people use every day." };
     case "sanitation": return { line: "A 5-gallon bucket with a toilet seat lid, heavy-duty bags and kitty litter", price: 35, tip: "After an earthquake toilets may not flush for weeks. It's the thing people most often wish they'd bought." };
     case "tools": return { line: "A multi-tool, duct tape and a gas shut-off wrench", price: 40, tip: "Hang the wrench by the gas meter, and note where it is on the Plan tab." };
-    case "masks": { const packs = Math.ceil(n / 10); return { line: `${pl(packs, "pack")} of 10 N95 masks`, price: packs * 15, tip: kids.length + little.length ? `Adult masks won't seal on small faces. Look for kids' sizes for ${orList([...kids, ...little], "and")}.` : "Look for NIOSH approval printed on each mask." }; }
-    case "fire_safety": return { line: "An ABC fire extinguisher (2-A:10-B:C or bigger)", price: 45, tip: "Mount it near the kitchen exit, not over the stove." };
+    case "masks": { const packs = Math.ceil(n / 10); return { line: `${pl(packs, "pack")} of 10 N95 masks`, price: packs * 15, ...pk("masks", packs), tip: kids.length + little.length ? `Adult masks won't seal on small faces. Look for kids' sizes for ${orList([...kids, ...little], "and")}.` : "Look for NIOSH approval printed on each mask." }; }
+    case "fire_safety": return { line: "An ABC fire extinguisher (2-A:10-B:C or bigger)", price: 45, ...pk("extinguisher", 1), tip: "Mount it near the kitchen exit, not over the stove." };
     case "wound": return { line: "Saline wound wash, butterfly closures, non-stick pads and fine-point tweezers", price: 20, tip: "Rinse a cut under clean running water for a few minutes, then close and cover it. Saline also works as an eye wash." };
     case "bites": return { line: "A tick remover, sting relief wipes, hydrocortisone cream and an instant cold pack", price: 18,
       tip: `Pull ticks straight out, close to the skin. Wash any animal bite with soap and water for 5 minutes and see a doctor if it broke the skin.${allergic.length ? ` If ${orList(allergic)} ${allergic.length > 1 ? "are" : "is"} stung, follow their anaphylaxis plan.` : " Swelling of the face or trouble breathing after a sting means call 911."}` };
@@ -2141,8 +2166,15 @@ function viewShop(M) {
   const after = M.overall == null ? null : scoreIfBought(left);
   const pickAfter = pick && M.overall != null ? scoreIfBought(left.filter(e => pick.has(e.id))) : null;
   const total = left.reduce((a, e) => a + (I(e).price || 0), 0), rx = left.filter(e => I(e).price === null).length;
+  /* The checked product, its quantity and its page, or why there's nothing to buy online. Links come only from PICKS. */
+  const product = i => PICKS[i.pick]?.url ? PICKS[i.pick] : null;
+  const buyLine = (e, i) => { const p = product(i), q = PICKS[i.pick]?.q;
+    if (p) return `<span class="small"><b>${esc(p.name)}</b> · Qty ${i.qty} · ${amazonA({ amazonUrl: p.url })}${p.heavy ? ` <span style="color:var(--warn)">Heavy to ship: often cheaper to pick up locally</span>` : ""}</span>`;
+    const why = q ? `Mixed groceries: ${amazonA({ shopQuery: q })}` : i.price === null ? "Prescription: ask the pharmacy" : i.price === 0 ? "From home: nothing to buy"
+      : e.cat === "trauma" ? "Buy from a medical supplier: counterfeits are sold on marketplaces" : "";
+    return why ? `<span class="small muted">${why}</span>` : ""; };
   const row = e => { const i = I(e); return `<li class="shop-row ${e.done ? "done" : ""} ${S.flash === e.id ? "flash" : ""} ${pick && !pick.has(e.id) && !e.done ? "over" : ""}">
-    <label class="shop-chk"><input type="checkbox" id="shop-${esc(e.id)}" data-change="shopTick" data-id="${esc(e.id)}" ${e.done ? "checked" : ""} ${D()}>${icon(e.cat || "other")}<span><b>${esc(i.line)}</b>${!e.done && i.sub ? `<span class="small muted">${esc(i.sub)}</span>` : ""}${!e.done && i.tip ? `<span class="small shop-tip">${esc(i.tip)}</span>` : ""}</span></label>
+    <label class="shop-chk"><input type="checkbox" id="shop-${esc(e.id)}" data-change="shopTick" data-id="${esc(e.id)}" ${e.done ? "checked" : ""} ${D()}>${icon(e.cat || "other")}<span><b>${esc(i.line)}</b>${!e.done && i.sub ? `<span class="small muted">${esc(i.sub)}</span>` : ""}${!e.done && i.tip ? `<span class="small shop-tip">${esc(i.tip)}</span>` : ""}${e.done ? "" : buyLine(e, i)}</span></label>
     <div class="shop-meta">${e.done ? "" : `${i.gain ? `<span class="gain mono" title="Readiness points this adds">+${i.gain}</span>` : ""}${money(i.price) ? `<span class="small muted">${money(i.price)}</span>` : ""}`}</div>
     <div class="shop-kit">${e.done ? (kitName(e.inKit) ? `<span class="small muted">In ${esc(kitName(e.inKit))}</span>` : "")
       : CATS[e.cat] && S.kits.length ? `<select id="shop-${esc(e.id)}-kit" data-change="shopKit" data-id="${esc(e.id)}" aria-label="Kit for ${esc(i.line)}" ${D()}>${kitOpts(e)}</select>` : ""}</div>
@@ -2166,6 +2198,7 @@ function viewShop(M) {
     </div>
     ${left.length ? `
     <p class="shop-sum">About <b>$${total.toLocaleString()}</b>${rx ? ` plus ${rx} prescription item${rx === 1 ? "" : "s"}` : ""}.${after != null && after > M.overall ? ` Buying it all takes readiness from ${M.overall} to <b>${after}</b>.` : ""}</p>
+    ${left.some(e => product(I(e))) ? `<p class="small muted">Each product is one we've checked. Links carry no tracking tag.</p>` : ""}
     <div class="shop-tools">
       <label class="small">Order <select id="shop-sort" data-change="shopSort">
         <option value="points" ${sort === "points" ? "selected" : ""}>Most points first</option>
