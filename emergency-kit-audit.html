@@ -239,7 +239,7 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .kits-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 24px; align-items: start; }
 @media (max-width: 860px) { .kits-grid { grid-template-columns: 1fr; } }
 .tags { display: grid; gap: 8px; }
-.add-kit { justify-content: center; border-style: dashed; }
+.add-kit, .ctr-add { justify-content: center; border-style: dashed; }
 .tag { position: relative; text-align: left; background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 14px; padding: 10px 60px 10px 10px; cursor: pointer; display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 0 12px; width: 100%; line-height: 1.3; box-shadow: var(--shadow); transition: border-color .15s, box-shadow .15s; }
 .tag:hover { border-color: var(--rule-2); }
 .tag[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
@@ -303,13 +303,11 @@ tr.addrow td { background: var(--paper); }
 .bag.box .bag-st { border-radius: 1px; }
 .pack-lim { display: inline-flex; align-items: center; gap: 6px; }
 .pack-lim input { width: 72px; }
-/* What holds this kit (containerCard): long names, sizes and ratings wrap inside the card */
 .ctr-h { flex-wrap: nowrap; align-items: flex-start; }
 .ctr-h > .ic { width: 28px; height: 28px; color: var(--ink-2); }
 .ctr-t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .ctr-card .chip { max-width: 100%; overflow-wrap: anywhere; }
 .ctr-miss { border: 1px dashed var(--rule-2); background: var(--card); color: var(--ink-2); font-family: inherit; cursor: pointer; }
-.ctr-add { justify-content: center; border-style: dashed; }
 .ctr-g { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
 .pack-l { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: .88rem; }
 
@@ -629,9 +627,8 @@ const ICONS = {
   person: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
   flag: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
   bag: '<path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/>',
-  duffel: '<path d="M3 11a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 8V6h6v2M3 13h18"/>',
+  duffel: '<rect x="3" y="8" width="18" height="11" rx="3"/><path d="M9 8V6h6v2M3 13h18"/>',
   box: '<path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4"/>',
-  sack: '<path d="M9 3.5h6L13.5 7h-3zM10.5 7C6.5 9 5 12.5 5 16a4 4 0 0 0 4 4h6a4 4 0 0 0 4-4c0-3.5-1.5-7-5.5-9"/>',
   gauge: '<path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/>',
   cart: '<path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/>',
   tag: '<path d="M3 12V3h9l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
@@ -778,7 +775,7 @@ const S = {
   openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   listKit: null, // the kit whose Contents panel shows List; any other kit shows Flat-lay. Memory only: never saved
   flOpen: null, // the item whose flat-lay tile shows its fields, cleared when a kit is opened. Memory only
-  ctr: null, // { id, ...typed }: the kit whose "What holds this kit" editor is open, and what's typed in it. Cleared when a kit is opened. Memory only
+  ctr: null, // the open container editor: { id, ...typed }
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
   scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, bagM: null, tag: null, tagNoteOff: false,
   add: { cat: "water", ess: "" }, // the add-by-hand row's Category and Essential, so every redraw shows the two together
@@ -1439,7 +1436,6 @@ const carryShare = m => { const y = yearsOf(m), g = groupOf(m); return g === "in
 const carryKg = m => Math.round(bodyKg(m) * carryShare(m) * 2) / 2;
 const PACK_L = { go: 40, car: 60 };
 const CONTAINER_KINDS = { backpack: "Backpack", duffel: "Duffel", box: "Bin or box", other: "Other" };
-// The container's text facts and their longest length, kept on read and on save
 const CTR_MAX = { name: 60, size: 40, rating: 20 };
 const cutText = (v, n) => typeof v === "string" ? [...v.trim()].slice(0, n).join("").trim() : "";
 /* The kit's own bag or bin (#96), typed by hand, so any value may be odd: the only reader of kit.container.
@@ -1810,22 +1806,19 @@ function bagFig(P, lim, m) {
     <div class="bag-st">${own}${rows.map(band).join("")}${r > 1 ? "" : `<div class="bag-free">${extra <= -18 ? f1((max - have) / k) + u + (w ? " to spare" : " free") : ""}</div>`}</div>
     ${r > 1 ? `<div class="bag-over" style="height:${tall - body}px"><span>${f1((have - max) / k) + u} over</span></div>` : ""}</div>`;
 }
-/* "What holds this kit" (#96): the kit's real bag or box with the facts someone typed, never a guess. Go-bags and
-   car kits only. Its editor (open for kit S.ctr.id) is the only writer of kit.container; capacity is kit.bagL. */
-const CTR_IC = { backpack: "bag", other: "sack" };
-// The editor's values: what's been typed, else what's saved
-const ctrVals = (kit, c = containerOf(kit)) => ({ kind: c?.kind || (kit.type === "go" ? "backpack" : "box"), name: c?.name || "", L: num(kit.bagL) || "",
-  lb: c?.emptyG ? lb1(c.emptyG) : "", size: c?.size || "", rating: c?.rating || "", ...S.ctr });
+// "What holds this kit" (#96): typed facts only, never a guess. Its editor is kit.container's only writer
+const ctrVals = (kit, c = containerOf(kit)) => ({ name: "", size: "", rating: "", kind: kit.type === "go" ? "backpack" : "box", ...c, L: num(kit.bagL) || "",
+  lb: c?.emptyG ? lb1(c.emptyG) : "", ...S.ctr });
 function containerCard(kit, h) {
   const lim = kitLimits(kit, h), w = S.canWrite, c = lim?.container, id = esc(kit.id), hd = `<p class="eyebrow">What holds this kit</p>`;
   if (!lim || !c && !w) return "";
   const open = (t, cls = "btn ghost sm", f = "name") => `<button type="button" class="${cls}" data-act="ctrOpen" data-id="${id}" data-f="${f}">${t}</button>`;
   if (w && S.ctr?.id === kit.id) {
-    const v = ctrVals(kit), fld = (f, label, more) => `<label class="f">${label}<input id="ctr-${f}" value="${esc(v[f])}" data-input="ctr" data-f="${f}" ${more}></label>`;
+    const v = ctrVals(kit), fld = (f, label, ph) => `<label class="f">${label}<input id="ctr-${f}" value="${esc(v[f])}" data-input="ctr" data-f="${f}" ${CTR_MAX[f] ? `type="text" maxlength="${CTR_MAX[f]}"` : `type="number" min="0" step="any"`}${ph ? ` placeholder="${ph}"` : ""}></label>`;
     return `<form class="panel stack ctr-card" data-submit="ctr">${hd}
       <div class="seg" role="group" aria-label="What kind">${Object.entries(CONTAINER_KINDS).map(([k, l]) => `<button type="button" id="ctr-k-${k}" data-act="ctrKind" data-k="${k}" aria-pressed="${v.kind === k}">${l}</button>`).join("")}</div>
-      ${fld("name", "Name", `type="text" maxlength="${CTR_MAX.name}"`)}
-      <div class="ctr-g">${fld("L", "Capacity, L", `type="number" min="0" step="any"`)}${fld("lb", "Empty weight, lb", `type="number" min="0" step="any"`)}${fld("size", "Outside size", `type="text" maxlength="${CTR_MAX.size}" placeholder="19 × 12.5 × 7.5 in"`)}${fld("rating", "Weather rating", `type="text" maxlength="${CTR_MAX.rating}" placeholder="IP65"`)}</div>
+      ${fld("name", "Name")}
+      <div class="ctr-g">${fld("L", "Capacity, L")}${fld("lb", "Empty weight, lb")}${fld("size", "Outside size", "19 × 12.5 × 7.5 in")}${fld("rating", "Weather rating", "IP65")}</div>
       <div class="row"><button class="btn" type="submit">Save</button><button class="btn ghost" type="button" data-act="ctrCancel">Cancel</button></div></form>`;
   }
   if (!c) return `<div class="panel stack ctr-card">${hd}${open("+ Add the bag or box", "btn ghost ctr-add")}</div>`;
@@ -1833,7 +1826,7 @@ function containerCard(kit, h) {
   const facts = [[L, L + " L", "Capacity", "L"], [g, lbText(g) + " lb", "Empty weight", "lb"], [c.size, esc(c.size), "Outside size", "size"], [c.rating, esc(c.rating), "Weather rating", "rating"]]
     .map(([on, t, l, f]) => on ? `<span class="chip" title="${l}">${t}</span>` : w ? open("+ " + l, "chip ctr-miss", f) : "").join("");
   const notes = [L && `Space is now ${L} L, ${L === lim.suggestedL ? "the same as the" : `not the ${lim.suggestedL} L`} guess.`, kit.type === "go" && g && lim.kg && `The bag's own ${lbText(g)} lb comes off the ${Math.round(lim.kg * KG_LB)} lb carry limit.`];
-  return `<div class="panel stack ctr-card"><div class="row ctr-h">${icon(CTR_IC[c.kind] || c.kind)}<div class="ctr-t">${hd}<b>${esc(c.name || CONTAINER_KINDS[c.kind])}</b></div>${w ? open("Change") : ""}</div>
+  return `<div class="panel stack ctr-card"><div class="row ctr-h">${icon(c.kind === "backpack" ? "bag" : c.kind)}<div class="ctr-t">${hd}<b>${esc(c.name || CONTAINER_KINDS[c.kind])}</b></div>${w ? open("Change") : ""}</div>
     ${facts && `<div class="chips">${facts}</div>`}${notes.map(n => n ? `<p class="small muted">${n}</p>` : "").join("")}</div>`;
 }
 function packPanel(kit, ready) {
@@ -3085,8 +3078,7 @@ document.addEventListener("submit", async e => {
     await saveShop([...shopItems(), { id: uid(), cat: "", text: text.slice(0, 80), done: false, at: Date.now() }]);
     $("#shop-new")?.focus();
   } else if (f.dataset.submit === "ctr") {
-    // One write: the container from the editor with empty fields left out. Weight is re-read only when it was typed in,
-    // and bagL (the same litres as Bag size) changes only when Capacity did; emptied, it goes.
+    // Blank fields are left out; bagL changes only when Capacity did
     const d = S.ctr, kit = S.kits.find(k => k.id === d?.id);
     if (!kit || !PACK_L[kit.type] || !S.canWrite) return;
     const v = ctrVals(kit), g = d.lb == null ? containerOf(kit)?.emptyG : gOfLb(d.lb), container = { kind: Object.hasOwn(CONTAINER_KINDS, v.kind) ? v.kind : "other" };
