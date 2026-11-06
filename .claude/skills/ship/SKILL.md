@@ -53,10 +53,12 @@ For each PR:
    with `githubCommitSha` equal to `$sha`. If it is `ERROR`, read its build logs and tell the
    founder: production still serves the previous deployment, and Vercel can roll back to any
    earlier one.
-3. **Check the page.** Run `sh .claude/skills/ship/live-commit.sh`. It fetches
-   https://go-bag.vercel.app/ and prints the commit whose page is live; it must print `$sha`, or
-   the newest commit before `$sha` that changed the page (a merge that only touches tests or docs
-   leaves the page as it was).
+3. **Check what's served.** Run `sh .claude/skills/ship/live-commit.sh`. It fetches
+   https://go-bag.vercel.app/app and the `runtime.js` and `signin.js` it loads, and prints the
+   newest commit whose page and both scripts all match; it must print `$sha`, or the newest commit
+   before `$sha` that changed one of them (a merge that only touches tests or docs leaves them as
+   they were). When nothing matches it says which file doesn't, and exits 1. The landing at `/` is
+   not checked.
 4. **Report back.** Tell the founder the commit, the PRs it shipped, and the deployment URL.
 
 ## The household's live data
