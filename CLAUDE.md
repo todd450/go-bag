@@ -1,4 +1,4 @@
-# Emergency Kit Audit (go-bag)
+# Go Bag (go-bag)
 
 Photograph what is in your emergency kits and see how ready your household is: scores sized to
 who lives with you, where you live, and the emergencies you care about most, plus a shopping

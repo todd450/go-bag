@@ -12,7 +12,7 @@ agent or session does. The integrator readies each PR and hands it over. (Decide
 on 5 Nov 2026, issue #48.)
 
 The old claude.ai Artifact (https://claude.ai/artifact/DXn8SMGiZhuKuQFGgKHenz) is retired: it
-shows a page that points to Vercel, and its database is a frozen copy as of 5 Nov 2026. Never
+shows a page that points to Vercel (version 28, renamed for Go Bag on 6 Nov 2026), and its database is a frozen copy as of 5 Nov 2026. Never
 publish the app to it or write to its data.
 
 ## Work from commits, not the folder

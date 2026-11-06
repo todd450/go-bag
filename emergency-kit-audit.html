@@ -1,4 +1,4 @@
-<title>Emergency Kit Audit</title>
+<title>Go Bag</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -80,7 +80,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .case .ct { stroke: var(--brand-track); }
 .case .cf { stroke: var(--brand); }
 .case .cs { fill: var(--brand); }
-.brand h1 { font-size: 1.1rem; }
+/* The wordmark (founder's pick E, PR #91): the case stands in for the space, so "Go [case] Bag" is one lockup.
+   Real spaces in the markup keep the heading's name "Go Bag"; the flex row lays out without them. */
+.brand h1 { display: flex; align-items: center; gap: .22em; font-size: 1.1rem; font-weight: 700; letter-spacing: -.02em; line-height: 1; white-space: nowrap; }
+.brand h1 .go { color: var(--brand); }
+.brand h1 .brand-mark { margin-top: -.12em; }
 .hdr-score { font-size: .8rem; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; background: var(--paper); border-radius: 999px; padding: 4px 14px; }
 .hdr-score:empty { display: none; }
 .hdr-score b { font-family: var(--f-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
@@ -92,7 +96,7 @@ nav.tabs button:hover { color: var(--ink); }
 @media (max-width: 640px) {
   .top-in { padding-block: 10px; flex-wrap: nowrap; }
   .brand { min-width: 0; }
-  .brand h1 { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .brand h1 { font-size: 1rem; }
   .hdr-score { flex: none; padding: 3px 12px; }
   .hdr-score .eyebrow:first-child { display: none; }
   nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; gap: 0; justify-content: space-around; background: var(--card); border-top: 1px solid var(--rule); padding: 6px max(8px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)); }
@@ -465,7 +469,7 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 
 <header class="top">
   <div class="top-in">
-    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><h1>Emergency Kit Audit</h1></div>
+    <div class="brand"><h1><span class="go">Go</span> <span class="brand-mark" aria-hidden="true"></span> <span>Bag</span></h1></div>
     <div class="hdr-score" id="hdr-score"></div>
     <nav class="tabs" id="tabs" aria-label="Sections">
       <button data-act="tab" data-v="overview">Readiness</button>
