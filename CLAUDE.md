@@ -84,4 +84,6 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
   - An item links to Amazon: its saved `amazonUrl` (only a plain `https://www.amazon.com/dp/…`
     link counts) or else the `shopQuery` Claude writes while reading the photo. The page never
     searches Amazon itself: Amazon refuses AI agents, so exact product pages are found from a
-    Claude session and saved to the item (`tests/amazon.test.js`).
+    Claude session and saved to the item (`tests/amazon.test.js`). Shopping lines link through the curated
+    `PICKS` table, which only changes through a pull request, and a search link is never built from household
+    data (`tests/picks.test.js`).
