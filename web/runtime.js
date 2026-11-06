@@ -34,11 +34,39 @@
   // The household every read and write names. Set once, before anything resolves.
   let hid = null;
 
+  /* ---------- log out ---------- */
+  // A plain link to /app?signout (below), so it works however the page is doing. It sits in the
+  // header's first row, just before the readiness score, pushed right. The page file is the claude.ai
+  // Artifact too and never changes for Vercel, so the link is added here, once someone is signed in.
+  const LOGOUT_CSS = `.gb-out{flex:none;align-self:center;margin-left:auto;font-size:.85rem;font-weight:500;line-height:1.2;color:var(--ink-2);
+  text-decoration:none;white-space:nowrap;border:1px solid var(--rule-2);border-radius:999px;padding:5px 12px}
+.gb-out:hover{color:var(--ink);border-color:var(--ink)}
+.gb-out:focus-visible{outline:2px solid var(--brand);outline-offset:2px}`;
+  function addLogOut(session) {
+    const put = () => {
+      const top = document.querySelector?.(".top-in");
+      if (!top || top.querySelector?.(".gb-out")) return;
+      const st = document.createElement("style");
+      st.textContent = LOGOUT_CSS;
+      document.head.append(st);
+      const a = document.createElement("a");
+      a.className = "gb-out";
+      a.setAttribute("href", "/app?signout");
+      if (session.user?.email) a.setAttribute("title", `Signed in as ${session.user.email}`);
+      a.textContent = "Log out";
+      const score = top.querySelector?.("#hdr-score");
+      if (score) top.insertBefore(a, score); else top.append(a);
+    };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", put, { once: true });
+    else put();
+  }
+
   // Resolves once someone is signed in and their household is known; stays pending (with a card up)
   // otherwise. my_household() makes the household on a first real sign-in.
   const ready = (async () => {
+    // Log out signs out this browser only: the family's other phones and laptops stay signed in.
     if (/[?&]signout\b/.test(location.search)) {
-      await sb.auth.signOut().catch(() => {});
+      await sb.auth.signOut({ scope: "local" }).catch(() => {});
       setCookie(null);
       try { history.replaceState(null, "", "/app"); } catch {}
     }
@@ -56,6 +84,7 @@
       setCookie(s);
       realtimeAuth(s);
     });
+    try { addLogOut(session); } catch {}
     return session;
   })();
 

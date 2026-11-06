@@ -58,7 +58,7 @@ function fakeSupabase({ session = SESSION, rpc = {}, rows = [] } = {}) {
     auth: {
       getSession: async () => ({ data: { session } }),
       onAuthStateChange: fn => { authFns.push(fn); return { data: { subscription: { unsubscribe() {} } } }; },
-      signOut: async () => { log.push("signOut"); session = null; return { error: null }; },
+      signOut: async opts => { log.push("signOut:" + (opts?.scope ?? "global")); session = null; return { error: null }; },
       signInWithOtp: async () => ({}),
     },
     rpc: async name => { rpcCalls.push(name); const a = answers[name]; if (!a) return { data: null, error: { message: "no such function" } }; return a(); },
@@ -90,7 +90,7 @@ function fakeSupabase({ session = SESSION, rpc = {}, rows = [] } = {}) {
 }
 
 // Runs web/runtime.js in its own context and returns the window.claude it made.
-function runtime({ search = "", ...opts } = {}) {
+function runtime({ search = "", dom = null, ...opts } = {}) {
   const sb = fakeSupabase(opts);
   const replaced = [], reloads = [];
   const window = {
@@ -98,7 +98,7 @@ function runtime({ search = "", ...opts } = {}) {
     GO_BAG_CONFIG: { supabaseUrl: "https://db.example", supabaseKey: "pk" },
     goBagSignIn: (...args) => sb.signIns.push({ client: args[0], argc: args.length, opts: args.length > 1 ? JSON.parse(JSON.stringify(args[1])) : undefined }),
   };
-  const document = { body: {}, head: { append() {} }, addEventListener() {}, cookie: "", visibilityState: "visible" };
+  const document = { body: {}, head: { append() {} }, addEventListener() {}, cookie: "", visibilityState: "visible", ...dom };
   vm.runInNewContext(RUNTIME, {
     window, document, crypto: globalThis.crypto, queueMicrotask, setTimeout, TextDecoder,
     location: { search, pathname: "/app", origin: "https://go-bag.example", reload: () => reloads.push(1) },
@@ -154,12 +154,80 @@ test("an rpc error, a thrown call or any answer that isn't a household id shows 
   }
 });
 
-test("?signout signs out, puts /app in the address, then shows the sign-in card", async () => {
+test("?signout signs out on this device only, puts /app in the address, then shows the sign-in card", async () => {
   const { claude, sb, replaced } = runtime({ search: "?signout" });
   assert.equal(await pending(claude.use("db")), "pending");
-  assert.equal(sb.log[0], "signOut");
+  assert.equal(sb.log[0], "signOut:local", "Log out on a phone leaves the family's other devices signed in");
   assert.deepEqual(replaced, ["/app"]);
   assert.equal(sb.signIns.length, 1);
+});
+
+/* ---------- log out ---------- */
+
+// Just enough DOM for the Log out link: elements that keep their attributes and children, a page
+// header (.top-in) holding the brand, the score (#hdr-score) and the tabs unless `header: false`, and
+// a document still parsing when `loading` is set.
+function fakeDom({ header = true, loading = false } = {}) {
+  const el = (tag, props) => ({
+    tag, attrs: {}, children: [], textContent: "", className: "", id: "", ...props,
+    setAttribute(k, v) { this.attrs[k] = String(v); },
+    append(...kids) { this.children.push(...kids); },
+    insertBefore(kid, ref) { this.children.splice(this.children.indexOf(ref), 0, kid); },
+    querySelector(sel) { return this.children.find(c => sel === "." + c.className || sel === "#" + c.id) || null; },
+  });
+  const top = header ? el("div") : null;
+  top?.append(el("div", { className: "brand" }), el("div", { className: "hdr-score", id: "hdr-score" }), el("nav", { className: "tabs" }));
+  const styles = [], waiting = [];
+  const dom = {
+    readyState: loading ? "loading" : "complete",
+    createElement: el,
+    querySelector: sel => (sel === ".top-in" ? top : null),
+    head: { append: (...k) => styles.push(...k) },
+    addEventListener: (type, fn) => { if (type === "DOMContentLoaded") waiting.push(fn); },
+  };
+  const parsed = () => { dom.readyState = "interactive"; waiting.splice(0).forEach(fn => fn()); };
+  return { dom, top, styles, parsed };
+}
+const links = top => top.children.filter(c => c.tag === "a");
+
+test("signed in, a Log out link to /app?signout goes in the page's header just before the score, once", async () => {
+  const { dom, top, styles } = fakeDom();
+  const { claude } = runtime({ dom });
+  await claude.use("db");
+  await claude.use("user");
+  await settle();
+  const [a, ...more] = links(top);
+  assert.equal(more.length, 0, "one link, however many capabilities resolve");
+  assert.equal(a.attrs.href, "/app?signout");
+  assert.equal(a.textContent, "Log out");
+  assert.equal(a.attrs.title, "Signed in as sam@example.com", "says whose account it signs out of");
+  assert.deepEqual(top.children.map(c => c.className), ["brand", "gb-out", "hdr-score", "tabs"], "first row, beside the score, not under the tabs");
+  assert.equal(styles.length, 1, "its own small style, in the page's colours");
+  assert.match(styles[0].textContent, /\.gb-out\{/);
+});
+
+test("the Log out link waits for the header when the page is still parsing", async () => {
+  const { dom, top, parsed } = fakeDom({ loading: true });
+  const { claude } = runtime({ dom });
+  await claude.use("db");
+  assert.equal(links(top).length, 0);
+  parsed();
+  assert.equal(links(top).length, 1);
+});
+
+test("signed out, or with no household, there is no Log out link: the sign-in card has the page", async () => {
+  for (const opts of [{ session: null }, { rpc: { my_household: () => ({ data: null, error: { message: "boom" } }) } }]) {
+    const { dom, top } = fakeDom();
+    const { claude } = runtime({ dom, ...opts });
+    assert.equal(await pending(claude.use("db")), "pending");
+    assert.equal(links(top).length, 0);
+  }
+});
+
+test("a page with no header still gets every capability, just no Log out link", async () => {
+  const { dom } = fakeDom({ header: false });
+  const { claude } = runtime({ dom });
+  for (const name of ["db", "assets", "sample", "user"]) assert.ok(await claude.use(name), name);
 });
 
 test("signing out elsewhere, or signing in as someone else, reloads the page", async () => {
