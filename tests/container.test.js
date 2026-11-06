@@ -372,3 +372,69 @@ test("at 390px the card and the open editor never scroll sideways, on every scen
   }
   assert.equal(seen.get(LONG).length, 4, "the long-container kits are measured");
 });
+
+test("in a real browser, the editor's form lets every capacity and weight the save path rounds through", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
+  // The browser's own form validation runs before the submit handler, so a value it refuses never saves.
+  const measure = () => {
+    let fired = 0;
+    document.addEventListener("submit", e => { fired++; e.preventDefault(); e.stopImmediatePropagation(); }, true);
+    const tryIt = (id, typed, saved) => {
+      S.ctr = null; S.view = "kits"; ACT.openKit({ dataset: { id } });
+      Object.assign(S.kits.find(k => k.id === id), saved);
+      ACT.ctrOpen({ dataset: { id } });
+      for (const [f, v] of Object.entries(typed)) { const i = document.querySelector("#ctr-" + f); i.value = v; i.dispatchEvent(new Event("input", { bubbles: true })); }
+      const form = document.querySelector("#v-kits form.ctr-card"), before = fired;
+      const bad = [...form.querySelectorAll("input")].filter(i => !i.checkValidity()).map(i => i.id + ": " + i.validationMessage);
+      form.requestSubmit();
+      return { case: JSON.stringify([id, typed, saved]), bad, submitted: fired - before };
+    };
+    return [
+      tryIt("go", { name: "Test bag", L: "33.25", lb: "2.25" }, {}),
+      tryIt("go", { lb: "0.06" }, {}),
+      tryIt("car", { L: "49.996" }, {}),
+      tryIt("car", { L: "0.5", lb: "12" }, {}),
+      tryIt("go", { name: "Renamed" }, { bagL: 33.256, container: { kind: "duffel", emptyG: 1000 } }),
+      tryIt("car", { name: "Renamed" }, { bagL: 1 / 3 }),
+    ];
+  };
+  const runs = atPhoneWidth([HH], measure).get(HH);
+  assert.equal(runs.length, 6);
+  for (const r of runs) {
+    assert.deepEqual(r.bad, [], `${r.case}: the browser refuses a field`);
+    assert.equal(r.submitted, 1, `${r.case}: Save didn't submit`);
+  }
+});
+
+test("an empty weight with two decimals saves its whole grams", async () => {
+  const app = load({ fixture: HH });
+  app.run(`ACT.ctrOpen({ dataset: { id: "go" } })`);
+  await type(app, "go", "Name", "Test bag");
+  await type(app, "go", "Capacity", "33.25");
+  await type(app, "go", "Empty weight", "2.25");
+  await save(app, "go");
+  assert.equal(kit(app, "go").container.emptyG, app.run(`gOfLb(2.25)`));
+  assert.equal(kit(app, "go").bagL, 33.25);
+});
+
+test("the space note never calls a capacity that matches the guess a different size", () => {
+  const app = load({ fixture: HH });
+  for (const [id, guess] of [["go", 40], ["car", 60]]) {
+    setKit(app, id, { bagL: guess, container: { kind: "box" } });
+    const t = text(card(app, id));
+    assert.ok(t.includes(`${guess} L`), `${id}: the note gives the capacity`);
+    assert.doesNotMatch(t, new RegExp(`not the ${guess} L guess`), `${id}: ${t}`);
+  }
+});
+
+test("Save keeps each text field to its length, however long it came in", async () => {
+  const app = load({ fixture: HH });
+  const long = "x".repeat(500);
+  app.run(`ACT.ctrOpen({ dataset: { id: "go" } })`);
+  for (const f of ["name", "size", "rating"]) app.run(`S.ctr[${q(f)}] = ${q(long)}`);
+  await save(app, "go");
+  const c = kit(app, "go").container;
+  app.run(`ACT.ctrOpen({ dataset: { id: "go" } })`);
+  const ed = card(app, "go");
+  for (const [f, label] of [["name", "Name"], ["size", "Outside size"], ["rating", "Weather rating"]])
+    assert.equal(c[f].length, +attr(field(ed, label).attrs, "maxlength"), `${f} is cut to its field's maxlength`);
+});

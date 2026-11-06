@@ -1410,14 +1410,16 @@ const carryShare = m => { const y = yearsOf(m), g = groupOf(m); return g === "in
 const carryKg = m => Math.round(bodyKg(m) * carryShare(m) * 2) / 2;
 const PACK_L = { go: 40, car: 60 };
 const CONTAINER_KINDS = { backpack: "Backpack", duffel: "Duffel", box: "Bin or box", other: "Other" };
+// The container's text facts and their longest length, kept on read and on save
+const CTR_MAX = { name: 60, size: 40, rating: 20 };
+const cutText = (v, n) => typeof v === "string" ? [...v.trim()].slice(0, n).join("").trim() : "";
 /* The kit's own bag or bin (#96), typed by hand, so any value may be odd: the only reader of kit.container.
    Its litres stay in kit.bagL; emptyG 0 means its empty weight wasn't entered. */
 function containerOf(kit) {
   const c = kit.container;
   if (!PACK_L[kit.type] || Object.prototype.toString.call(c) !== "[object Object]") return null;
-  const s = (v, n) => typeof v === "string" ? [...v.trim()].slice(0, n).join("").trim() : "";
-  return { kind: typeof c.kind === "string" && Object.hasOwn(CONTAINER_KINDS, c.kind) ? c.kind : "other", name: s(c.name, 60),
-    emptyG: Math.round(num(c.emptyG)), size: s(c.size, 40), rating: s(c.rating, 20) };
+  return { kind: typeof c.kind === "string" && Object.hasOwn(CONTAINER_KINDS, c.kind) ? c.kind : "other", name: cutText(c.name, CTR_MAX.name),
+    emptyG: Math.round(num(c.emptyG)), size: cutText(c.size, CTR_MAX.size), rating: cutText(c.rating, CTR_MAX.rating) };
 }
 /* Go-bags are limited by what their strongest carrier can lift, the bag's own weight included, and by
    the bag's litres; car kits by the space they get in the trunk. Home supplies have no limits. */
@@ -1793,15 +1795,15 @@ function containerCard(kit, h) {
     const v = ctrVals(kit), fld = (f, label, more) => `<label class="f">${label}<input id="ctr-${f}" value="${esc(v[f])}" data-input="ctr" data-f="${f}" ${more}></label>`;
     return `<form class="panel stack ctr-card" data-submit="ctr">${hd}
       <div class="seg" role="group" aria-label="What kind">${Object.entries(CONTAINER_KINDS).map(([k, l]) => `<button type="button" id="ctr-k-${k}" data-act="ctrKind" data-k="${k}" aria-pressed="${v.kind === k}">${l}</button>`).join("")}</div>
-      ${fld("name", "Name", `type="text" maxlength="60"`)}
-      <div class="ctr-g">${fld("L", "Capacity, L", `type="number" min="0" step="0.01"`)}${fld("lb", "Empty weight, lb", `type="number" min="0" step="0.1"`)}${fld("size", "Outside size", `type="text" maxlength="40" placeholder="19 × 12.5 × 7.5 in"`)}${fld("rating", "Weather rating", `type="text" maxlength="20" placeholder="IP65"`)}</div>
+      ${fld("name", "Name", `type="text" maxlength="${CTR_MAX.name}"`)}
+      <div class="ctr-g">${fld("L", "Capacity, L", `type="number" min="0" step="any"`)}${fld("lb", "Empty weight, lb", `type="number" min="0" step="any"`)}${fld("size", "Outside size", `type="text" maxlength="${CTR_MAX.size}" placeholder="19 × 12.5 × 7.5 in"`)}${fld("rating", "Weather rating", `type="text" maxlength="${CTR_MAX.rating}" placeholder="IP65"`)}</div>
       <div class="row"><button class="btn" type="submit">Save</button><button class="btn ghost" type="button" data-act="ctrCancel">Cancel</button></div></form>`;
   }
   if (!c) return `<div class="panel stack ctr-card">${hd}${open("+ Add the bag or box", "btn ghost ctr-add")}</div>`;
   const L = Math.round(num(kit.bagL) * 100) / 100, g = c.emptyG;
   const facts = [[L, L + " L", "Capacity", "L"], [g, lbText(g) + " lb", "Empty weight", "lb"], [c.size, esc(c.size), "Outside size", "size"], [c.rating, esc(c.rating), "Weather rating", "rating"]]
     .map(([on, t, l, f]) => on ? `<span class="chip" title="${l}">${t}</span>` : w ? open("+ " + l, "chip ctr-miss", f) : "").join("");
-  const notes = [L && `Space is now ${L} L, not the ${lim.suggestedL} L guess.`, kit.type === "go" && g && lim.kg && `The bag's own ${lbText(g)} lb comes off the ${Math.round(lim.kg * KG_LB)} lb carry limit.`];
+  const notes = [L && `Space is now ${L} L, ${L === lim.suggestedL ? "the same as the" : `not the ${lim.suggestedL} L`} guess.`, kit.type === "go" && g && lim.kg && `The bag's own ${lbText(g)} lb comes off the ${Math.round(lim.kg * KG_LB)} lb carry limit.`];
   return `<div class="panel stack ctr-card"><div class="row ctr-h">${icon(CTR_IC[c.kind] || c.kind)}<div class="ctr-t">${hd}<b>${esc(c.name || CONTAINER_KINDS[c.kind])}</b></div>${w ? open("Change") : ""}</div>
     ${facts && `<div class="chips">${facts}</div>`}${notes.map(n => n ? `<p class="small muted">${n}</p>` : "").join("")}</div>`;
 }
@@ -3051,7 +3053,7 @@ document.addEventListener("submit", async e => {
     const d = S.ctr, kit = S.kits.find(k => k.id === d?.id);
     if (!kit || !PACK_L[kit.type] || !S.canWrite) return;
     const v = ctrVals(kit), g = d.lb == null ? containerOf(kit)?.emptyG : gOfLb(d.lb), container = { kind: Object.hasOwn(CONTAINER_KINDS, v.kind) ? v.kind : "other" };
-    for (const k of ["name", "size", "rating"]) if (String(v[k]).trim()) container[k] = String(v[k]).trim();
+    for (const k in CTR_MAX) { const t = cutText(String(v[k]), CTR_MAX[k]); if (t) container[k] = t; }
     if (g) container.emptyG = g;
     const { bagL, ...rest } = strip(kit), L = Math.round(num(d.L) * 100) / 100;
     try { await setDoc("kits", kit.id, { ...(d.L == null || num(d.L) === num(bagL) ? strip(kit) : L ? { ...rest, bagL: L } : rest), container }); } catch (_) { return; }
