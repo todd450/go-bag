@@ -21,7 +21,7 @@ const px = (attrs, prop) => { const m = (attr(attrs, "style") || "").match(new R
 function bag(html) {
   const m = html.match(/<div class="bag\b([^"]*)"([^>]*)>/);
   if (!m) return null;
-  // The bag's own empty weight (#99) is its own band, not an item's: tests/container-weight.test.js covers it.
+  // The bag's own empty weight (#99's bag-own band) is not an item: tests/container-weight.test.js covers it
   const bands = [...html.matchAll(/<div class="bag-b\b([^"]*)"([^>]*)>([\s\S]*?)<\/div>/g)].filter(([, cls]) => !/\bbag-own\b/.test(cls)).map(([, cls, attrs, body]) => ({
     v: +attr(attrs, "data-v"), id: attr(attrs, "data-id"), n: +(attr(attrs, "data-n") || 1), small: attr(attrs, "data-n") != null,
     zone: ((attr(attrs, "style") || "").match(/--c:\s*var\(--zone-(\d+)\)/) || [])[1], h: px(attrs, "height"), label: text(body), body,
