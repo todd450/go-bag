@@ -297,6 +297,10 @@ tr.addrow td { background: var(--paper); }
 .bag-free { flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; background: repeating-linear-gradient(135deg, var(--rule) 0 2px, transparent 0 8px); color: var(--ink-2); }
 .bag-over { position: absolute; inset: 0 0 auto; border: 2px dashed var(--bad); border-bottom: 0; background: color-mix(in srgb, var(--bad) 22%, transparent); color: var(--bad); font-weight: 600; text-align: center; }
 .bag-over span { position: absolute; inset: auto 0 100%; }
+/* A bin or box (issue 101): square corners, and a lid across the full top in place of the handle */
+.bag.box .bag-body { border-radius: 3px; }
+.bag.box .bag-body::before { inset: auto -5px 100%; height: 9px; border-bottom: 2px solid var(--ink-2); border-radius: 3px; background: var(--rule); }
+.bag.box .bag-st { border-radius: 1px; }
 .pack-lim { display: inline-flex; align-items: center; gap: 6px; }
 .pack-lim input { width: 72px; }
 .pack-l { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: .88rem; }
@@ -1788,7 +1792,7 @@ function bagFig(P, lim, m) {
   const own = bagG ? `<div class="bag-b bag-own" data-v="${Math.round(bagG)}" style="height:${bh}px"><span class="ell">${esc(c.name || CONTAINER_KINDS[c.kind])}</span>${f1(bagG / k) + u}</div>` : "";
   // With a container the label names it, and gives its litres as saved (to 0.01 L)
   const where = c ? ` in the ${esc(c.name || CONTAINER_KINDS[c.kind].toLowerCase())}${bagG ? ", bag included" : ""}` : "";
-  return `<div class="bag${r > 1 ? " over" : ""}" role="img" aria-label="${f1(have / k)} of ${(c && !w ? (Math.round(max / 10) / 100).toLocaleString() : f1(max / k)) + u} packed${where}" style="height:${tall}px"><div class="bag-body" style="height:${body}px"></div>
+  return `<div class="bag${c?.kind === "box" ? " box" : ""}${r > 1 ? " over" : ""}" role="img" aria-label="${f1(have / k)} of ${(c && !w ? (Math.round(max / 10) / 100).toLocaleString() : f1(max / k)) + u} packed${where}" style="height:${tall}px"><div class="bag-body" style="height:${body}px"></div>
     <div class="bag-st">${own}${rows.map(band).join("")}${r > 1 ? "" : `<div class="bag-free">${extra <= -18 ? f1((max - have) / k) + u + (w ? " to spare" : " free") : ""}</div>`}</div>
     ${r > 1 ? `<div class="bag-over" style="height:${tall - body}px"><span>${f1((have - max) / k) + u} over</span></div>` : ""}</div>`;
 }
