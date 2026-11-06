@@ -1,0 +1,1116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Issue #94 · Option C · Order run with an On-the-way shelf</title>
+<style>
+/* Layout: calm white workspace — one typeface, black controls, Cobalt for the brand, orange only for Partway progress.
+   A sticky tab strip (a bottom bar on phones) over one working column; kits read as photo cards. */
+:root {
+  --paper: #F7F7F7;
+  --card: #FFFFFF;
+  --ink: #222222;
+  --ink-2: #6A6A6A;
+  --rule: #E4E4E4;
+  --rule-2: #C8C8C8;
+  --accent: #222222;
+  --accent-ink: #FFFFFF;
+  --brand: #2B59D9;
+  --brand-track: #CCD8F6;
+  --brand-tint: #E8EEFC;
+  --brand-deep: #1E43AE;
+  --brand-ink: #FFFFFF;
+  --meter: #E0612A;
+  --good: #1F7A4A;
+  --warn: #A86A12;
+  --bad: #C1281B;
+  /* The bag's band colours, one per zone of ZONES */
+  --zone-0: light-dark(#2A78D6, #3987E5);
+  --zone-1: light-dark(#EB6834, #D95926);
+  --zone-2: light-dark(#1BAF7A, #199E70);
+  --zone-3: light-dark(#EDA100, #C98500);
+  --zone-4: light-dark(#E87BA4, #D55181);
+  --zone-5: light-dark(#008300, #008300);
+  --zone-6: light-dark(#6250D6, #9085E9);
+  --zone-7: var(--ink-2);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px rgba(0, 0, 0, .04);
+  --f-display: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121212; --card: #1C1C1C; --ink: #F2F2F2; --ink-2: #A3A3A3; --rule: #2E2E2E; --rule-2: #4A4A4A;
+    --accent: #F2F2F2; --accent-ink: #121212; --brand: #8AA8FF; --brand-track: #28385F; --brand-ink: #121212; --meter: #F07A45;
+    --good: #5BC489; --warn: #E2AE4A; --bad: #F2695C; --shadow: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121212; --card: #1C1C1C; --ink: #F2F2F2; --ink-2: #A3A3A3; --rule: #2E2E2E; --rule-2: #4A4A4A;
+  --accent: #F2F2F2; --accent-ink: #121212; --brand: #8AA8FF; --brand-track: #28385F; --brand-ink: #121212; --meter: #F07A45;
+  --good: #5BC489; --warn: #E2AE4A; --bad: #F2695C; --shadow: none; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--f-body); -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--card); }
+h1, h2, h3 { font-weight: 600; text-wrap: balance; margin: 0; line-height: 1.25; letter-spacing: -.01em; }
+h1 { font-family: var(--f-display); }
+h2 { font-size: 1.2rem; letter-spacing: -.015em; }
+.wiz h2 { font-size: 1.4rem; }
+h3 { font-size: 1.05rem; }
+p { margin: 0; }
+a { color: var(--ink); text-underline-offset: 2px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.mono { font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-2); }
+.small { font-size: .85rem; }
+.how { font-size: .85rem; color: var(--ink-2); }
+.how summary { cursor: pointer; width: fit-content; text-decoration: underline dotted; text-underline-offset: 3px; }
+.how p { max-width: 70ch; margin-top: 4px; }
+.eyebrow { font-size: .8rem; font-weight: 500; color: var(--ink-2); }
+
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--card); border-bottom: 1px solid var(--rule); }
+.top-in, .wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.top-in { display: flex; align-items: center; justify-content: space-between; gap: 4px 24px; flex-wrap: wrap; padding-block: 12px 0; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark { width: 28px; height: 28px; flex: none; }
+.case { display: block; flex: none; }
+.case .ct { stroke: var(--brand-track); }
+.case .cf { stroke: var(--brand); }
+.case .cs { fill: var(--brand); }
+/* The wordmark (founder's pick E, PR #91): the case stands in for the space, so "Go [case] Bag" is one lockup.
+   Real spaces in the markup keep the heading's name "Go Bag"; the flex row lays out without them. */
+.brand h1 { display: flex; align-items: center; gap: .22em; font-size: 1.1rem; font-weight: 700; letter-spacing: -.02em; line-height: 1; white-space: nowrap; }
+.brand h1 .go { color: var(--brand); }
+.brand h1 .brand-mark { margin-top: -.12em; }
+.hdr-score { font-size: .8rem; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; background: var(--paper); border-radius: 999px; padding: 4px 14px; }
+.hdr-score:empty { display: none; }
+.hdr-score b { font-family: var(--f-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
+nav.tabs { display: flex; gap: 28px; overflow-x: auto; width: 100%; scrollbar-width: none; }
+nav.tabs button { display: flex; align-items: center; gap: 6px; background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 0 12px; font-weight: 500; font-size: .92rem; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+nav.tabs button .ic, nav.tabs .tab-n:empty { display: none; }
+nav.tabs button[aria-current="page"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
+nav.tabs button:hover { color: var(--ink); }
+@media (max-width: 640px) {
+  .top-in { padding-block: 10px; flex-wrap: nowrap; }
+  .brand { min-width: 0; }
+  .brand h1 { font-size: 1rem; }
+  .hdr-score { flex: none; padding: 3px 12px; }
+  .hdr-score .eyebrow:first-child { display: none; }
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; gap: 0; justify-content: space-around; background: var(--card); border-top: 1px solid var(--rule); padding: 6px max(8px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)); }
+  nav.tabs button { flex: 1; flex-direction: column; gap: 3px; padding: 4px 0; border-bottom: 0; font-size: .7rem; position: relative; }
+  nav.tabs button .ic { display: block; width: 22px; height: 22px; }
+  nav.tabs button[aria-current="page"] .ic { stroke-width: 2.1; }
+  nav.tabs .tab-n { position: absolute; top: 0; left: calc(50% + 8px); background: var(--brand); color: var(--brand-ink); border-radius: 999px; padding: 0 5px; font-size: .65rem; line-height: 1.5; }
+  main.wrap { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+}
+
+main.wrap { padding-block: 24px 64px; display: grid; gap: 24px; }
+section.view { display: grid; gap: 24px; min-width: 0; }
+.stack { display: grid; gap: 10px; min-width: 0; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.panel { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 20px 24px; min-width: 0; box-shadow: var(--shadow); }
+@media (max-width: 560px) { .panel { padding: 16px; border-radius: 14px; } }
+.notice { border: 1px solid var(--rule); border-radius: 12px; background: var(--card); padding: 12px 16px; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-size: .9rem; }
+.notice p { max-width: 70ch; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 8px 18px; font-weight: 600; font-size: .9rem; cursor: pointer; transition: background-color .15s, border-color .15s, transform .1s; }
+.btn:hover { background: color-mix(in srgb, var(--accent) 86%, var(--paper)); }
+.btn:active { transform: scale(.98); }
+.btn.ghost { background: var(--card); color: var(--ink); border-color: var(--rule-2); }
+.btn.ghost:hover { border-color: var(--ink); background: var(--card); }
+.btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+.btn.sm { min-height: 32px; padding: 4px 14px; font-size: .82rem; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; transform: none; }
+.x { background: none; border: 0; color: var(--ink-2); cursor: pointer; padding: 4px 8px; border-radius: 999px; font-size: 1.1rem; line-height: 1; }
+.x:hover { color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, transparent); }
+
+input[type=text], input[type=number], input[type=month], input[type=date], input[type=tel], select, textarea { background: var(--card); border: 1px solid var(--rule-2); border-radius: 8px; padding: 7px 10px; min-width: 0; }
+input[type=text]:focus, input[type=number]:focus, input[type=month]:focus, input[type=date]:focus, input[type=tel]:focus, select:focus, textarea:focus { border-color: var(--ink); outline: none; box-shadow: 0 0 0 1px var(--ink); }
+textarea { width: 100%; min-height: 64px; resize: vertical; }
+label.f { display: grid; gap: 6px; font-size: .85rem; font-weight: 500; color: var(--ink-2); }
+label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-weight: 400; }
+
+/* Overview */
+.ell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sum { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 12px 28px; }
+.sum-score { display: grid; gap: 8px; align-content: start; }
+@media (max-width: 760px) { .sum { grid-template-columns: 1fr; } }
+.tab-n { font-size: .75rem; font-variant-numeric: tabular-nums; color: var(--ink-2); font-weight: 500; }
+.next { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px 32px; }
+.next .sum-score { order: -1; border-right: 1px solid var(--rule); padding-right: 28px; }
+@media (max-width: 760px) { .next { grid-template-columns: 1fr; } .next .sum-score { border-right: 0; padding-right: 0; border-bottom: 1px solid var(--rule); padding-bottom: 16px; } }
+.tg { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+.tg-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px); gap: 6px 16px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.tg-b { display: grid; gap: 2px; min-width: 0; }
+.tg-pick { display: grid; gap: 4px; }
+@media (max-width: 560px) { .tg-row { grid-template-columns: minmax(0, 1fr); } }
+.acts { list-style: none; margin: 0; padding: 0; display: grid; }
+.act { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 6px 14px; align-items: start; padding: 14px 0; border-top: 1px solid var(--rule); }
+.act-n { width: 40px; height: 40px; border-radius: 12px; background: var(--paper); color: var(--ink); display: grid; place-items: center; }
+.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.act-n .ic { width: 20px; height: 20px; }
+.ic-s { width: 14px; height: 14px; }
+.cat-td { display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.shop-chk > .ic { color: var(--ink-2); margin-top: 1px; }
+.act-b { display: grid; gap: 2px; min-width: 0; }
+.act-b b { font-size: 1rem; font-weight: 600; }
+.act-do { display: flex; align-items: center; gap: 12px; padding-top: 2px; }
+.gain { color: var(--good); font-size: .85rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) { .act { grid-template-columns: 40px minmax(0, 1fr); } .act-do { grid-column: 2; } }
+.score { display: flex; align-items: baseline; gap: 6px; }
+.score .num { font-family: var(--f-display); font-size: 3.2rem; font-weight: 700; line-height: .9; letter-spacing: -.04em; }
+.score .of { color: var(--ink-2); }
+.ring { position: relative; width: 132px; height: 132px; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 11; }
+.ring .trk { stroke: var(--rule); }
+.ring .val { stroke: var(--c); stroke-linecap: round; transition: stroke-dasharray .7s cubic-bezier(.2, .8, .2, 1); }
+.ring .score { position: absolute; inset: 0; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.ring .score .num { font-size: 2.6rem; }
+.ring .score .of { font-size: .78rem; }
+@media (prefers-reduced-motion: reduce) { .ring .val { transition: none; } }
+.score .band { margin-left: 8px; }
+.ring + .band { margin-top: 8px; }
+.gaps { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); column-gap: 24px; }
+.gaps li { display: grid; grid-template-columns: minmax(0, 7.5em) auto minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--rule); font-size: .88rem; }
+.gaps li b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gaps .amt { font-variant-numeric: tabular-nums; font-size: .8rem; white-space: nowrap; }
+.gaps .why { font-size: .8rem; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+
+.ov-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 32px; align-items: start; }
+@media (max-width: 900px) { .ov-cols { grid-template-columns: 1fr; } }
+.sec-h { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
+.grp { display: grid; gap: 4px; }
+.grp + .grp { margin-top: 14px; }
+.grp-h { display: grid; gap: 2px; }
+
+.hz { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--rule); }
+.hz-row { display: grid; grid-template-columns: minmax(0, 1fr) 104px 56px 36px 24px; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
+.hz-row.off { opacity: .5; }
+.hz-name, .kit-name { display: flex; gap: 8px; align-items: baseline; background: none; border: 0; padding: 2px 0; text-align: left; cursor: pointer; }
+.hz-name b, .kit-name b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.hz-name .mode, .kit-name .mode { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.hz-name:hover b, .kit-name:hover b { text-decoration: underline; text-underline-offset: 2px; }
+.mode { font-size: .8rem; color: var(--ink-2); }
+.bar { height: 6px; background: var(--rule); border-radius: 999px; overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--c); border-radius: 999px; }
+.band { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.band i { width: 9px; height: 9px; border-radius: 2px; }
+.pct { font-size: .85rem; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.hz-row .x { padding: 2px 6px; font-size: 1rem; }
+.hz-detail { grid-column: 1 / -1; display: grid; gap: 8px; padding: 4px 0 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; border: 1px solid transparent; background: var(--paper); color: var(--ink); border-radius: 999px; padding: 4px 11px 4px 9px; font-variant-numeric: tabular-nums; }
+.chip .ic { color: var(--ink-2); }
+.chip.full { border-color: color-mix(in srgb, var(--good) 30%, transparent); background: color-mix(in srgb, var(--good) 9%, var(--card)); }
+.chip.full .ic { color: var(--good); }
+/* An essential pill: present is .chip.full with a check, missing is outlined with an empty circle and its points. */
+.chip.ess { line-height: 1.3; text-align: left; max-width: 100%; }
+.chip.ess .ic { stroke-width: 2; }
+.chip.ess.miss { background: var(--card); border-color: var(--rule-2); }
+.chip.ess .gain { font-size: inherit; }
+/* One checklist category of named essentials: icon, name, "1 of 4" and a bar, its pills, then its button and notes. */
+.ess-blk { display: grid; gap: 8px; padding: 10px 0 12px; border-top: 1px solid var(--rule); min-width: 0; }
+.ess-h { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto 72px; gap: 8px; align-items: center; font-size: .9rem; }
+.ess-h .ic { color: var(--ink-2); }
+.ess-h b { font-weight: 600; }
+.ess-h .of { font-variant-numeric: tabular-nums; font-weight: 600; font-size: .85rem; }
+.ess-f { display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.lvl { font-size: .8rem; padding: 4px 6px; }
+.hz-lvl.alarm { color: var(--bad); font-weight: 600; }
+.hz-lvl .pri { color: var(--brand); }
+.hz-like { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--ink-2); }
+@media (max-width: 560px) {
+  .hz-row { grid-template-columns: minmax(0, 1fr) 100px 36px 24px; }
+  .hz-row > .bar, .hz-name .mode { display: none; }
+  .hz-name, .hz-name b { white-space: normal; }
+}
+.kit-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px 40px; gap: 2px 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
+.kit-row .kit-miss { grid-column: 1 / -1; margin-top: -2px; }
+.kit-pct { font-family: var(--f-display); font-size: 2rem; font-weight: 700; line-height: 1; letter-spacing: -.03em; }
+.exp-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .88rem; }
+.exp-row .flag { flex: none; font-size: .75rem; font-weight: 500; }
+
+/* Kits */
+.kits-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 860px) { .kits-grid { grid-template-columns: 1fr; } }
+.tags { display: grid; gap: 8px; }
+.add-kit { justify-content: center; border-style: dashed; }
+.tag { position: relative; text-align: left; background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 14px; padding: 10px 60px 10px 10px; cursor: pointer; display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 0 12px; width: 100%; line-height: 1.3; box-shadow: var(--shadow); transition: border-color .15s, box-shadow .15s; }
+.tag:hover { border-color: var(--rule-2); }
+.tag[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.tag-img { grid-row: span 3; width: 48px; height: 48px; border-radius: 10px; background: var(--paper); color: var(--ink-2); display: grid; place-items: center; overflow: hidden; }
+.tag-img img { width: 100%; height: 100%; object-fit: cover; }
+.tag-img .ic { width: 22px; height: 22px; }
+/* The case sits above the score in the same 60px gutter, so it takes no room from the kit's name. */
+.tag-pct { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1; font-family: var(--f-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.tag b { font-size: 1rem; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag .mono { font-size: .72rem; color: var(--ink-2); }
+.tag .small { color: var(--ink-2); font-size: .8rem; }
+.photos { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.photos img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid var(--rule); flex: none; background: var(--rule); }
+.tray { display: flex; flex-wrap: wrap; gap: 8px; }
+.tray-ph { position: relative; margin: 0; }
+.tray-ph img { display: block; width: 80px; height: 80px; object-fit: cover; border-radius: 10px; border: 1px solid var(--rule); background: var(--rule); }
+.tray-ph .x { position: absolute; top: 4px; right: 4px; background: var(--card); padding: 1px 6px; font-size: 1rem; }
+.drop-on { outline: 2px dashed var(--ink); outline-offset: 2px; }
+.tbl-wrap { container-type: inline-size; overflow-x: auto; border: 1px solid var(--rule); border-radius: 14px; background: var(--card); box-shadow: var(--shadow); }
+table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: .86rem; }
+th { text-align: left; font-weight: 500; font-size: .78rem; color: var(--ink-2); padding: 10px 8px; border-bottom: 1px solid var(--rule); background: var(--paper); }
+td { padding: 3px 6px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+td input:not([type=checkbox]), td select { width: 100%; padding: 5px 6px; background: transparent; border-color: transparent; }
+td input:hover, td select:hover, td input:focus, td select:focus { border-color: var(--rule-2); background: var(--card); }
+td.num input { text-align: right; font-variant-numeric: tabular-nums; appearance: textfield; padding-inline: 3px; }
+td.num input::-webkit-inner-spin-button, td.num input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+td .flag { font-size: .78rem; font-weight: 500; }
+.flag.expired { color: var(--bad); } .flag.soon { color: var(--warn); }
+td.val { padding-right: 8px; }
+.val-in { display: flex; align-items: center; gap: 6px; }
+.vbar { flex: 1; height: 6px; background: var(--rule); border-radius: 999px; overflow: hidden; }
+.vbar i { display: block; height: 100%; background: var(--ink-2); border-radius: 999px; }
+.val-in b { width: 2.2em; text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; }
+.buy { display: inline-block; padding: 0 6px 2px; text-decoration: none; font-weight: 500; }
+.buy:hover { text-decoration: underline; }
+.val-note { display: block; font-size: .7rem; line-height: 1.2; color: var(--ink-2); padding-bottom: 2px; }
+.th-sort { white-space: nowrap; background: none; border: 0; padding: 0; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.th-sort[aria-pressed="true"] { color: var(--ink); font-weight: 600; }
+.th-sort:hover { color: var(--ink); }
+tr.addrow td { background: var(--paper); }
+.working { display: flex; gap: 10px; align-items: center; }
+.pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--brand); animation: pulse 1.2s ease-in-out infinite; flex: none; }
+@keyframes pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+
+/* The bag: its outline up to the rim, and its bands stacked from the bottom */
+.bag { position: relative; width: min(100%, 320px); margin: 26px auto 0; }
+.bag-body, .bag-body::before { position: absolute; border: 2px solid var(--ink-2); }
+.bag-body { inset: auto 0 0; border-radius: 12px 12px 22px 22px; }
+.bag-body::before { content: ""; inset: auto 34% 100%; height: 13px; border-bottom: 0; border-radius: 10px 10px 0 0; }
+.bag-st { position: absolute; inset: 4px 5px 5px; display: flex; flex-direction: column-reverse; overflow: hidden; border-radius: 4px 4px 16px 16px; font-size: .75rem; }
+.bag-b { flex: none; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 0 8px; border-top: 2px solid var(--card); background: color-mix(in srgb, var(--c, var(--rule-2)) 40%, var(--card)); white-space: nowrap; }
+.bag-free { flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; background: repeating-linear-gradient(135deg, var(--rule) 0 2px, transparent 0 8px); color: var(--ink-2); }
+.bag-over { position: absolute; inset: 0 0 auto; border: 2px dashed var(--bad); border-bottom: 0; background: color-mix(in srgb, var(--bad) 22%, transparent); color: var(--bad); font-weight: 600; text-align: center; }
+.bag-over span { position: absolute; inset: auto 0 100%; }
+.pack-lim { display: inline-flex; align-items: center; gap: 6px; }
+.pack-lim input { width: 72px; }
+.pack-l { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: .88rem; }
+
+/* Household */
+.hh-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.people { display: grid; gap: 10px; }
+.person { display: grid; grid-template-columns: minmax(0, 1.2fr) 76px minmax(0, 2fr) 32px; gap: 8px; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--rule); }
+.pneeds { grid-column: 1 / -1; font-size: .75rem; color: var(--ink-2); }
+.conds { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.pet { display: grid; grid-template-columns: minmax(0, 1fr) 90px 32px; gap: 8px; align-items: center; max-width: 420px; }
+@media (max-width: 640px) { .person { grid-template-columns: minmax(0, 1fr) 76px 32px; } .person .needs { grid-column: 1 / -1; grid-row: 2; } .person .pneeds { grid-row: 3; } .person .conds { grid-row: 4; } }
+.cond-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; align-items: start; }
+.cond { border: 1px solid var(--rule); border-radius: 12px; background: var(--card); transition: border-color .15s; }
+.cond:hover { border-color: var(--rule-2); }
+.cond.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.cond-t { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; width: 100%; text-align: left; background: none; border: 0; padding: 10px 12px 10px 38px; cursor: pointer; position: relative; }
+.cond-t::before { content: ""; position: absolute; left: 12px; top: 12px; width: 16px; height: 16px; border: 1.5px solid var(--rule-2); border-radius: 5px; }
+.cond.on .cond-t::before { background: var(--ink); border-color: var(--ink); box-shadow: inset 0 0 0 3px var(--card); }
+.who-names { font-size: .8rem; color: var(--ink-2); }
+.who { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 0 12px 10px 38px; }
+.who label { display: inline-flex; gap: 6px; align-items: center; font-size: .85rem; cursor: pointer; }
+.who input { accent-color: var(--ink); }
+.wiz { max-width: 760px; gap: 16px; }
+.wiz-dots { display: flex; gap: 4px; }
+.wiz-dots i { width: 24px; height: 4px; border-radius: 999px; background: var(--rule); }
+.wiz-dots i.on { background: var(--ink); }
+.wiz-nav { border-top: 1px solid var(--rule); padding-top: 14px; }
+
+/* Shopping */
+.shop { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--rule); }
+.shop-row { display: grid; grid-template-columns: minmax(0, 1fr) 84px 200px 28px; gap: 4px 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.shop-chk { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; min-width: 0; }
+.shop-chk input { width: 20px; height: 20px; margin: 0; accent-color: var(--ink); flex: none; cursor: pointer; }
+.shop-chk > span { display: grid; gap: 2px; min-width: 0; }
+.shop-row.done b { text-decoration: line-through; color: var(--ink-2); font-weight: 500; }
+.shop-kit select { width: 100%; font-size: .85rem; }
+.shop-meta { display: grid; justify-items: end; gap: 2px; font-variant-numeric: tabular-nums; }
+.shop-tip { color: var(--ink-2); max-width: 64ch; margin-top: 2px; }
+.shop-row.over { opacity: .55; }
+.shop-cut { padding: 14px 0 6px; border-bottom: 1px solid var(--rule-2); }
+.shop-sum { margin: 0; }
+.shop-tools { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+.shop-tools label { display: flex; gap: 8px; align-items: center; color: var(--ink-2); }
+#shop-budget { width: 88px; }
+.shop-add { display: flex; gap: 8px; }
+.shop-add input { flex: 1; }
+@media (max-width: 560px) {
+  .shop-row { grid-template-columns: minmax(0, 1fr) 28px; }
+  .shop-meta { grid-column: 1; grid-row: 2; display: flex; gap: 10px; justify-content: flex-start; padding-left: 62px; }
+  .shop-kit { grid-column: 1; grid-row: 3; padding-left: 62px; }
+  .shop-kit:empty, .shop-meta:empty { display: none; }
+  .shop-row > .x { align-self: start; }
+}
+.reasons { display: grid; gap: 0; }
+.reasons div { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
+@media (max-width: 640px) { .reasons div { grid-template-columns: 1fr; gap: 2px; } }
+
+/* Review */
+.review { max-width: 72ch; display: grid; gap: 12px; }
+.plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+::placeholder { color: color-mix(in srgb, var(--ink-2) 60%, transparent); opacity: 1; }
+.hint { font-size: .8rem; color: var(--ink-2); font-weight: 400; }
+.med { display: grid; grid-template-columns: minmax(0, 140px) minmax(0, 1fr) 28px; gap: 8px; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--rule); }
+.med select { grid-area: 1 / 1; } .med input[type=text] { grid-area: 1 / 2; } .med .x { grid-area: 1 / 3; }
+.med input[type=date] { grid-area: 2 / 1; } .med .med-st { grid-area: 2 / 2 / 3 / 4; }
+.med-st.bad { color: var(--bad); font-weight: 600; } .med-st.warn { color: var(--warn); font-weight: 600; }
+.review h3 { margin-top: 12px; }
+.review ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+
+td.sel, th.sel { width: 40px; text-align: center; padding-left: 10px; }
+td.sel input, th.sel input { width: 16px; height: 16px; accent-color: var(--ink); cursor: pointer; }
+tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
+/* The page gives the inventory at most ~810px, too narrow for twelve columns, so under 1000px each item is a card:
+   name, category, quantity and value on the first line, the numbers and expiry on the second (four short lines on a phone).
+   An item in a checklist category gets a line between them with its Essential picker, under Category. */
+@container (max-width: 999px) {
+  .inv, .inv tbody { display: block; }
+  .inv thead tr { display: flex; align-items: center; gap: 0 16px; border-bottom: 1px solid var(--rule); }
+  .inv thead th { border: 0; width: auto !important; }
+  .inv thead th:not(.sel):not(:has(.th-sort)) { display: none; }
+  .inv thead th:has(.th-sort)::before { content: "Sort by "; font-weight: 400; }
+  .inv tbody tr { display: grid; grid-template-columns: 24px repeat(12, minmax(0, 1fr)) 28px; align-items: end; gap: 4px 8px; padding: 8px 6px; border-bottom: 1px solid var(--rule);
+    grid-template-areas: "sel name name name name name cat cat cat qty val val val x" ". water water food food wt wt size size exp exp exp . ."; }
+  .inv tbody tr:last-child { border-bottom: 0; }
+  .inv tr.picked { background: color-mix(in srgb, var(--bad) 8%, transparent); }
+  .inv tr.addrow { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  .inv td, .inv tr.picked td, .inv tr.addrow td { border: 0; padding: 0; min-width: 0; background: none; }
+  .inv td:empty { display: none; }
+  .inv td[data-label]:not([data-label="Item"])::before { content: attr(data-label); display: block; font-size: .7rem; color: var(--ink-2); padding-left: 5px; }
+  .inv .cat-td { flex-wrap: wrap; gap: 0 6px; } .inv .cat-td::before { flex-basis: 100%; }
+  .inv .cat-td select { flex: 1; min-width: 0; }
+  .inv td.sel { grid-area: sel; width: auto; padding: 0 0 6px; text-align: left; align-self: end; }
+  .inv td.x-td { grid-area: x; }
+  .inv td[data-label="Item"] { grid-area: name; } .inv td[data-label="Category"] { grid-area: cat; } .inv td[data-label="Qty"] { grid-area: qty; }
+  .inv td[data-label="Value"] { grid-area: val; align-self: start; } .inv td[data-label="Water L"] { grid-area: water; } .inv td[data-label="Food kcal"] { grid-area: food; }
+  .inv td[data-label="lb"] { grid-area: wt; } .inv td[data-label="Size L"] { grid-area: size; } .inv td[data-label="Expires"] { grid-area: exp; }
+  .inv td.val .val-in { padding: 6px 5px 0; }
+  /* The photo draft has no tick box or Value: its category and Essential share a line, so both labels show in full */
+  .draft .inv tbody tr { grid-template-areas: ". name name name name name name name name qty qty qty qty x" ". cat cat cat cat cat cat ess ess ess ess ess ess ." ". water water food food wt wt size size exp exp exp exp ."; }
+  .inv td.d-ess { grid-area: ess; }
+  .inv .val-note { padding-left: 5px; }
+  .inv td.num input { text-align: left; }
+  .inv td.ess-td { grid-area: ess; }
+  .inv tbody tr:has(> td.ess-td > select) {
+    grid-template-areas: "sel name name name name name cat cat cat qty val val val x" ". . . . . . ess ess ess . . . . ." ". water water food food wt wt size size exp exp exp . ."; }
+}
+@container (max-width: 599px) {
+  .inv tbody tr { grid-template-columns: 24px repeat(4, minmax(0, 1fr)) 28px;
+    grid-template-areas: "sel name name name name x" ". cat cat qty val val" ". water food wt size size" ". exp exp exp . ."; }
+  .inv tbody tr:has(> td.ess-td > select) {
+    grid-template-areas: "sel name name name name x" ". cat cat qty val val" ". ess ess ess . ." ". water food wt size size" ". exp exp exp . ."; }
+  .draft .inv tbody tr { grid-template-columns: repeat(4, minmax(0, 1fr)) 28px;
+    grid-template-areas: "name name name name x" "cat cat cat cat cat" "ess ess ess ess ess" "water food wt size ." "qty exp exp exp ."; }
+}
+/* The Contents panel: a Flat-lay | List switch, and the flat-lay's zones of item tiles, 4 a row on a phone and more as it widens. */
+.seg { display: inline-flex; padding: 2px; border: 1px solid var(--rule-2); border-radius: 999px; background: var(--card); }
+.seg button { min-height: 30px; padding: 3px 14px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: inherit; font-size: .82rem; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 500; }
+.fl-zone { display: grid; gap: 6px; }
+.fl-h { font-size: .8rem; font-weight: 500; color: var(--ink-2); }
+.fl-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+@media (min-width: 561px) { .fl-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; } }
+.fl-tile, .fl-add { position: relative; display: flex; flex-direction: column; gap: 1px; min-width: 0; min-height: 76px; padding: 8px 5px 6px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); color: var(--ink); font-size: .72rem; line-height: 1.25; }
+.fl-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0 4px; margin-bottom: 3px; }
+.fl-tile .ic { width: 22px; height: 22px; color: var(--ink-2); }
+.fl-pic { width: 34px; height: 34px; object-fit: contain; }
+.fl-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-weight: 500; }
+.fl-note { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.fl-note, .fl-exp { color: var(--ink-2); font-size: .68rem; }
+.fl-q { min-width: 0; overflow-wrap: anywhere; font-size: .72rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.fl-tile.expired { border-color: var(--bad); box-shadow: inset 0 0 0 1px var(--bad); }
+.fl-tile.expired .fl-name { text-decoration: line-through; }
+.fl-tile.expired .fl-exp { color: var(--bad); font-weight: 500; }
+.fl-tile.soon { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); }
+.fl-tile.soon .fl-exp { color: var(--warn); font-weight: 500; }
+.fl-add { align-items: center; justify-content: center; border-style: dashed; border-color: var(--rule-2); background: var(--card); font: inherit; font-size: .78rem; font-weight: 500; text-align: center; cursor: pointer; }
+.fl-add:hover { border-color: var(--ink); }
+.fl-tile.miss { padding-inline: 3px; border-style: dashed; border-color: var(--rule-2); background: var(--card); color: var(--ink-2); }
+.fl-tile.miss .gain { font-size: .72rem; }
+.fl-tile.miss .fl-name { display: block; -webkit-line-clamp: none; line-clamp: none; overflow: visible; overflow-wrap: break-word; }
+.fl-do { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; margin: -8px -3px -6px; padding: 8px 3px 6px; border: 0; border-radius: 9px; background: none; text-align: left; cursor: pointer; }
+.fl-tile.miss:has(.fl-do):hover { border-color: var(--ink); }
+/* A present tile's button fills its tile. Its item's fields open under the tile's row, across the grid: dense packing
+   lets the rest of that row fill in before them. */
+.fl-ed { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; margin: -8px -5px -6px; padding: 8px 5px 6px; border: 0; border-radius: 9px; background: none; text-align: left; cursor: pointer; }
+.fl-tile:has(.fl-ed):hover, .fl-tile:has([aria-expanded="true"]) { border-color: var(--ink); }
+.fl-grid:has(.fl-fields) { grid-auto-flow: row dense; }
+.fl-fields { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; border: 1px solid var(--ink); border-radius: 10px; background: var(--card); }
+.fl-f { display: flex; flex: 1 1 64px; flex-flow: column; gap: 2px; min-width: 0; }
+.fl-f::before { content: attr(data-label); font-size: .7rem; color: var(--ink-2); }
+.fl-f[data-label="Item"] { flex-basis: 100%; }
+.fl-f.cat-td, .fl-f.ess-td { flex-basis: auto; } .fl-f[data-label="Expires"] { flex: 0 1 200px; }
+.fl-f.cat-td { flex-flow: row wrap; } .fl-f.cat-td::before { flex-basis: 100%; }
+.fl-f input, .fl-f select { width: 100%; } .fl-f.cat-td select { flex: 1; width: auto; }
+.fl-f a { align-self: flex-start; } .fl-f .flag { font-size: .78rem; font-weight: 500; }
+.kit-ck > div > .ess-blk:first-child { border-top: 0; padding-top: 0; }
+.selbar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border: 1px solid var(--bad); border-radius: 12px; background: color-mix(in srgb, var(--bad) 7%, var(--card)); }
+.selbar b { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.hdr-score.up b { color: var(--good); transition: color .2s; }
+.fly { position: fixed; z-index: 30; pointer-events: none; font-family: var(--f-display); font-weight: 700; font-size: 1.15rem; color: var(--good); background: var(--card); border: 1px solid var(--good); border-radius: 4px; padding: 0 6px; }
+.hdr-score b { transition: color .8s; }
+.shop-row.flash { animation: flash 1.4s ease-out; }
+@keyframes flash { from { background: color-mix(in srgb, var(--good) 18%, transparent); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .shop-row.flash { animation: none; } .hdr-score b { transition: none; } }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--paper); padding: 12px 18px; border-radius: 12px; z-index: 20; max-width: calc(100% - 32px); font-size: .9rem; display: flex; gap: 14px; align-items: center; box-shadow: 0 6px 20px rgba(0, 0, 0, .18); }
+.toast button { background: none; color: inherit; border: 1px solid currentColor; border-radius: 999px; padding: 4px 12px; font-weight: 600; cursor: pointer; }
+@media (max-width: 640px) { .toast { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); } }
+
+
+/* ---------- Storyboard page (mockup only, not product UI) ---------- */
+body { margin: 0; }
+.sb { max-width: 1120px; margin: 0 auto; padding: 20px 16px 64px; display: grid; gap: 40px; }
+.sb-intro { display: grid; gap: 4px; }
+.sb-intro h1 { font-size: 1.35rem; letter-spacing: -.02em; }
+.sb-frame { display: grid; gap: 10px; min-width: 0; }
+.sb-label { font-size: 1rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sb-n { font-size: .78rem; font-weight: 600; color: var(--ink-2); background: var(--card); border: 1px solid var(--rule); border-radius: 999px; padding: 2px 10px; }
+.sb-key { font-size: .75rem; font-weight: 600; color: var(--brand-ink); background: var(--brand); border-radius: 999px; padding: 2px 10px; }
+.sb-cap { font-size: .88rem; color: var(--ink-2); max-width: 90ch; }
+.sb-cap b { color: var(--ink); font-weight: 600; }
+.sb-sub { font-size: .85rem; font-weight: 600; color: var(--ink-2); margin-top: 6px; }
+.journey { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.journey li { font-size: .78rem; border: 1px solid var(--rule); background: var(--card); border-radius: 999px; padding: 3px 10px; color: var(--ink-2); }
+.journey li.k { border-color: var(--brand); color: var(--ink); font-weight: 600; }
+.journey li.c { border-style: dashed; }
+/* A screen: the app as it renders at this step. The transform makes it the box that the app's fixed bars sit in. */
+.screen { position: relative; transform: translateZ(0); overflow: hidden; background: var(--paper); border: 1px solid var(--rule-2); border-radius: 16px; min-width: 0; }
+.screen .top { position: relative; top: 0; }
+.screen main.wrap { padding-block: 24px 32px; }
+.screen.h5 { height: 940px; }
+.screen.cut { max-height: 720px; }
+.screen.cut::after { content: ""; position: absolute; inset: auto 0 0; height: 90px; background: linear-gradient(transparent, var(--paper)); z-index: 4; }
+.stage5 { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+.outside { border: 1px dashed #A8A8A8; background: #EFEFEF; color: #3A3A3A; border-radius: 14px; padding: 14px 18px; display: grid; gap: 2px; font-size: .92rem; }
+.outside .eyebrow { color: #6A6A6A; }
+/* Amazon's page, drawn as a neutral wireframe */
+.az { margin: 0; display: grid; gap: 8px; }
+.az-arrow { color: var(--ink-2); font-weight: 500; }
+.az-box { border: 1px dashed #A8A8A8; background: #EFEFEF; color: #3A3A3A; border-radius: 12px; padding: 14px; display: grid; gap: 12px; }
+.az-box ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.az-box li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; align-items: center; font-size: .82rem; line-height: 1.3; }
+.az-box li b { display: block; font-weight: 600; }
+.az-img { width: 40px; height: 40px; border-radius: 6px; background: repeating-linear-gradient(135deg, #D9D9D9 0 2px, #E8E8E8 0 7px); border: 1px solid #C4C4C4; }
+.az-btn { justify-self: start; border: 1px solid #9A9A9A; background: #DADADA; border-radius: 999px; padding: 6px 16px; font-size: .85rem; font-weight: 600; }
+.az figcaption { color: var(--ink-2); }
+.pick-l a.buy { padding: 0 2px 2px; }
+.pick-l b { font-weight: 600; }
+.ic.ic-s { width: 14px; height: 14px; }
+
+/* ---------- Proposed component (shared with option B): the cart sheet ---------- */
+.scrim { position: absolute; inset: 0; z-index: 8; background: rgba(18, 18, 18, .42); }
+.sheet { position: absolute; z-index: 9; left: 50%; top: 36px; transform: translateX(-50%); width: min(560px, calc(100% - 32px)); max-height: calc(100% - 72px);
+  display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--rule); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, .2); overflow: hidden; }
+.sheet-h { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 18px 20px 12px; border-bottom: 1px solid var(--rule); }
+.sheet-b { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 20px 12px; }
+.sheet-g { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; gap: 12px; background: var(--card); padding: 12px 0 6px; border-bottom: 1px solid var(--rule); }
+.sheet-g .eyebrow:first-child { color: var(--ink); font-weight: 600; }
+.pick-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 2px 12px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--rule); cursor: pointer; }
+.pick-row input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--ink); }
+.pick-b { display: grid; gap: 2px; min-width: 0; }
+.pick-b b { font-weight: 600; }
+.nots { list-style: none; margin: 0; padding: 0; }
+.not-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .85rem; color: var(--ink-2); }
+.not-l { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.sheet-f { display: grid; gap: 8px; padding: 12px 20px 16px; border-top: 1px solid var(--rule); background: var(--card); }
+.payoff { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
+.payoff .gain { font-size: .95rem; }
+.payoff .pay-n { font-size: 1.15rem; }
+.cart-go { width: 100%; min-height: 48px; text-decoration: none; }
+@media (max-width: 640px) {
+  .sheet { left: 0; right: 0; top: auto; bottom: 0; transform: none; width: auto; height: 88%; max-height: none; border-radius: 16px 16px 0 0; border-bottom: 0; }
+  .sheet::before { content: ""; position: absolute; top: 6px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 999px; background: var(--rule-2); }
+  .sheet-h { padding: 18px 16px 10px; }
+  .sheet-b { padding: 0 16px 12px; }
+  .sheet-f { padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ---------- Proposed in option C: the return card and the On-the-way shelf ---------- */
+.run-card { display: grid; gap: 8px; background: var(--brand-tint); border: 1px solid color-mix(in srgb, var(--brand) 25%, transparent); border-radius: 12px; padding: 14px 16px; }
+.run-card b { font-weight: 600; }
+.run-do { display: flex; gap: 8px; flex-wrap: wrap; }
+.shelf { border-color: color-mix(in srgb, var(--brand) 35%, var(--rule)); }
+.shelf b .ic { vertical-align: -2px; color: var(--brand); }
+.shelf .shop-row { grid-template-columns: minmax(0, 1fr) 120px 200px 28px; }
+.shelf .shop-meta { white-space: nowrap; }
+.shelf-kit { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
+.shelf-kit b { font-weight: 600; }
+.txt { background: none; border: 0; padding: 4px 0; color: var(--ink-2); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.txt:hover { color: var(--ink); }
+.act-run { background: color-mix(in srgb, var(--brand-tint) 55%, transparent); margin-inline: -10px; padding-inline: 10px; border-radius: 12px; }
+
+@media (max-width: 900px) { .stage5 { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .sb { padding: 14px 0 48px; gap: 32px; }
+  .sb-intro, .sb-label, .sb-cap, .sb-sub, .journey, .outside, .az { margin-inline: 16px; }
+  .screen { border-radius: 0; border-inline: 0; }
+  .screen.h5 { height: 800px; }
+  .screen main.wrap { padding-bottom: 96px; }
+  .run-do .btn { flex: 1 1 100%; min-height: 44px; }
+  .shop-row > span:empty { display: none; }
+  .shelf .shop-row { grid-template-columns: minmax(0, 1fr) 28px; }
+  .pick-l a.buy { display: inline-block; padding: 9px 4px; margin: -9px 0; }
+  .txt { padding: 10px 0; margin: -6px 0; }
+}
+
+</style>
+</head>
+<body>
+<div class="sb">
+  <header class="sb-intro">
+    <p class="eyebrow">Issue #94 · Option C · 7 stars · about 7 days</p>
+    <h1>Order run with an On-the-way shelf</h1>
+    <p class="small muted" style="max-width:80ch">One Amazon cart, grouped by the kit each thing goes into, with what it does for readiness. Ordered lines wait on their own shelf until they're packed.</p>
+  </header>
+
+  <section class="sb-frame" id="f5">
+  <h2 class="sb-label"><span class="sb-n">Frame 4–5</span> The hand-off: the cart sheet, grouped by kit, and Amazon's page <span class="sb-key">Key moment</span></h2>
+  <div class="stage5"><div class="screen h5"><header class="top"><div class="top-in">
+  <div class="brand"><h1><span class="go">Go</span> <svg class="case brand-mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg> <span>Bag</span></h1></div>
+  <div class="hdr-score"><span class="eyebrow">Readiness</span><b>17</b><span class="eyebrow">/ 100</span></div>
+  <nav class="tabs" aria-label="Sections"><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/></svg>Readiness</button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/></svg>Kits</button><button aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Shopping<span class="tab-n">12</span></button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Household</button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>Plan</button></nav>
+</div></header><main class="wrap"><div class="stack">
+  <h2>Shopping list</h2>
+  <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
+</div>
+<div class="panel stack">
+  <div class="row" style="justify-content:space-between">
+  <b>12 to buy</b>
+  <div class="row"><button class="btn ghost sm"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Amazon cart (7)</button><button class="btn ghost sm">Share list</button></div>
+</div>
+  
+  <p class="shop-sum">About <b>$388</b> plus 2 prescription items. Buying it all takes readiness from 17 to <b>58</b>.</p>
+  <div class="shop-tools">
+  <label class="small">Order <select><option selected>Most points first</option><option>Most points per dollar</option><option>Order added</option></select></label>
+  <label class="small">Spend up to $ <input type="number" id="shop-budget" placeholder="Any" value="" aria-label="Budget in dollars"></label>
+</div>
+  <ul class="shop"><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 7-gallon water containers, filled from your tap</b><span class="small muted">53 L of water</span><span class="small pick-l"><b>Reliance Aqua-Tainer 7-gallon water container</b> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE1" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+11</span><span class="small muted">$44</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 7-gallon water containers, filled from your tap"><option>Not in a kit yet</option><option selected>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 7-gallon water containers, filled from your tap from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="13" rx="2"/><path d="M12 8V5H8M12 5l4-1.5"/></svg><span><b>A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)</b><span class="small muted">Fire safety</span><span class="small pick-l"><b>First Alert HOME1 rechargeable extinguisher, 2-A:10-B:C</b> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE2" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+9</span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)"><option>Not in a kit yet</option><option selected>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger) from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 cases of 24 half-litre bottles</b><span class="small muted">24 L of water</span><span class="small pick-l"><b>Amazon purified water, 24 × 16.9 fl oz</b> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE3" target="_blank" rel="noopener">On Amazon ↗</a></span><span class="small" style="color:var(--warn)">Heavy to ship: often cheaper to pick up locally</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$12</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 cases of 24 half-litre bottles"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 cases of 24 half-litre bottles from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="6" ry="2.2"/><path d="M6 6v12c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V6M6 11c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2"/></svg><span><b>28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars</b><span class="small muted">50,400 kcal of food</span><span class="small muted pick-l">Mixed groceries: <a class="buy" href="https://www.amazon.com/s?k=canned+soup+chili+beans+sunflower+seed+butter+crackers+nut-free+granola+bars" target="_blank" rel="noopener">Find on Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$91</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><option>Not in a kit yet</option><option selected>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l6 6M17 7l-9 9-2.5-.5L5 13l9-9M8 16l-4 4"/></svg><span><b>2 epinephrine auto-injectors for Riley, plus an antihistamine</b><span class="small muted">Allergy</span><span class="small muted pick-l">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+7</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 epinephrine auto-injectors for Riley, plus an antihistamine"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 epinephrine auto-injectors for Riley, plus an antihistamine from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/></svg><span><b>A hand-crank NOAA emergency radio with a phone charger</b><span class="small muted">Comms</span><span class="small pick-l"><b>Midland ER310 hand-crank emergency radio</b> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE4" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">$30</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A hand-crank NOAA emergency radio with a phone charger"><option>Not in a kit yet</option><option selected>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A hand-crank NOAA emergency radio with a phone charger from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/></svg><span><b>A spare week of Sam&#x27;s prescriptions</b><span class="small muted">Medications</span><span class="small muted pick-l">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A spare week of Sam&#x27;s prescriptions"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A spare week of Sam&#x27;s prescriptions from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="6" rx="1.5"/><path d="M9 9V6.5h6V9M9 15v2.5h6V15"/></svg><span><b>2 CAT or SOF-T tourniquets</b><span class="small muted">Trauma</span><span class="small muted pick-l">Buy from a medical supplier: counterfeits are sold on marketplaces</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+5</span><span class="small muted">$60</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 CAT or SOF-T tourniquets"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 CAT or SOF-T tourniquets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9c3-1 5-2 8-2s5 1 8 2v3c0 4-4 7-8 7s-8-3-8-7zM8 12h8M9 15h6"/></svg><span><b>3 packs of 10 N95 masks</b><span class="small muted">Masks</span><span class="small pick-l"><b>3M Aura 9205+ N95 respirator, 10-pack</b> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE5" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+4</span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 packs of 10 N95 masks"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 3 packs of 10 N95 masks from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4L3 20h18zM12 13l-3.5 7M12 13l3.5 7"/></svg><span><b>5 reusable emergency blankets</b><span class="small muted">Shelter</span><span class="small pick-l"><b>SOL heavy-duty reusable emergency blanket</b> · Qty 5 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE6" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+3</span><span class="small muted">$25</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 5 reusable emergency blankets"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 5 reusable emergency blankets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Trunk bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span><b>3 LED headlamps</b><span class="small muted">Light</span><span class="small pick-l"><b>Energizer Vision HD headlamp</b> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE7" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+3</span><span class="small muted">$36</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 LED headlamps"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option selected>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 3 LED headlamps from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4L3 7l2 4 2-1v10h10V10l2 1 2-4-5-3a4 4 0 0 1-8 0z"/></svg><span><b>A change of clothes for everyone</b><span class="small muted">Clothing</span><span class="small muted pick-l">From home: nothing to buy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+2</span><span class="small muted">From home</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A change of clothes for everyone"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A change of clothes for everyone from the list">×</button>
+</li></ul>
+</div></main><div class="scrim" aria-hidden="true"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-t">
+  <div class="sheet-h">
+    <div class="stack" style="gap:2px"><h3 id="sheet-t">Amazon cart</h3><p class="small muted">Pick what goes in this order. Nothing is bought until you check out on Amazon.</p></div>
+    <button class="x" aria-label="Close">×</button>
+  </div>
+  <div class="sheet-b">
+    <div class="sheet-g"><span class="eyebrow">Basement bin</span><span class="eyebrow mono">3 of 3 in this cart</span></div><label class="pick-row">
+  <input type="checkbox" checked>
+  <span class="pick-b"><b>Reliance Aqua-Tainer 7-gallon water container</b><span class="small muted">Qty 2 · for: 2 7-gallon water containers, filled from your tap</span></span>
+  <span class="small muted mono">$44</span>
+</label><label class="pick-row">
+  <input type="checkbox" checked>
+  <span class="pick-b"><b>First Alert HOME1 rechargeable extinguisher, 2-A:10-B:C</b><span class="small muted">Qty 1 · for: A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)</span></span>
+  <span class="small muted mono">$45</span>
+</label><label class="pick-row">
+  <input type="checkbox" checked>
+  <span class="pick-b"><b>Midland ER310 hand-crank emergency radio</b><span class="small muted">Qty 1 · for: A hand-crank NOAA emergency radio with a phone charger</span></span>
+  <span class="small muted mono">$30</span>
+</label><div class="sheet-g"><span class="eyebrow">Hall closet go-bag</span><span class="eyebrow mono">2 of 3 in this cart</span></div><label class="pick-row">
+  <input type="checkbox">
+  <span class="pick-b"><b>Amazon purified water, 24 × 16.9 fl oz</b><span class="small muted">Qty 2 · for: 2 cases of 24 half-litre bottles</span><span class="small" style="color:var(--warn)">Heavy to ship: often cheaper to pick up locally</span></span>
+  <span class="small muted mono">$12</span>
+</label><label class="pick-row">
+  <input type="checkbox" checked>
+  <span class="pick-b"><b>3M Aura 9205+ N95 respirator, 10-pack</b><span class="small muted">Qty 3 · for: 3 packs of 10 N95 masks</span></span>
+  <span class="small muted mono">$45</span>
+</label><label class="pick-row">
+  <input type="checkbox" checked>
+  <span class="pick-b"><b>SOL heavy-duty reusable emergency blanket</b><span class="small muted">Qty 5 · for: 5 reusable emergency blankets</span></span>
+  <span class="small muted mono">$25</span>
+</label><div class="sheet-g"><span class="eyebrow">Trunk bag</span><span class="eyebrow mono">1 of 1 in this cart</span></div><label class="pick-row">
+  <input type="checkbox" checked>
+  <span class="pick-b"><b>Energizer Vision HD headlamp</b><span class="small muted">Qty 3 · for: 3 LED headlamps</span></span>
+  <span class="small muted mono">$36</span>
+</label>
+    <div class="sheet-g not-g"><span class="eyebrow">Not in this cart (5)</span></div>
+    <ul class="nots"><li class="not-row"><span class="not-l">28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars</span><span class="small muted">Mixed groceries</span></li><li class="not-row"><span class="not-l">2 epinephrine auto-injectors for Riley, plus an antihistamine</span><span class="small muted">Prescription</span></li><li class="not-row"><span class="not-l">A spare week of Sam&#x27;s prescriptions</span><span class="small muted">Prescription</span></li><li class="not-row"><span class="not-l">2 CAT or SOF-T tourniquets</span><span class="small muted">Medical supplier</span></li><li class="not-row"><span class="not-l">A change of clothes for everyone</span><span class="small muted">From home</span></li></ul>
+  </div>
+  <div class="sheet-f">
+    <div class="payoff"><span class="gain">Once packed: readiness 17 → <b class="pay-n">39</b></span><span class="small muted mono">About $225 · 15 things</span></div>
+    <a class="btn cart-go" href="https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=B0EXAMPLE1&amp;Quantity.1=2&amp;ASIN.2=B0EXAMPLE2&amp;Quantity.2=1&amp;ASIN.3=B0EXAMPLE4&amp;Quantity.3=1&amp;ASIN.4=B0EXAMPLE5&amp;Quantity.4=3&amp;ASIN.5=B0EXAMPLE6&amp;Quantity.5=5&amp;ASIN.6=B0EXAMPLE7&amp;Quantity.6=3" target="_blank" rel="noopener">Open Amazon cart (6 items) ↗</a>
+    <p class="small muted">A plain link that fills your Amazon cart. No tracking tag, no account.</p>
+  </div>
+</div></div><figure class="az">
+  <p class="az-arrow small">Opens in a new tab ↗</p>
+  <div class="az-box"><ul><li><i class="az-img"></i><span><b>Reliance Aqua-Tainer 7-gallon water container</b><span>Qty 2</span></span></li><li><i class="az-img"></i><span><b>First Alert HOME1 rechargeable extinguisher, 2-A:10-B:C</b><span>Qty 1</span></span></li><li><i class="az-img"></i><span><b>Midland ER310 hand-crank emergency radio</b><span>Qty 1</span></span></li><li><i class="az-img"></i><span><b>3M Aura 9205+ N95 respirator, 10-pack</b><span>Qty 3</span></span></li><li><i class="az-img"></i><span><b>SOL heavy-duty reusable emergency blanket</b><span>Qty 5</span></span></li><li><i class="az-img"></i><span><b>Energizer Vision HD headlamp</b><span>Qty 3</span></span></li></ul><span class="az-btn">Add to cart</span></div>
+  <figcaption class="small">amazon.com, outside Go Bag</figcaption>
+</figure></div>
+  <p class="sb-cap"><b>Trusting:</b> that Amazon gets exactly what's checked, at these quantities, with no tag and no account. <b>Earned by:</b> the same 6 products and quantities on both sides, the count on the button, and the plain line under it. The link carries only <span class="mono">ASIN.n</span> and <span class="mono">Quantity.n</span>. The payoff, 17 → 39, recomputes as boxes are ticked.</p>
+</section>
+
+  <section class="sb-frame" id="f7">
+  <h2 class="sb-label"><span class="sb-n">Frame 7</span> Back from checkout: a card in the list, not a toast</h2>
+  <div class="screen cut"><header class="top"><div class="top-in">
+  <div class="brand"><h1><span class="go">Go</span> <svg class="case brand-mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg> <span>Bag</span></h1></div>
+  <div class="hdr-score"><span class="eyebrow">Readiness</span><b>17</b><span class="eyebrow">/ 100</span></div>
+  <nav class="tabs" aria-label="Sections"><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/></svg>Readiness</button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/></svg>Kits</button><button aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Shopping<span class="tab-n">12</span></button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Household</button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>Plan</button></nav>
+</div></header><main class="wrap"><div class="stack">
+  <h2>Shopping list</h2>
+  <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
+</div>
+<div class="panel stack">
+  <div class="row" style="justify-content:space-between">
+  <b>12 to buy</b>
+  <div class="row"><button class="btn ghost sm"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Amazon cart (7)</button><button class="btn ghost sm">Share list</button></div>
+</div>
+  <div class="run-card" role="region" aria-label="Your Amazon order">
+  <p><b>You opened an Amazon cart with 6 things at 8:42 pm. Did you order them?</b></p>
+  <p class="small muted">Reliance Aqua-Tainer 7-gallon water container ×2 · First Alert HOME1 rechargeable extinguisher, 2-A:10-B:C · Midland ER310 hand-crank emergency radio · 3M Aura 9205+ N95 respirator, 10-pack ×3 · SOL heavy-duty reusable emergency blanket ×5 · Energizer Vision HD headlamp ×3</p>
+  <div class="run-do"><button class="btn sm">Mark all 6 ordered</button><button class="btn ghost sm">Not yet</button></div>
+</div>
+  <p class="shop-sum">About <b>$388</b> plus 2 prescription items. Buying it all takes readiness from 17 to <b>58</b>.</p>
+  <div class="shop-tools">
+  <label class="small">Order <select><option selected>Most points first</option><option>Most points per dollar</option><option>Order added</option></select></label>
+  <label class="small">Spend up to $ <input type="number" id="shop-budget" placeholder="Any" value="" aria-label="Budget in dollars"></label>
+</div>
+  <ul class="shop"><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 7-gallon water containers, filled from your tap</b><span class="small muted">53 L of water</span><span class="small pick-l"><b>Reliance Aqua-Tainer 7-gallon water container</b> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE1" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+11</span><span class="small muted">$44</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 7-gallon water containers, filled from your tap"><option>Not in a kit yet</option><option selected>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 7-gallon water containers, filled from your tap from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="13" rx="2"/><path d="M12 8V5H8M12 5l4-1.5"/></svg><span><b>A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)</b><span class="small muted">Fire safety</span><span class="small pick-l"><b>First Alert HOME1 rechargeable extinguisher, 2-A:10-B:C</b> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE2" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+9</span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)"><option>Not in a kit yet</option><option selected>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger) from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 cases of 24 half-litre bottles</b><span class="small muted">24 L of water</span><span class="small pick-l"><b>Amazon purified water, 24 × 16.9 fl oz</b> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE3" target="_blank" rel="noopener">On Amazon ↗</a></span><span class="small" style="color:var(--warn)">Heavy to ship: often cheaper to pick up locally</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$12</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 cases of 24 half-litre bottles"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 cases of 24 half-litre bottles from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="6" ry="2.2"/><path d="M6 6v12c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V6M6 11c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2"/></svg><span><b>28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars</b><span class="small muted">50,400 kcal of food</span><span class="small muted pick-l">Mixed groceries: <a class="buy" href="https://www.amazon.com/s?k=canned+soup+chili+beans+sunflower+seed+butter+crackers+nut-free+granola+bars" target="_blank" rel="noopener">Find on Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$91</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><option>Not in a kit yet</option><option selected>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l6 6M17 7l-9 9-2.5-.5L5 13l9-9M8 16l-4 4"/></svg><span><b>2 epinephrine auto-injectors for Riley, plus an antihistamine</b><span class="small muted">Allergy</span><span class="small muted pick-l">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+7</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 epinephrine auto-injectors for Riley, plus an antihistamine"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 epinephrine auto-injectors for Riley, plus an antihistamine from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/></svg><span><b>A hand-crank NOAA emergency radio with a phone charger</b><span class="small muted">Comms</span><span class="small pick-l"><b>Midland ER310 hand-crank emergency radio</b> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE4" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">$30</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A hand-crank NOAA emergency radio with a phone charger"><option>Not in a kit yet</option><option selected>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A hand-crank NOAA emergency radio with a phone charger from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/></svg><span><b>A spare week of Sam&#x27;s prescriptions</b><span class="small muted">Medications</span><span class="small muted pick-l">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A spare week of Sam&#x27;s prescriptions"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A spare week of Sam&#x27;s prescriptions from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="6" rx="1.5"/><path d="M9 9V6.5h6V9M9 15v2.5h6V15"/></svg><span><b>2 CAT or SOF-T tourniquets</b><span class="small muted">Trauma</span><span class="small muted pick-l">Buy from a medical supplier: counterfeits are sold on marketplaces</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+5</span><span class="small muted">$60</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 CAT or SOF-T tourniquets"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 CAT or SOF-T tourniquets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9c3-1 5-2 8-2s5 1 8 2v3c0 4-4 7-8 7s-8-3-8-7zM8 12h8M9 15h6"/></svg><span><b>3 packs of 10 N95 masks</b><span class="small muted">Masks</span><span class="small pick-l"><b>3M Aura 9205+ N95 respirator, 10-pack</b> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE5" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+4</span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 packs of 10 N95 masks"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 3 packs of 10 N95 masks from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4L3 20h18zM12 13l-3.5 7M12 13l3.5 7"/></svg><span><b>5 reusable emergency blankets</b><span class="small muted">Shelter</span><span class="small pick-l"><b>SOL heavy-duty reusable emergency blanket</b> · Qty 5 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE6" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+3</span><span class="small muted">$25</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 5 reusable emergency blankets"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 5 reusable emergency blankets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Trunk bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span><b>3 LED headlamps</b><span class="small muted">Light</span><span class="small pick-l"><b>Energizer Vision HD headlamp</b> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE7" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+3</span><span class="small muted">$36</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 LED headlamps"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option selected>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 3 LED headlamps from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4L3 7l2 4 2-1v10h10V10l2 1 2-4-5-3a4 4 0 0 1-8 0z"/></svg><span><b>A change of clothes for everyone</b><span class="small muted">Clothing</span><span class="small muted pick-l">From home: nothing to buy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+2</span><span class="small muted">From home</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A change of clothes for everyone"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A change of clothes for everyone from the list">×</button>
+</li></ul>
+</div></main></div><p class="sb-sub">After "Mark all 6 ordered": the six leave the to-buy list for their own shelf. The score stays 17.</p><div class="screen "><header class="top"><div class="top-in">
+  <div class="brand"><h1><span class="go">Go</span> <svg class="case brand-mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg> <span>Bag</span></h1></div>
+  <div class="hdr-score"><span class="eyebrow">Readiness</span><b>17</b><span class="eyebrow">/ 100</span></div>
+  <nav class="tabs" aria-label="Sections"><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/></svg>Readiness</button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/></svg>Kits</button><button aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Shopping<span class="tab-n">6</span></button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Household</button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>Plan</button></nav>
+</div></header><main class="wrap"><div class="stack">
+  <h2>Shopping list</h2>
+  <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
+</div>
+<div class="panel stack">
+  <div class="row" style="justify-content:space-between">
+  <b>6 to buy</b>
+  <div class="row"><button class="btn ghost sm"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Amazon cart (7)</button><button class="btn ghost sm">Share list</button></div>
+</div>
+  <p class="shop-sum">About <b>$163</b> plus 2 prescription items. With what's on the way, buying it all takes readiness from 17 to <b>58</b>.</p>
+  <div class="shop-tools">
+  <label class="small">Order <select><option selected>Most points first</option><option>Most points per dollar</option><option>Order added</option></select></label>
+  <label class="small">Spend up to $ <input type="number" id="shop-budget" placeholder="Any" value="" aria-label="Budget in dollars"></label>
+</div>
+  <ul class="shop"><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 cases of 24 half-litre bottles</b><span class="small muted">24 L of water</span><span class="small pick-l"><b>Amazon purified water, 24 × 16.9 fl oz</b> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE3" target="_blank" rel="noopener">On Amazon ↗</a></span><span class="small" style="color:var(--warn)">Heavy to ship: often cheaper to pick up locally</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$12</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 cases of 24 half-litre bottles"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 cases of 24 half-litre bottles from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="6" ry="2.2"/><path d="M6 6v12c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V6M6 11c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2"/></svg><span><b>28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars</b><span class="small muted">50,400 kcal of food</span><span class="small muted pick-l">Mixed groceries: <a class="buy" href="https://www.amazon.com/s?k=canned+soup+chili+beans+sunflower+seed+butter+crackers+nut-free+granola+bars" target="_blank" rel="noopener">Find on Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$91</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><option>Not in a kit yet</option><option selected>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l6 6M17 7l-9 9-2.5-.5L5 13l9-9M8 16l-4 4"/></svg><span><b>2 epinephrine auto-injectors for Riley, plus an antihistamine</b><span class="small muted">Allergy</span><span class="small muted pick-l">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+7</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 epinephrine auto-injectors for Riley, plus an antihistamine"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 epinephrine auto-injectors for Riley, plus an antihistamine from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/></svg><span><b>A spare week of Sam&#x27;s prescriptions</b><span class="small muted">Medications</span><span class="small muted pick-l">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A spare week of Sam&#x27;s prescriptions"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A spare week of Sam&#x27;s prescriptions from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="6" rx="1.5"/><path d="M9 9V6.5h6V9M9 15v2.5h6V15"/></svg><span><b>2 CAT or SOF-T tourniquets</b><span class="small muted">Trauma</span><span class="small muted pick-l">Buy from a medical supplier: counterfeits are sold on marketplaces</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+5</span><span class="small muted">$60</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 CAT or SOF-T tourniquets"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 CAT or SOF-T tourniquets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4L3 7l2 4 2-1v10h10V10l2 1 2-4-5-3a4 4 0 0 1-8 0z"/></svg><span><b>A change of clothes for everyone</b><span class="small muted">Clothing</span><span class="small muted pick-l">From home: nothing to buy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+2</span><span class="small muted">From home</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A change of clothes for everyone"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A change of clothes for everyone from the list">×</button>
+</li></ul>
+</div>
+<div class="panel stack shelf" id="shelf-6">
+  <div class="stack" style="gap:2px">
+    <div class="row" style="justify-content:space-between"><b><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg> On the way (6)</b><span class="small muted">Once packed: readiness 17 → <b>39</b></span></div>
+    <p class="small muted">Ordered 6 Nov. Tick each one as you pack it into its kit.</p>
+  </div>
+  <ul class="shop"><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 7-gallon water containers, filled from your tap</b><span class="small muted">Reliance Aqua-Tainer 7-gallon water container · Qty 2</span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Points it adds once it's ticked into the kit">+11 once packed</span></div>
+  <div class="shop-kit shelf-kit"><span class="small">Goes in <b>Basement bin</b></span><button class="txt small">Not ordered</button></div>
+  <span></span>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="13" rx="2"/><path d="M12 8V5H8M12 5l4-1.5"/></svg><span><b>A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)</b><span class="small muted">First Alert HOME1 rechargeable extinguisher, 2-A:10-B:C · Qty 1</span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Points it adds once it's ticked into the kit">+9 once packed</span></div>
+  <div class="shop-kit shelf-kit"><span class="small">Goes in <b>Basement bin</b></span><button class="txt small">Not ordered</button></div>
+  <span></span>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/></svg><span><b>A hand-crank NOAA emergency radio with a phone charger</b><span class="small muted">Midland ER310 hand-crank emergency radio · Qty 1</span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Points it adds once it's ticked into the kit">+6 once packed</span></div>
+  <div class="shop-kit shelf-kit"><span class="small">Goes in <b>Basement bin</b></span><button class="txt small">Not ordered</button></div>
+  <span></span>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9c3-1 5-2 8-2s5 1 8 2v3c0 4-4 7-8 7s-8-3-8-7zM8 12h8M9 15h6"/></svg><span><b>3 packs of 10 N95 masks</b><span class="small muted">3M Aura 9205+ N95 respirator, 10-pack · Qty 3</span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Points it adds once it's ticked into the kit">+4 once packed</span></div>
+  <div class="shop-kit shelf-kit"><span class="small">Goes in <b>Hall closet go-bag</b></span><button class="txt small">Not ordered</button></div>
+  <span></span>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4L3 20h18zM12 13l-3.5 7M12 13l3.5 7"/></svg><span><b>5 reusable emergency blankets</b><span class="small muted">SOL heavy-duty reusable emergency blanket · Qty 5</span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Points it adds once it's ticked into the kit">+3 once packed</span></div>
+  <div class="shop-kit shelf-kit"><span class="small">Goes in <b>Hall closet go-bag</b></span><button class="txt small">Not ordered</button></div>
+  <span></span>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Trunk bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span><b>3 LED headlamps</b><span class="small muted">Energizer Vision HD headlamp · Qty 3</span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Points it adds once it's ticked into the kit">+3 once packed</span></div>
+  <div class="shop-kit shelf-kit"><span class="small">Goes in <b>Trunk bag</b></span><button class="txt small">Not ordered</button></div>
+  <span></span>
+</li></ul>
+</div>
+</main></div>
+  <p class="sb-cap"><b>Trusting:</b> that the score is honest, and nothing counts until it's in a kit. <b>Earned by:</b> the card waits in the list until it's answered, however long checkout took. Ordered lines sit apart under "On the way", each shows "+9 once packed" in grey, the header stays at 17, and "Not ordered" moves a line back in one tap.</p>
+</section>
+
+  <section class="sb-frame" id="f9">
+  <h2 class="sb-label"><span class="sb-n">Frame 8–9</span> The box arrives, and it's unpacked into the right kits</h2>
+  <div class="outside"><p class="eyebrow">Tuesday 10 Nov · the porch, outside Go Bag</p><p>A box arrives. Amazon's email says "Delivered".</p></div><p class="sb-sub">Readiness tab: one new next step, with no points of its own.</p><div class="screen "><header class="top"><div class="top-in">
+  <div class="brand"><h1><span class="go">Go</span> <svg class="case brand-mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg> <span>Bag</span></h1></div>
+  <div class="hdr-score"><span class="eyebrow">Readiness</span><b>17</b><span class="eyebrow">/ 100</span></div>
+  <nav class="tabs" aria-label="Sections"><button aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/></svg>Readiness</button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/></svg>Kits</button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Shopping<span class="tab-n">6</span></button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Household</button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>Plan</button></nav>
+</div></header><main class="wrap"><div class="panel next">
+  <div class="stack">
+    <div class="stack" style="gap:2px">
+      <p class="eyebrow">Next steps</p>
+      <h2>Your next 2 steps</h2>
+      <p class="small muted">Packing the 6 things on the way takes readiness from 17 to 39.</p>
+    </div>
+    <ol class="acts">
+  <li class="act act-run">
+    <span class="act-n" title="Step 1"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10"/><path d="m3.5 6 1.5 1.5 2.5-2.5M3.5 12l1.5 1.5 2.5-2.5M3.5 18l1.5 1.5 2.5-2.5"/></svg></span>
+    <div class="act-b"><b>6 things on the way · Tick each as you pack it</b>
+      <p class="small">The radio, extinguisher and water containers go in the Basement bin, masks and blankets in the Hall closet go-bag, headlamps in the Trunk bag.</p>
+      <p class="small muted">Ordered 6 Nov. Nothing counts until it's in a kit.</p></div>
+    <div class="act-do"><button class="btn sm">Open list</button></div>
+  </li>
+  <li class="act">
+    <span class="act-n" title="Step 2"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg></span>
+    <div class="act-b"><b>Pick a meeting place and an out-of-area contact</b><p class="small">Two minutes now saves a frantic search later. They go on your family plan.</p></div>
+    <div class="act-do"><button class="btn ghost sm">Open plan</button></div>
+  </li>
+</ol>
+    <div class="row"><span class="small muted">6 more gaps after these, all on your shopping list.</span></div>
+  </div>
+  <div class="sum-score">
+    <p class="eyebrow">Household readiness</p>
+    <div class="ring" style="--c:var(--warn)" role="img" aria-label="Readiness 17 out of 100">
+      <svg viewBox="0 0 132 132" aria-hidden="true"><circle class="trk" cx="66" cy="66" r="56"/><circle class="val" cx="66" cy="66" r="56" pathLength="100" stroke-dasharray="17 100"/></svg>
+      <div class="score"><span class="num" style="color:var(--warn)">17</span><span class="of">of 100</span></div>
+    </div>
+    <span class="band"><i style="background:var(--warn)"></i>Low</span>
+    <p class="mono small muted">5 people · 1 pet · 3 kits · 41 items</p>
+    <p class="small muted">Hazard levels for <b>Springfield, OR</b> checked 2 Nov 2026.</p>
+  </div>
+</div></main></div><p class="sb-sub">Shopping tab: Alex packs the radio and extinguisher into the Basement bin and ticks both. 17 → 26.</p><div class="screen "><header class="top"><div class="top-in">
+  <div class="brand"><h1><span class="go">Go</span> <svg class="case brand-mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:26 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:26 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg> <span>Bag</span></h1></div>
+  <div class="hdr-score up"><span class="eyebrow">Readiness</span><b>26</b><span class="eyebrow">/ 100</span></div>
+  <nav class="tabs" aria-label="Sections"><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/></svg>Readiness</button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/></svg>Kits</button><button aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Shopping<span class="tab-n">6</span></button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Household</button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>Plan</button></nav>
+</div></header><main class="wrap"><div class="stack">
+  <h2>Shopping list</h2>
+  <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
+</div>
+<div class="panel stack">
+  <div class="row" style="justify-content:space-between">
+  <b>6 to buy</b>
+  <div class="row"><button class="btn ghost sm"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Amazon cart (7)</button><button class="btn ghost sm">Share list</button></div>
+</div>
+  <p class="shop-sum">About <b>$163</b> plus 2 prescription items. With what's on the way, buying it all takes readiness from 26 to <b>58</b>.</p>
+  <div class="shop-tools">
+  <label class="small">Order <select><option selected>Most points first</option><option>Most points per dollar</option><option>Order added</option></select></label>
+  <label class="small">Spend up to $ <input type="number" id="shop-budget" placeholder="Any" value="" aria-label="Budget in dollars"></label>
+</div>
+  <ul class="shop"><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 cases of 24 half-litre bottles</b><span class="small muted">24 L of water</span><span class="small pick-l"><b>Amazon purified water, 24 × 16.9 fl oz</b> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE3" target="_blank" rel="noopener">On Amazon ↗</a></span><span class="small" style="color:var(--warn)">Heavy to ship: often cheaper to pick up locally</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$12</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 cases of 24 half-litre bottles"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 cases of 24 half-litre bottles from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="6" ry="2.2"/><path d="M6 6v12c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V6M6 11c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2"/></svg><span><b>28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars</b><span class="small muted">50,400 kcal of food</span><span class="small muted pick-l">Mixed groceries: <a class="buy" href="https://www.amazon.com/s?k=canned+soup+chili+beans+sunflower+seed+butter+crackers+nut-free+granola+bars" target="_blank" rel="noopener">Find on Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$91</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><option>Not in a kit yet</option><option selected>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l6 6M17 7l-9 9-2.5-.5L5 13l9-9M8 16l-4 4"/></svg><span><b>2 epinephrine auto-injectors for Riley, plus an antihistamine</b><span class="small muted">Allergy</span><span class="small muted pick-l">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+7</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 epinephrine auto-injectors for Riley, plus an antihistamine"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 epinephrine auto-injectors for Riley, plus an antihistamine from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/></svg><span><b>A spare week of Sam&#x27;s prescriptions</b><span class="small muted">Medications</span><span class="small muted pick-l">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A spare week of Sam&#x27;s prescriptions"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A spare week of Sam&#x27;s prescriptions from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="6" rx="1.5"/><path d="M9 9V6.5h6V9M9 15v2.5h6V15"/></svg><span><b>2 CAT or SOF-T tourniquets</b><span class="small muted">Trauma</span><span class="small muted pick-l">Buy from a medical supplier: counterfeits are sold on marketplaces</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+5</span><span class="small muted">$60</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 CAT or SOF-T tourniquets"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 CAT or SOF-T tourniquets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4L3 7l2 4 2-1v10h10V10l2 1 2-4-5-3a4 4 0 0 1-8 0z"/></svg><span><b>A change of clothes for everyone</b><span class="small muted">Clothing</span><span class="small muted pick-l">From home: nothing to buy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+2</span><span class="small muted">From home</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A change of clothes for everyone"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A change of clothes for everyone from the list">×</button>
+</li></ul>
+</div>
+<div class="panel stack shelf" id="shelf-4">
+  <div class="stack" style="gap:2px">
+    <div class="row" style="justify-content:space-between"><b><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg> On the way (4)</b><span class="small muted">Once packed: readiness 26 → <b>39</b></span></div>
+    <p class="small muted">Ordered 6 Nov. Tick each one as you pack it into its kit.</p>
+  </div>
+  <ul class="shop"><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 7-gallon water containers, filled from your tap</b><span class="small muted">Reliance Aqua-Tainer 7-gallon water container · Qty 2</span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Points it adds once it's ticked into the kit">+11 once packed</span></div>
+  <div class="shop-kit shelf-kit"><span class="small">Goes in <b>Basement bin</b></span><button class="txt small">Not ordered</button></div>
+  <span></span>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9c3-1 5-2 8-2s5 1 8 2v3c0 4-4 7-8 7s-8-3-8-7zM8 12h8M9 15h6"/></svg><span><b>3 packs of 10 N95 masks</b><span class="small muted">3M Aura 9205+ N95 respirator, 10-pack · Qty 3</span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Points it adds once it's ticked into the kit">+4 once packed</span></div>
+  <div class="shop-kit shelf-kit"><span class="small">Goes in <b>Hall closet go-bag</b></span><button class="txt small">Not ordered</button></div>
+  <span></span>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4L3 20h18zM12 13l-3.5 7M12 13l3.5 7"/></svg><span><b>5 reusable emergency blankets</b><span class="small muted">SOL heavy-duty reusable emergency blanket · Qty 5</span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Points it adds once it's ticked into the kit">+3 once packed</span></div>
+  <div class="shop-kit shelf-kit"><span class="small">Goes in <b>Hall closet go-bag</b></span><button class="txt small">Not ordered</button></div>
+  <span></span>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Trunk bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span><b>3 LED headlamps</b><span class="small muted">Energizer Vision HD headlamp · Qty 3</span></span></label>
+  <div class="shop-meta"><span class="small muted mono" title="Points it adds once it's ticked into the kit">+3 once packed</span></div>
+  <div class="shop-kit shelf-kit"><span class="small">Goes in <b>Trunk bag</b></span><button class="txt small">Not ordered</button></div>
+  <span></span>
+</li></ul>
+</div>
+<div class="panel stack">
+  <div class="row" style="justify-content:space-between"><b>Got it (2)</b><button class="btn ghost sm">Clear these</button></div>
+  <ul class="shop"><li class="shop-row done">
+  <label class="shop-chk"><input type="checkbox" checked aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="13" rx="2"/><path d="M12 8V5H8M12 5l4-1.5"/></svg><span><b>A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)</b></span></label>
+  <div class="shop-meta"></div>
+  <div class="shop-kit"><span class="small muted">In Basement bin</span></div>
+  <button class="x" aria-label="Remove A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger) from the list">×</button>
+</li><li class="shop-row done">
+  <label class="shop-chk"><input type="checkbox" checked aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/></svg><span><b>A hand-crank NOAA emergency radio with a phone charger</b></span></label>
+  <div class="shop-meta"></div>
+  <div class="shop-kit"><span class="small muted">In Basement bin</span></div>
+  <button class="x" aria-label="Remove A hand-crank NOAA emergency radio with a phone charger from the list">×</button>
+</li></ul>
+</div></main></div>
+  <p class="sb-cap"><b>Trusting:</b> that ticking still means what it always did. <b>Earned by:</b> the same tick, the same points as shown (+9 and +6 land; the score reads 26), and the same "In Basement bin". Each shelf line says which kit it goes in, so the box gets unpacked in the right places. The run ends when the shelf is empty, and the shelf and the next step go away with it.</p>
+</section>
+
+  <section class="sb-frame" id="f2">
+  <h2 class="sb-label"><span class="sb-n">Frame 2</span> The full list, before the order</h2>
+  <div class="screen "><header class="top"><div class="top-in">
+  <div class="brand"><h1><span class="go">Go</span> <svg class="case brand-mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true"><g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"><path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:17 100"/><path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg> <span>Bag</span></h1></div>
+  <div class="hdr-score"><span class="eyebrow">Readiness</span><b>17</b><span class="eyebrow">/ 100</span></div>
+  <nav class="tabs" aria-label="Sections"><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/></svg>Readiness</button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/></svg>Kits</button><button aria-current="page"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Shopping<span class="tab-n">12</span></button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Household</button><button><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg>Plan</button></nav>
+</div></header><main class="wrap"><div class="stack">
+  <h2>Shopping list</h2>
+  <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
+</div>
+<div class="panel stack">
+  <div class="row" style="justify-content:space-between">
+  <b>12 to buy</b>
+  <div class="row"><button class="btn ghost sm"><svg class="ic ic-s" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>Amazon cart (7)</button><button class="btn ghost sm">Share list</button></div>
+</div>
+  
+  <p class="shop-sum">About <b>$388</b> plus 2 prescription items. Buying it all takes readiness from 17 to <b>58</b>.</p>
+  <div class="shop-tools">
+  <label class="small">Order <select><option selected>Most points first</option><option>Most points per dollar</option><option>Order added</option></select></label>
+  <label class="small">Spend up to $ <input type="number" id="shop-budget" placeholder="Any" value="" aria-label="Budget in dollars"></label>
+</div>
+  <ul class="shop"><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 7-gallon water containers, filled from your tap</b><span class="small muted">53 L of water</span><span class="small pick-l"><b>Reliance Aqua-Tainer 7-gallon water container</b> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE1" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+11</span><span class="small muted">$44</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 7-gallon water containers, filled from your tap"><option>Not in a kit yet</option><option selected>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 7-gallon water containers, filled from your tap from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="13" rx="2"/><path d="M12 8V5H8M12 5l4-1.5"/></svg><span><b>A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)</b><span class="small muted">Fire safety</span><span class="small pick-l"><b>First Alert HOME1 rechargeable extinguisher, 2-A:10-B:C</b> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE2" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+9</span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)"><option>Not in a kit yet</option><option selected>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger) from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span><b>2 cases of 24 half-litre bottles</b><span class="small muted">24 L of water</span><span class="small pick-l"><b>Amazon purified water, 24 × 16.9 fl oz</b> · Qty 2 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE3" target="_blank" rel="noopener">On Amazon ↗</a></span><span class="small" style="color:var(--warn)">Heavy to ship: often cheaper to pick up locally</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$12</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 cases of 24 half-litre bottles"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 cases of 24 half-litre bottles from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="6" ry="2.2"/><path d="M6 6v12c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V6M6 11c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2"/></svg><span><b>28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars</b><span class="small muted">50,400 kcal of food</span><span class="small muted pick-l">Mixed groceries: <a class="buy" href="https://www.amazon.com/s?k=canned+soup+chili+beans+sunflower+seed+butter+crackers+nut-free+granola+bars" target="_blank" rel="noopener">Find on Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+8</span><span class="small muted">$91</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars"><option>Not in a kit yet</option><option selected>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 28 cans of soup, chili and beans, 2 big jars of sunflower seed butter, 3 boxes of crackers and 4 boxes of nut-free granola bars from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l6 6M17 7l-9 9-2.5-.5L5 13l9-9M8 16l-4 4"/></svg><span><b>2 epinephrine auto-injectors for Riley, plus an antihistamine</b><span class="small muted">Allergy</span><span class="small muted pick-l">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+7</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 epinephrine auto-injectors for Riley, plus an antihistamine"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 epinephrine auto-injectors for Riley, plus an antihistamine from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Basement bin"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/></svg><span><b>A hand-crank NOAA emergency radio with a phone charger</b><span class="small muted">Comms</span><span class="small pick-l"><b>Midland ER310 hand-crank emergency radio</b> · Qty 1 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE4" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">$30</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A hand-crank NOAA emergency radio with a phone charger"><option>Not in a kit yet</option><option selected>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A hand-crank NOAA emergency radio with a phone charger from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/></svg><span><b>A spare week of Sam&#x27;s prescriptions</b><span class="small muted">Medications</span><span class="small muted pick-l">Prescription: ask the pharmacy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+6</span><span class="small muted">Prescription</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A spare week of Sam&#x27;s prescriptions"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A spare week of Sam&#x27;s prescriptions from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="6" rx="1.5"/><path d="M9 9V6.5h6V9M9 15v2.5h6V15"/></svg><span><b>2 CAT or SOF-T tourniquets</b><span class="small muted">Trauma</span><span class="small muted pick-l">Buy from a medical supplier: counterfeits are sold on marketplaces</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+5</span><span class="small muted">$60</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 2 CAT or SOF-T tourniquets"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 2 CAT or SOF-T tourniquets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9c3-1 5-2 8-2s5 1 8 2v3c0 4-4 7-8 7s-8-3-8-7zM8 12h8M9 15h6"/></svg><span><b>3 packs of 10 N95 masks</b><span class="small muted">Masks</span><span class="small pick-l"><b>3M Aura 9205+ N95 respirator, 10-pack</b> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE5" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+4</span><span class="small muted">$45</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 packs of 10 N95 masks"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 3 packs of 10 N95 masks from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4L3 20h18zM12 13l-3.5 7M12 13l3.5 7"/></svg><span><b>5 reusable emergency blankets</b><span class="small muted">Shelter</span><span class="small pick-l"><b>SOL heavy-duty reusable emergency blanket</b> · Qty 5 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE6" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+3</span><span class="small muted">$25</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 5 reusable emergency blankets"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 5 reusable emergency blankets from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Trunk bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span><b>3 LED headlamps</b><span class="small muted">Light</span><span class="small pick-l"><b>Energizer Vision HD headlamp</b> · Qty 3 · <a class="buy" href="https://www.amazon.com/dp/B0EXAMPLE7" target="_blank" rel="noopener">On Amazon ↗</a></span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+3</span><span class="small muted">$36</span></div>
+  <div class="shop-kit"><select aria-label="Kit for 3 LED headlamps"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option>Goes in Hall closet go-bag</option><option selected>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove 3 LED headlamps from the list">×</button>
+</li><li class="shop-row">
+  <label class="shop-chk"><input type="checkbox" aria-label="Packed into Hall closet go-bag"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4L3 7l2 4 2-1v10h10V10l2 1 2-4-5-3a4 4 0 0 1-8 0z"/></svg><span><b>A change of clothes for everyone</b><span class="small muted">Clothing</span><span class="small muted pick-l">From home: nothing to buy</span></span></label>
+  <div class="shop-meta"><span class="gain mono" title="Readiness points this adds">+2</span><span class="small muted">From home</span></div>
+  <div class="shop-kit"><select aria-label="Kit for A change of clothes for everyone"><option>Not in a kit yet</option><option>Goes in Basement bin</option><option selected>Goes in Hall closet go-bag</option><option>Goes in Trunk bag</option></select></div>
+  <button class="x" aria-label="Remove A change of clothes for everyone from the list">×</button>
+</li></ul>
+</div></main></div>
+  <p class="sb-cap"><b>Trusting:</b> that each pick really is the thing the line asks for. <b>Earned by:</b> the product name and quantity on the line, not a bare link. Lines with no single product say why, in their own small text: mixed groceries, prescription, medical supplier, from home.</p>
+</section>
+
+  <section class="sb-frame">
+    <h2 class="sb-label">The whole run</h2>
+    <ol class="journey">
+      <li class="c">1 · Kitchen: "Shopping 12"</li><li>2 · The list</li><li>3 · Optional budget</li><li>4 · The sheet</li><li class="k">5 · Hand-off to Amazon</li>
+      <li class="c">6 · Amazon checkout</li><li>7 · The card, then the shelf</li><li class="c">8 · Porch: "Delivered"</li><li>9 · Pack and tick</li><li>10 · Kits: "On Amazon ↗" to restock</li>
+    </ol>
+    <p class="sb-cap">Dashed steps happen outside Go Bag. Cost: about 7 days, the whole week with no slack. Kit grouping and payoff in the sheet (half a day), the shelf (about what B's chip costs), the card (half a day) and the Readiness step (a day, with a test that it adds 0 points). If it runs long, the Readiness step goes first, then the brief's own cuts. New components: the sheet (shared with B), the return card and the shelf panel. The shelf and card reuse <span class="mono">.panel</span>, <span class="mono">.shop-row</span> and <span class="mono">.btn</span>.</p>
+  </section>
+</div>
+</body>
+</html>
