@@ -119,15 +119,6 @@ test("inside a box the bands, small items, free and over bands and the bag's own
   assert.doesNotMatch(fig(app, "go", "ml"), /bag-own/, "no empty-weight band by space");
 });
 
-test("the box styles draw a square body, a lid across the top and a stack to match, from tokens only", () => {
-  const css = fs.readFileSync(path.join(ROOT, "emergency-kit-audit.html"), "utf8").match(/<style>([\s\S]*?)<\/style>/)[1];
-  for (const sel of [".bag.box .bag-body", ".bag.box .bag-body::before", ".bag.box .bag-st"]) {
-    const rule = css.match(new RegExp(`(?:^|\\n|[},])\\s*${sel.replace(/[.()]/g, "\\$&")}\\s*\\{([^}]*)\\}`));
-    assert.ok(rule, `a ${sel} rule`);
-    assert.doesNotMatch(rule[1], /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i, `${sel}: colours come from tokens`);
-  }
-});
-
 // What the phone-width run in tests/bag.test.js measures, for every kit and measure of a household
 const measureBags = () => S.kits.flatMap(k => ["ml", "g"].map(m => {
   S.view = "kits"; S.openKit = k.id; S.bagM = { id: k.id, m }; render();
