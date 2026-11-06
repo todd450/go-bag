@@ -293,6 +293,7 @@ tr.addrow td { background: var(--paper); }
 .bag-body::before { content: ""; inset: auto 34% 100%; height: 13px; border-bottom: 0; border-radius: 10px 10px 0 0; }
 .bag-st { position: absolute; inset: 4px 5px 5px; display: flex; flex-direction: column-reverse; overflow: hidden; border-radius: 4px 4px 16px 16px; font-size: .75rem; }
 .bag-b { flex: none; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 0 8px; border-top: 2px solid var(--card); background: color-mix(in srgb, var(--c, var(--rule-2)) 40%, var(--card)); white-space: nowrap; }
+.bag-own { --c: var(--ink-2); }
 .bag-free { flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; background: repeating-linear-gradient(135deg, var(--rule) 0 2px, transparent 0 8px); color: var(--ink-2); }
 .bag-over { position: absolute; inset: 0 0 auto; border: 2px dashed var(--bad); border-bottom: 0; background: color-mix(in srgb, var(--bad) 22%, transparent); color: var(--bad); font-weight: 600; text-align: center; }
 .bag-over span { position: absolute; inset: auto 0 100%; }
@@ -1396,24 +1397,35 @@ const bodyKg = m => { const y = yearsOf(m); return y == null ? { infant: 10, chi
 const carryShare = m => { const y = yearsOf(m), g = groupOf(m); return g === "infant" || y != null && y < 5 ? 0 : hasCond("mobility")(m) || g === "senior" || g === "child" ? .1 : g === "teen" ? .15 : .2; };
 const carryKg = m => Math.round(bodyKg(m) * carryShare(m) * 2) / 2;
 const PACK_L = { go: 40, car: 60 };
-/* Go-bags are limited by what their strongest carrier can lift and by the bag's litres; car kits by
-   the space they get in the trunk. Home supplies have no limits. */
+const CONTAINER_KINDS = { backpack: "Backpack", duffel: "Duffel", box: "Bin or box", other: "Other" };
+/* The kit's own bag or bin (#96), typed by hand, so any value may be odd: the only reader of kit.container.
+   Its litres stay in kit.bagL; emptyG 0 means its empty weight wasn't entered. */
+function containerOf(kit) {
+  const c = kit.container;
+  if (!PACK_L[kit.type] || Object.prototype.toString.call(c) !== "[object Object]") return null;
+  const s = (v, n) => typeof v === "string" ? [...v.trim()].slice(0, n).join("").trim() : "";
+  return { kind: typeof c.kind === "string" && Object.hasOwn(CONTAINER_KINDS, c.kind) ? c.kind : "other", name: s(c.name, 60),
+    emptyG: Math.round(num(c.emptyG)), size: s(c.size, 40), rating: s(c.rating, 20) };
+}
+/* Go-bags are limited by what their strongest carrier can lift, the bag's own weight included, and by
+   the bag's litres; car kits by the space they get in the trunk. Home supplies have no limits. */
 function kitLimits(kit, h) {
   if (!PACK_L[kit.type]) return null;
   const carriers = h.members.map((m, i) => ({ name: personName(m, i), kg: carryKg(m) })).filter(c => c.kg > 0).sort((a, b) => b.kg - a.kg);
-  const suggestedKg = kit.type === "go" ? carriers[0]?.kg || null : null;
+  const suggestedKg = kit.type === "go" ? carriers[0]?.kg || null : null, container = containerOf(kit);
   return { kg: kit.type === "go" ? num(kit.carryKg) || suggestedKg : null, L: num(kit.bagL) || PACK_L[kit.type], suggestedKg, suggestedL: PACK_L[kit.type],
-    carrier: carriers[0]?.name || "", totalKg: carriers.reduce((a, c) => a + c.kg, 0), carriers: carriers.length };
+    carrier: carriers[0]?.name || "", totalKg: carriers.reduce((a, c) => a + c.kg, 0), carriers: carriers.length, container, emptyG: container?.emptyG || 0 };
 }
 /* What to pack within a kit's limits. Each line splits into steps of whole units (at most 12 per
    line); the search adds the step that gains the most readiness for its share of the tighter limit,
    then tries one-for-one swaps, refilling after each. The score is capped at need per checklist line,
    so each extra unit is worth less than the last, and this lands at or near the best possible pack.
    Water filters and tablets add no litres but are always kept. Points come from kitReadiness on the
-   chosen items, so they are the points the kit would really score. */
+   chosen items, so they are the points the kit would really score. The bag's own weight comes off the
+   carry limit, so it changes what fits but never what an item scores; g and every weight here are items only. */
 function packPlan(kit, ready, lim) {
   const lines = S.items.filter(i => i.kitId === kit.id).map(it => ({ it, ...itemLoad(it) }));
-  const limG = lim.kg ? lim.kg * 1000 : Infinity, limMl = lim.L * 1000;
+  const limG = lim.kg ? Math.max(0, lim.kg * 1000 - (lim.emptyG || 0)) : Infinity, limMl = lim.L * 1000;
   const pick = keep => lines.flatMap((l, i) => keep[i] ? [{ ...l.it, qty: keep[i], liters: num(l.it.liters) * keep[i] / l.q, kcal: num(l.it.kcal) * keep[i] / l.q }] : []);
   const raw = keep => { const st = stockItems(pick(keep)); return rawScore(ready.rows.map(r => fillRow(r, st))); };
   /* Water filters and tablets are kept whatever the limits. Items in the five checklist categories not yet tagged
@@ -1485,7 +1497,7 @@ function packPlan(kit, ready, lim) {
   }).sort((a, b) => b.saveG - a.saveG).slice(0, 5);
   const waterG = lines.filter(l => l.it.category === "water").reduce((a, l) => a + l.g, 0);
   const waterRow = ready.rows.find(r => r.cat === "water");
-  return { lines, fits, g: sumG(full), ml: sumMl(full), score: ready.score, best, takeOut, swaps, waterG,
+  return { lines, fits, g: sumG(full), ml: sumMl(full), bagG: lim.emptyG || 0, score: ready.score, best, takeOut, swaps, waterG,
     waterNeedG: waterRow ? waterRow.need * WATER_G : 0, estN: lines.filter(l => l.est).length };
 }
 /* Splits a kit's score across its items: each checklist row's points go to the items filling it,
@@ -1735,20 +1747,24 @@ const lbText = g => f1(g / LB_G);
 const lb1 = g => Math.round(g / LB_G * 10) / 10;
 const gOfLb = lb => Math.round(num(lb) * LB_G);
 const kgOfLb = lb => Math.round(num(lb) / KG_LB * 100) / 100;
-/* The bag by weight (m "g") or space: bands under 18px merge into one, and a load over the limit rises above the rim */
+/* The bag by weight (m "g") or space: bands under 18px merge into one, and a load over the limit rises above the rim.
+   By weight, the bag's own empty weight is one grey band at the bottom, never merged or shortened. */
 function bagFig(P, lim, m) {
-  const w = m === "g", k = w ? LB_G : 1e3, u = w ? " lb" : " L", max = (w ? lim.kg : lim.L) * 1e3, have = w ? P.g : P.ml;
+  const w = m === "g", k = w ? LB_G : 1e3, u = w ? " lb" : " L", max = (w ? lim.kg : lim.L) * 1e3, bagG = w && P.bagG || 0, have = (w ? P.g : P.ml) + bagG, c = lim.container;
   // Bands fill the stack, which sits 4px + 5px inside the bag (.bag-st), so a full bag's bands are exactly its height.
   const r = Math.max(1, have / max), tall = Math.round(240 * Math.min(r, 1.5)), inner = tall - 9, px = inner / max / r, body = Math.round(tall / r);
   const xs = P.lines.map(l => [w ? l.g : l.ml, l.it]).sort((a, b) => b[0] - a[0]), sm = xs.filter(x => x[0] * px < 18), n = sm.length > 1 && sm.length;
   const rows = n ? xs.filter(x => !sm.includes(x)).concat([[sm.reduce((a, x) => a + x[0], 0)]]) : xs;
-  // A band is at least 18px to fit its label; whatever that adds past the stack comes off the biggest band, at the bottom.
-  const hs = rows.map(([v]) => Math.max(18, Math.round(v * px))), extra = hs.reduce((a, h) => a + h, 0) - inner;
+  // A band is at least 18px to fit its label; whatever that adds past the stack comes off the biggest item's band, never the bag's.
+  const bh = bagG && Math.max(18, Math.round(bagG * px)), hs = rows.map(([v]) => Math.max(18, Math.round(v * px))), extra = hs.reduce((a, h) => a + h, bh) - inner;
   if (extra > 0 && hs.length) hs[0] = Math.max(18, hs[0] - extra);
   // The free band is what's left; under 18px its label would be cut in half, so it shows none (the bag's label has it).
   const band = ([v, it], i) => `<div class="bag-b" data-v="${Math.round(v)}" ${it ? `data-id="${esc(it.id)}" style="--c:var(--zone-${ZONES.indexOf(zoneOf(it.category))});` : `data-n="${n}" style="`}height:${hs[i]}px"><span class="ell">${it ? esc(String(it.name ?? "").trim() || catLabel(it.category)) : n + " small items"}</span>${f1(v / k) + u}</div>`;
-  return `<div class="bag${r > 1 ? " over" : ""}" role="img" aria-label="${f1(have / k)} of ${f1(max / k) + u} packed" style="height:${tall}px"><div class="bag-body" style="height:${body}px"></div>
-    <div class="bag-st">${rows.map(band).join("")}${r > 1 ? "" : `<div class="bag-free">${extra <= -18 ? f1((max - have) / k) + u + (w ? " to spare" : " free") : ""}</div>`}</div>
+  const own = bagG ? `<div class="bag-b bag-own" data-v="${Math.round(bagG)}" style="height:${bh}px"><span class="ell">${esc(c.name || CONTAINER_KINDS[c.kind])}</span>${f1(bagG / k) + u}</div>` : "";
+  // With a container the label names it, and gives its litres as saved (to 0.01 L)
+  const where = c ? ` in the ${esc(c.name || CONTAINER_KINDS[c.kind].toLowerCase())}${bagG ? ", bag included" : ""}` : "";
+  return `<div class="bag${r > 1 ? " over" : ""}" role="img" aria-label="${f1(have / k)} of ${(c && !w ? (Math.round(max / 10) / 100).toLocaleString() : f1(max / k)) + u} packed${where}" style="height:${tall}px"><div class="bag-body" style="height:${body}px"></div>
+    <div class="bag-st">${own}${rows.map(band).join("")}${r > 1 ? "" : `<div class="bag-free">${extra <= -18 ? f1((max - have) / k) + u + (w ? " to spare" : " free") : ""}</div>`}</div>
     ${r > 1 ? `<div class="bag-over" style="height:${tall - body}px"><span>${f1((have - max) / k) + u} over</span></div>` : ""}</div>`;
 }
 function packPanel(kit, ready) {
@@ -1758,8 +1774,8 @@ function packPanel(kit, ready) {
   const est = S.packEst?.kitId === kit.id ? S.packEst : null;
   // The carry limit is saved in kg and typed in pounds; bag size is litres both ways
   const shown = f => f === "carryKg" ? Math.round(num(kit[f]) * KG_LB) : num(kit[f]);
-  const input = (f, sugg, unit, label) => S.canWrite ? `<label class="small muted pack-lim">${label}<input type="number" min="0" step="${f === "carryKg" ? 1 : 0.5}" id="pk-${f}-${esc(kit.id)}" value="${shown(f) || ""}" placeholder="${sugg}" data-change="packLim" data-id="${esc(kit.id)}" data-f="${f}" aria-label="${label} in ${unit}">${unit}</label>` : "";
-  const m = lim.kg && S.bagM?.id === kit.id ? S.bagM.m : lim.kg && P.g / lim.kg > P.ml / lim.L ? "g" : "ml";
+  const input = (f, sugg, unit, label) => S.canWrite ? `<label class="small muted pack-lim">${label}<input type="number" min="0" step="${f === "carryKg" ? 1 : 0.01}" id="pk-${f}-${esc(kit.id)}" value="${shown(f) || ""}" placeholder="${sugg}" data-change="packLim" data-id="${esc(kit.id)}" data-f="${f}" aria-label="${label} in ${unit}">${unit}</label>` : "";
+  const m = lim.kg && S.bagM?.id === kit.id ? S.bagM.m : lim.kg && (P.g + P.bagG) / lim.kg > P.ml / lim.L ? "g" : "ml";
   const seg = (v, label) => `<button type="button" data-act="bagM" data-id="${esc(kit.id)}" data-m="${v}" aria-pressed="${m === v}">${label}</button>`;
   const li = (it, what, note) => `<li><b>${esc(it.name)}</b> <span>${what}</span>${note ? ` <span class="muted">· ${note}</span>` : ""}</li>`;
   const go = kit.type === "go";
@@ -1778,7 +1794,7 @@ function packPanel(kit, ready) {
     <p class="small muted">${go ? (lim.suggestedKg ? `Suggested carry limit ${Math.round(lim.suggestedKg * KG_LB)} lb, about what ${esc(lim.carrier)} can carry (a fifth of body weight for an adult, less for children and seniors). ` : "") + `Suggested bag ${lim.suggestedL} L, a typical hiking pack.` : `Suggested ${lim.suggestedL} L, a typical trunk bin.`}</p>
     ${notes.map(n => `<p class="small">${n}</p>`).join("")}
     ${P.best ? `<div class="stack"><b>Best pack within your limits</b>
-      <p class="small">Leave these out and the kit scores <b>${P.best.score}%</b> (now ${P.score}%) at ${lbText(P.best.g)} lb and ${f1(P.best.ml / 1000)} L.</p>
+      <p class="small">Leave these out and the kit scores <b>${P.best.score}%</b> (now ${P.score}%) at ${lbText(P.best.g + P.bagG)} lb and ${f1(P.best.ml / 1000)} L.</p>
       <ul class="pack-l">${P.best.leave.map(x => li(x.it, `leave out ${x.n === Math.max(1, num(x.it.qty)) ? "all" : x.n}`, `${lbText(x.g)} lb`)).join("")}</ul></div>` : ""}
     ${P.takeOut.length ? `<div class="stack"><b>Take out</b><p class="small muted">These earn no points, so the kit keeps its ${P.score}% without them.</p>
       <ul class="pack-l">${P.takeOut.map(x => li(x.it, x.n === Math.max(1, num(x.it.qty)) ? "" : `× ${x.n}`, `${esc(x.why)} · saves ${lbText(x.g)} lb`)).join("")}</ul></div>` : ""}
@@ -2901,7 +2917,7 @@ document.addEventListener("change", async e => {
     S.add.ess = essentialOk(S.add.cat, t.value) ? t.value : "";
   } else if (t.dataset.change === "packLim") {
     const kit = S.kits.find(k => k.id === t.dataset.id); if (!kit) return;
-    const f = t.dataset.f, v = f === "carryKg" ? kgOfLb(t.value) : Math.round(num(t.value) * 2) / 2;
+    const f = t.dataset.f, v = f === "carryKg" ? kgOfLb(t.value) : Math.round(num(t.value) * 100) / 100;
     if (v === num(kit[f]) || f === "carryKg" && Math.round(v * KG_LB) === Math.round(num(kit[f]) * KG_LB)) return;
     const { [f]: _, ...rest } = strip(kit);
     await setDoc("kits", kit.id, v ? { ...rest, [f]: v } : rest).catch(() => {});
