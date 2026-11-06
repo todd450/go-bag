@@ -1,0 +1,37 @@
+{
+  "about": "Made-up household for the What holds this kit card at phone width: a go-bag whose container has a 60-character name, every fact set, a 40-character outside size and a 20-character weather rating, and a car kit in a bin with only a name and 50 L. The home bin gets no card.",
+  "profile": {
+    "location": "Bend, OR",
+    "members": [
+      { "label": "Josephine", "years": 58 },
+      { "label": "Bartholomew", "years": 61 },
+      { "label": "Maximiliana", "years": 11 }
+    ],
+    "pets": [],
+    "vehicles": 1,
+    "home": "House"
+  },
+  "hazards": { "assessedAt": 1, "location": "Bend, OR", "levels": {}, "reasons": {} },
+  "kits": [
+    {
+      "id": "go", "name": "Front closet go-bag", "type": "go", "where": "Front closet", "createdAt": 1, "bagL": 33.25,
+      "container": {
+        "kind": "backpack",
+        "name": "Extraordinarily Long Expedition Backpack Model XL-2000 Mk II",
+        "emptyG": 1043,
+        "size": "19.75 × 12.50 × 7.50 inches (with strap)",
+        "rating": "IPX4 water-resistant"
+      }
+    },
+    { "id": "car", "name": "Station wagon kit", "type": "car", "createdAt": 2, "bagL": 50, "container": { "kind": "box", "name": "Clear-lid camp box" } },
+    { "id": "home", "name": "Garage supply bin", "type": "home", "where": "Garage shelf", "createdAt": 3 }
+  ],
+  "items": [
+    { "id": "g1", "kitId": "go", "name": "Water pouches", "category": "water", "qty": 6, "liters": 3 },
+    { "id": "g2", "kitId": "go", "name": "Ration bars", "category": "food", "qty": 3, "kcal": 10800 },
+    { "id": "g3", "kitId": "go", "name": "Headlamp", "category": "light", "qty": 1 },
+    { "id": "c1", "kitId": "car", "name": "Jumper cables", "category": "car", "qty": 1 },
+    { "id": "c2", "kitId": "car", "name": "Wool blanket", "category": "shelter", "qty": 2 },
+    { "id": "h1", "kitId": "home", "name": "Water jugs", "category": "water", "qty": 4, "liters": 15 }
+  ]
+}
