@@ -395,7 +395,7 @@ test("a double-click or double tap on Plan, Plan the top N, a tick or × does wh
         await page.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }], timestamp });
         await page.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [], timestamp: timestamp + 0.01 });
       } else {
-        // "quick": two single clicks, as a browser that doesn't count taps sends a double tap (Linux Chrome, in CI)
+        // "quick": two single clicks (detail 1 each), as a browser that doesn't count taps sends a double tap
         const n = how === "quick" ? 1 : clickCount;
         await page.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: n, timestamp });
         await page.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: n, timestamp: timestamp + 0.01 });
