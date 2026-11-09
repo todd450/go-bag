@@ -192,7 +192,6 @@ test("an old shopping line with no essential shows its true points, makes an unt
   assert.equal(run(`shopInfo(shopItems()[0], model()).gain`), 0);
   const docs = json(`splitListed(model().gaps).off.filter(g => g.cat === "documents").map(g => g.essential).sort()`);
   assert.deepEqual(docs, ["id_copies", "insurance", "records"]);
-  assert.ok(json(`nextActions(model()).acts.every(a => a.kind !== "shop")`), "the old line folds no gap into a list step");
   const before = run("model().overall");
   await run(`shopTick("old", true)`);
   assert.equal(run("model().overall"), before);
@@ -201,10 +200,8 @@ test("an old shopping line with no essential shows its true points, makes an unt
   assert.equal(json(`essentialOf(${JSON.stringify(item)})`), "");
 });
 
-test("the next-step button for a missing essential carries its category and essential", async () => {
+test("Add to list for a missing essential lists that essential, and a category alone never adds one of the five", async () => {
   const { run, json } = screenshotCase();
-  const btn = run(`actBtn({ kind: "gap", g: model().gaps.find(g => g.essential === "insurance") }, 0)`);
-  assert.match(btn, /data-act="shopAdd" data-cat="documents" data-essential="insurance"/);
   run(`ACT.shopAdd({ dataset: { cat: "documents", essential: "insurance" } })`);
   assert.deepEqual(json(`shopItems().map(e => [e.cat, e.essential])`), [["documents", "insurance"]]);
   assert.ok(!json(`splitListed(model().gaps).off.some(g => g.essential === "insurance")`), "the listed essential is no longer an open gap");

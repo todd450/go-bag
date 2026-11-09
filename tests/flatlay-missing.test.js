@@ -165,7 +165,7 @@ test("each dashed tile's +N is the checklist chip's gain, and tapping adds that 
   assert.ok(checked >= 3, "some tiles were tapped");
 });
 
-test("a dashed tile's button is Next steps' Add to list, named for the essential, and once on the list it says so", () => {
+test("a dashed tile's button is Add to list, named for the essential, and once on the list it says so", () => {
   const app = load({ fixture: "tests/household" });
   app.run(`globalThis.WRITES = []; setDoc = ((s) => (...a) => { WRITES.push(a); return s(...a); })(setDoc)`);
   const t = dashed(kitHtml(app.run, "home")).find(t => t.name === "Fire blanket");

@@ -75,5 +75,6 @@ new category.
   `updated_at` you read, so an edit made since is never overwritten.
 - Photos can only be added by a signed-in member (no service key exists, by design), so new
   pictures go in through the page itself.
-- Often the page offers the fix itself. For example, Next steps shows a **Move** button for
-  items that need a new category. Prefer that over writing the data yourself.
+- Often the page offers the fix itself. For example, an item that needs a new category or an
+  essential tag is fixed with the **Category** or **Essential** picker in its kit's item table.
+  Prefer that over writing the data yourself.

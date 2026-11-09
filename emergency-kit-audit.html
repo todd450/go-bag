@@ -135,31 +135,16 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 
 /* Overview */
 .ell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sum { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 12px 28px; }
+.sum { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 16px 32px; align-items: center; }
+.sum .sum-score { border-right: 1px solid var(--rule); padding-right: 28px; }
 .sum-score { display: grid; gap: 8px; align-content: start; }
-@media (max-width: 760px) { .sum { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .sum { grid-template-columns: 1fr; } .sum .sum-score { border-right: 0; padding-right: 0; border-bottom: 1px solid var(--rule); padding-bottom: 16px; } }
 .tab-n { font-size: .75rem; font-variant-numeric: tabular-nums; color: var(--ink-2); font-weight: 500; }
-.next { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px 32px; }
-.next .sum-score { order: -1; border-right: 1px solid var(--rule); padding-right: 28px; }
-@media (max-width: 760px) { .next { grid-template-columns: 1fr; } .next .sum-score { border-right: 0; padding-right: 0; border-bottom: 1px solid var(--rule); padding-bottom: 16px; } }
-.tg { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
-.tg-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px); gap: 6px 16px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule); }
-.tg-b { display: grid; gap: 2px; min-width: 0; }
-.tg-pick { display: grid; gap: 4px; }
-@media (max-width: 560px) { .tg-row { grid-template-columns: minmax(0, 1fr); } }
-.acts { list-style: none; margin: 0; padding: 0; display: grid; }
-.act { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 6px 14px; align-items: start; padding: 14px 0; border-top: 1px solid var(--rule); }
-.act-n { width: 40px; height: 40px; border-radius: 12px; background: var(--paper); color: var(--ink); display: grid; place-items: center; }
 .ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.act-n .ic { width: 20px; height: 20px; }
 .ic-s { width: 14px; height: 14px; }
 .cat-td { display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
 .shop-chk > .ic { color: var(--ink-2); margin-top: 1px; }
-.act-b { display: grid; gap: 2px; min-width: 0; }
-.act-b b { font-size: 1rem; font-weight: 600; }
-.act-do { display: flex; align-items: center; gap: 12px; padding-top: 2px; }
 .gain { color: var(--good); font-size: .85rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-@media (max-width: 560px) { .act { grid-template-columns: 40px minmax(0, 1fr); } .act-do { grid-column: 2; } }
 .score { display: flex; align-items: baseline; gap: 6px; }
 .score .num { font-family: var(--f-display); font-size: 3.2rem; font-weight: 700; line-height: .9; letter-spacing: -.04em; }
 .score .of { color: var(--ink-2); }
@@ -623,7 +608,6 @@ const ICONS = {
   comfort: '<path d="M4 10h13v4a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6zM17 11h1.5a2.5 2.5 0 0 1 0 5H17M8 3c-1 1.5 1 2.5 0 4M12 3c-1 1.5 1 2.5 0 4"/>',
   other: '<circle cx="12" cy="12" r="8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/>',
   home: '<path d="M4 11l8-7 8 7M6 9.5V20h12V9.5M10 20v-5h4v5"/>',
-  pin: '<path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/>',
   person: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
   flag: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
   bag: '<path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/>',
@@ -631,7 +615,6 @@ const ICONS = {
   box: '<path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4"/>',
   gauge: '<path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/>',
   cart: '<path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/>',
-  tag: '<path d="M3 12V3h9l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
   list: '<path d="M10 6h10M10 12h10M10 18h10"/><path d="m3.5 6 1.5 1.5 2.5-2.5M3.5 12l1.5 1.5 2.5-2.5M3.5 18l1.5 1.5 2.5-2.5"/>',
   yes: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   no: '<circle cx="12" cy="12" r="7.5"/>',
@@ -654,7 +637,6 @@ const tabIconHref = score => "data:image/svg+xml," + encodeURIComponent(`<svg xm
   + `<style>.ct{stroke:#fff;stroke-opacity:.4}.cf{stroke:#fff}.cs{fill:#fff}</style><rect x="-8" y="-5.5" width="80" height="80" rx="18" fill="#2B59D9"/>${caseParts(score, 16)}</svg>`);
 const KIT_ICON = { go: "bag", home: "home", car: "car" };
 const TAB_ICON = { overview: "gauge", kits: "bag", shop: "cart", household: "person", plan: "flag" };
-const KIND_ICON = { setup: "home", hazards: "pin", refill: "medications", refile: "list", tag: "tag", ages: "person", plan: "flag", shop: "list" };
 const AGE = { adult: ["Adult", 2000], teen: ["Teen (13–17)", 2200], child: ["Child (3–12)", 1600], infant: ["Under 3", 1000], senior: ["Senior (65+)", 1800] };
 /* An exact age, when given, decides the group and the calories (roughly the USDA estimates for a
    moderately active person); without one the saved group is used. */
@@ -777,7 +759,7 @@ const S = {
   flOpen: null, // the item whose flat-lay tile shows its fields, cleared when a kit is opened. Memory only
   ctr: null, // the open container editor: { id, ...typed }
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
-  scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, bagM: null, tag: null, tagNoteOff: false,
+  scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, bagM: null,
   add: { cat: "water", ess: "" }, // the add-by-hand row's Category and Essential, so every redraw shows the two together
 };
 let db = null, assets = null, sample = null;
@@ -1053,128 +1035,6 @@ function scoreIfShopped(M, es) {
   return es.every(e => shopKit(e)) ? scoreIfBought(es) : overallIf(M, es);
 }
 const scoreIfFilled = (M, gaps) => scoreIfShopped(M, gaps.map(g => shopFromGap(g, M.h)));
-/* Items saved before their supply type had a category of its own: the name says what it is, so Next steps
-   offers to move them. Nothing moves until that button is tapped. Pain-reliever aspirin stays a medication. */
-const REFILE = [
-  [/\b(inhaler|albuterol|ventolin|proair|nebuli[sz]er)\b/i, "breathing", ["medications", "first_aid", "other"]],
-  [/\b(narcan|naloxone)\b/i, "naloxone", ["medications", "poison", "first_aid", "other"]],
-  [/\b(chewable|low[- ]dose|baby|81 ?mg)\b.*\baspirin\b|\baspirin\b.*\b(chewable|low[- ]dose|81 ?mg)\b/i, "aspirin", ["medications", "first_aid", "other"]],
-  [/\b(midazolam|nayzilam|valtoco|diastat)\b/i, "seizure", ["medications", "other"]],
-  [/\b(glucose (tabs?|tablets?|gel)|dex4|glucagon|baqsimi|gvoke)\b/i, "sugar", ["food", "medications", "diagnostics", "first_aid", "other"]],
-  [/\b(carbon monoxide|co (alarm|detector))\b/i, "co_alarm", ["poison", "fire_safety", "tools", "other"]],
-];
-function refileable(items = S.items) {
-  return items.flatMap(it => { const r = REFILE.find(([re, , from]) => from.includes(it.category) && re.test(String(it.name || ""))); return r ? [{ it, to: r[1] }] : []; });
-}
-/* Names that say which named essential an item is, for tagging items saved before essentials were named. Nothing
-   is tagged until the review's Save. A guess is only ever on the item's own category's list, and a name that
-   points at two essentials, or at a move (REFILE), gets none. */
-const GUESS = [
-  [/\b(passports?|ids?|identification|driver'?s licen[cs]es?|birth certificates?|social security)\b/i, "id_copies"],
-  [/\binsurance\b/i, "insurance"],
-  [/\b(cash|money|bills|coins|twenties|dollars)\b|\$\d/i, "cash"],
-  [/\b(usb|flash drive|thumb drive|records)\b/i, "records"],
-  [/\bextinguishers?\b/i, "extinguisher"],
-  [/\bfire blankets?\b/i, "fire_blanket"],
-  [/\bladders?\b/i, "escape_ladder"],
-  [/^(?!.*\b(two[- ]way|walkie)).*\b(radio|noaa)\b/i, "radio"],
-  [/\bwhistles?\b/i, "whistle"],
-  [/\b(contact (list|card|sheet)s?|emergency contacts|phone numbers)\b/i, "contact_list"],
-  [/\b(multi[- ]?tool|leatherman|swiss army|knife)\b/i, "multitool"],
-  [/\bduct tape\b/i, "duct_tape"],
-  [/\b(shut[- ]?off|gas|utility|valve) (wrench|tool|key)\b/i, "shutoff_wrench"],
-  [/\b(lighters?|matches|fire ?starters?|ferro ?rod)\b/i, "fire_starter"],
-  [/\b(ibuprofen|advil|motrin|acetaminophen|paracetamol|tylenol|naproxen|aleve|aspirin|excedrin|pain relievers?|fever reducers?)\b/i, "pain_reliever"],
-  [/\b(antihistamines?|benadryl|diphenhydramine|zyrtec|cetirizine|claritin|loratadine|allegra|fexofenadine|allergy (medicine|pills|tablets|relief))\b/i, "allergy_med"],
-  [/\b(prescriptions?|rx|insulin)\b/i, "prescriptions"],
-];
-function guessEssential(it) {
-  const ids = essentialList(it?.category).map(e => e.id), name = String(it?.name || "");
-  if (!ids.length || refileable([it]).length) return "";
-  const hits = new Set(GUESS.filter(([re, id]) => ids.includes(id) && re.test(name)).map(([, id]) => id));
-  return hits.size === 1 ? [...hits][0] : "";
-}
-/* The items the tag review offers: unexpired, in the five checklist categories and untagged, each with its guess. */
-const tagRows = () => S.items.filter(it => Object.hasOwn(ESSENTIALS, it.category) && !essentialOf(it) && expState(it) !== "expired")
-  .map(it => ({ it, guess: guessEssential(it) }));
-// A row's value: what was picked in the open review, else the guess. Only an id on its own list, or "none", is saved.
-// The open review's rows. A review left with none (each deleted, moved, tagged or expired elsewhere) closes,
-// so an untagged item that arrives later waits in Next steps instead of reopening it untapped.
-function tagReviewRows() {
-  const tr = S.tag ? tagRows() : [];
-  if (!tr.length) S.tag = null;
-  return tr;
-}
-const tagPick = r => S.tag?.picks.has(r.it.id) ? S.tag.picks.get(r.it.id) : r.guess;
-const tagChosen = (rows = tagRows()) => rows.map(r => ({ ...r, v: tagPick(r) }))
-  .filter(({ it, v }) => v === "none" || essentialList(it.category).some(e => e.id === v));
-/* The household score with these tags saved: the same model, run on the items as Save would leave them. */
-function overallIfTagged(chosen) {
-  const keep = S.items, by = new Map(chosen.map(r => [r.it.id, r.v]));
-  S.items = keep.map(it => by.has(it.id) ? { ...it, essential: by.get(it.id) } : it);
-  try { return model().overall; } finally { S.items = keep; }
-}
-/* The household score as it was before the five checklist categories counted named essentials: each of their
-   rows had any items toward the old need of 2 for tools, one per person on daily medicines for Medication
-   supply cut off's medications, and 1 for the rest. Every other row is as it is now. */
-const oldNeed = (cat, hz, h) => cat === "tools" ? 2 : cat === "medications" && hz.id === "meds" ? Math.max(1, h.dailyMeds) : 1;
-function overallOldCount(M) {
-  const tw = M.active.reduce((a, r) => a + r.wt, 0);
-  if (!tw) return null;
-  return Math.round(M.active.reduce((a, r) => {
-    const st = M.stocks[r.hz.mode] || stock(kitsFor(r.hz));
-    return a + r.wt * scoreRows(r.rows.map(x => x.ess ? { ...x, cov: Math.min(1, haveOf(x.cat, st) / oldNeed(x.cat, r.hz, M.h)) } : x));
-  }, 0) / tw);
-}
-/* Why readiness is lower while items saved before the essentials were named are untagged: the old count, the
-   score with every name guess saved (worked out in memory) and today's. Dismissed for the session only. */
-function viewTagNote(M) {
-  const tr = tagRows();
-  if (S.tagNoteOff || !tr.length || M.overall == null) return "";
-  const B = overallIfTagged(tr.filter(r => r.guess).map(r => ({ ...r, v: r.guess })));
-  return `<div class="notice" data-note="tags">
-    <div class="stack" style="gap:6px">
-      <p>Checklist rows now count named essentials. Your readiness goes <b class="mono">${overallOldCount(M)} → ${B}</b> once your items are tagged (<b class="mono">${M.overall}</b> until then). Nothing left a kit.</p>
-      <details class="how"><summary>Why did it drop?</summary><p>${esc(orList(Object.keys(ESSENTIALS).map(catLabel), "and"))} used to give full credit for any one item (two for tools). Now each needs one of each named essential, and an item counts once it's tagged with the one it is. Tag them from Next steps below.</p></details>
-    </div>
-    <button class="btn ghost sm" data-act="tagNoteOff">Dismiss</button>
-  </div>`;
-}
-/* Up to three things to do next: setup that changes every number first, then the gaps worth the most points. */
-function nextActions(M) {
-  const p = S.profile, out = [];
-  const tr = tagRows();
-  if (tr.length) {
-    const g = tr.filter(r => r.guess).length;
-    out.push({ kind: "tag", title: `Tag ${pl(tr.length, "item")} · ${g} guessed, ${tr.length - g} to pick`, gain: M.overall == null ? 0 : Math.max(0, overallIfTagged(tagChosen(tr)) - M.overall),
-      detail: `Items saved before the essentials were named count toward none until they're tagged. Check each guess, then save.` });
-  }
-  if (!p || p.example) out.push({ kind: "setup", title: "Tell us who lives with you", detail: "Where you live, everyone's age and any health needs. Four quick steps, and everything else is sized from them." });
-  else if (!S.hazards?.assessedAt && p.location) out.push({ kind: "hazards", title: `Check which emergencies are likely in ${p.location}`, detail: "Claude rates floods, earthquakes, wildfire and more for where you live, so your gaps target the right risks." });
-  const ms = p && !p.example && Array.isArray(p.members) ? p.members : [];
-  const plan = S.plan || {};
-  const due = (Array.isArray(plan.meds) ? plan.meds : []).map(x => ({ x, st: refillState(x) })).filter(o => o.st.days != null && o.st.days <= 7).sort((a, b) => a.st.days - b.st.days)[0];
-  if (due && out.length < 2) out.push({ kind: "refill", title: `Refill ${due.x.who ? due.x.who + "'s " : ""}${due.x.name || "medication"}`, detail: `${due.st.text}. Pharmacies close in emergencies, so try to keep a week or two spare.` });
-  const rf = refileable();
-  if (rf.length && out.length < 2) out.push({ kind: "refile", title: rf.length === 1 ? `Move ${rf[0].it.name} to ${catLabel(rf[0].to)}` : `Move ${rf.length} items to their own supply types`,
-    detail: `${orList([...new Set(rf.map(x => catLabel(x.to)))], "and")} now ${new Set(rf.map(x => x.to)).size > 1 ? "have their own types" : "has its own type"}. Until ${rf.length === 1 ? "it moves, it doesn't" : "they move, they don't"} count for the emergencies ${rf.length === 1 ? "it covers" : "they cover"}.` });
-  const noAge = ms.filter(m => yearsOf(m) == null);
-  if (noAge.length && out.length < 2) out.push({ kind: "ages", title: noAge.length === ms.length ? "Add everyone's age" : `Add ${orList(noAge.map((m, i) => m.label || "a person"), "and")}'s age`, detail: "Food is sized by age, and toddlers and young kids need supplies of their own." });
-  if (p && !p.example && !String(plan.meetNear || "").trim() && !String(plan.contactName || "").trim() && out.length < 2)
-    out.push({ kind: "plan", title: "Pick a meeting place and an out-of-area contact", detail: "Two minutes now saves a frantic search later. They go on your family plan." });
-  const base = M.overall;
-  const gain = gs => base == null ? 0 : Math.max(0, scoreIfFilled(M, gs) - base);
-  // Gaps already on the shopping list fold into one step, so a listed gap doesn't hold a slot with nothing left to do
-  const { on: onList, off } = splitListed(M.gaps);
-  const gaps = off.map(g => ({ kind: "gap", g, ...gapPlan(g, M.h), gain: gain([g]) }));
-  if (onList.length) gaps.push({ kind: "shop", gs: onList, gain: gain(onList),
-    title: `Buy the ${onList.length === 1 ? "thing" : onList.length + " things"} on your list`,
-    detail: `${(onList.length > 3 ? onList.slice(0, 3).map(gapName).join(", ") + ` and ${onList.length - 3} more` : orList(onList.map(gapName), "and")).replace(/^./, c => c.toUpperCase())}. Tick each one off as you buy it and it goes straight into a kit.` });
-  gaps.sort((a, b) => b.gain - a.gain || (b.g?.imp ?? 0) - (a.g?.imp ?? 0));
-  const acts = [...out, ...gaps].slice(0, 3);
-  const filled = acts.flatMap(a => a.kind === "gap" ? [a.g] : a.kind === "shop" ? a.gs : []);
-  return { acts, filled, more: M.gaps.length - filled.length, after: base == null ? null : scoreIfFilled(M, filled) };
-}
 
 /* ---------- shopping list ---------- */
 /* What to put in the cart for a gap: store-sized packs, a ballpark US price for comparing and budgeting
@@ -1586,7 +1446,7 @@ const chipsFor = (rows, h, days) => rows.filter(row => !row.ess).map(row => `<sp
 /* The household gap a row's missing essential is: the same essential with the same label. There is none when every
    emergency that counts has it (another kit covers it, or the emergency doesn't apply), so adding it moves no score. */
 const essGap = (M, cat, e) => M.gaps.find(g => g.cat === cat && g.essential === e.id && g.label === e.label);
-// What ticking a gap's shopping line adds, worked out once per model: the same sum the list and Next steps use
+// What ticking a gap's shopping line adds, worked out once per model: the shopping list's sum, shown on a kit's checklist and its tiles
 const gapGains = new WeakMap();
 function gapGain(M, g) {
   if (!g || M.overall == null) return 0;
@@ -1649,47 +1509,8 @@ function viewBanner() {
   return parts.join("");
 }
 
-function actBtn(a, i) {
-  const b = i ? "btn ghost sm" : "btn sm";
-  if (a.kind === "setup") return `<button class="${b}" data-act="startWizard" ${D()}>Start</button>`;
-  if (a.kind === "hazards") return S.hzCheck?.state === "working" ? `<span class="working small"><span class="pulse"></span>Checking…</span>` : `<button class="${b}" data-act="hzCheck" ${D()}>Check now</button>`;
-  if (a.kind === "ages") return `<button class="${b}" data-act="tab" data-v="household">Add ages</button>`;
-  if (a.kind === "refill" || a.kind === "plan") return `<button class="${b}" data-act="tab" data-v="plan">Open plan</button>`;
-  if (a.kind === "shop") return `<button class="${b}" data-act="tab" data-v="shop">Open list</button>`;
-  if (a.kind === "refile") return `<button class="${b}" data-act="refile" ${D()}>Move</button>`;
-  if (a.kind === "tag") return `<button class="${b}" data-act="tagOpen" ${D()}>Review</button>`;
-  return `<button class="${b}" data-act="shopAdd" data-cat="${a.g.cat}"${a.g.essential ? ` data-essential="${esc(a.g.essential)}"` : ""} ${D()}>Add to list</button>`;
-}
-const actRow = (a, i) => `<li class="act">
-  <span class="act-n" title="Step ${i + 1}">${icon(a.kind === "gap" ? a.g.cat : KIND_ICON[a.kind])}</span>
-  <div class="act-b"><b>${esc(a.title)}</b><p class="small">${esc(a.detail)}</p>${a.why ? `<p class="small muted">${esc(a.why)}</p>` : ""}${a.kind === "hazards" && S.hzCheck?.state === "error" ? `<p class="small" style="color:var(--bad)">${esc(S.hzCheck.msg)}</p>` : ""}</div>
-  <div class="act-do">${a.gain > 0 ? `<span class="gain mono" title="Readiness points this adds">+${a.gain}</span>` : ""}${actBtn(a, i)}</div>
-</li>`;
-/* The tag review, in place of Next steps: one row per untagged item with its guess preset. It lives in memory
-   (S.tag) and writes nothing until Save. */
-function viewTagReview(rows) {
-  const kitName = Object.fromEntries(S.kits.map(k => [k.id, k.name]));
-  const n = tagChosen(rows).length;
-  const opt = (v, cur, label) => `<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(label)}</option>`;
-  return `<div class="panel stack">
-    <div class="stack" style="gap:2px">
-      <p class="eyebrow">Next steps</p>
-      <h2>Tag ${pl(rows.length, "item")}</h2>
-      <p class="small muted">Pick the essential each one is. Guesses come from the item's name, so check each against what's in the kit.</p>
-    </div>
-    <ul class="tg">${rows.map(r => { const v = tagPick(r), id = esc(r.it.id); return `<li class="tg-row">
-      <div class="tg-b"><b class="ell">${esc(r.it.name)}</b><span class="small muted ell">${esc(kitName[r.it.kitId] || "No kit")} · ${esc(catLabel(r.it.category))}</span></div>
-      <div class="tg-pick"><select id="tag-${id}" data-change="tagPick" data-id="${id}" aria-label="Which essential ${esc(r.it.name)} is" ${D()}>${opt("", v, "Pick one…")}${essentialList(r.it.category).map(e => opt(e.id, v, e.label)).join("")}${opt("none", v, "Not one of these")}</select>
-      ${r.guess && v === r.guess ? `<span class="small muted">guess</span>` : v ? "" : `<span class="small" style="color:var(--warn)">Not sure, pick one</span>`}</div>
-    </li>`; }).join("")}</ul>
-    <div class="row"><span class="small muted">Nothing is saved until you tap Save</span><button class="btn sm" data-act="tagSave" ${S.canWrite && n ? "" : "disabled"}>Save ${pl(n, "tag")}</button><button class="btn ghost sm" data-act="tagCancel">Cancel</button></div>
-  </div>`;
-}
 function viewOverview(M) {
-  const { h, results, overall, gaps, exp } = M;
-  const tr = tagReviewRows(), N = nextActions(M);
-  const nGap = N.filled.length;
-  const unlisted = splitListed(gaps).off.length;
+  const { h, results, overall, exp } = M;
   const sc = overall ?? 0;
   const c = statusColor(sc);
   const assessed = S.hazards?.assessedAt;
@@ -1703,19 +1524,7 @@ function viewOverview(M) {
     <div class="grp-h"><span class="eyebrow">${label}</span>${note ? `<span class="small muted">${note}</span>` : ""}</div>
     <div class="hz">${rows.map(r => hzRow(r, h, M)).join("")}</div></div>` : ""; };
   return `
-  ${viewTagNote(M)}
-  ${tr.length ? viewTagReview(tr) : `<div class="panel next">
-    <div class="stack">
-      <div class="stack" style="gap:2px">
-        <p class="eyebrow">Next steps</p>
-        <h2>${N.acts.length ? (N.acts.length === 1 ? "Your next step" : `Your next ${N.acts.length} steps`) : "Nothing urgent"}</h2>
-        <p class="small muted">${nGap && overall != null && N.after > overall ? `${nGap === N.acts.length ? `Filling ${nGap === 1 ? "this gap" : `these ${nGap} gaps`}` : `Adding ${nGap === 1 ? "the supply" : `the ${nGap} supplies`} below`} takes readiness from ${overall} to ${N.after}.`
-          : N.acts.length ? "Start here. These shape every number the app works out."
-          : "No gaps against the emergencies you've marked as relevant. Keep an eye on expiry dates."}</p>
-      </div>
-      ${N.acts.length ? `<ol class="acts">${N.acts.map(actRow).join("")}</ol>` : ""}
-      ${N.more > 0 ? `<div class="row"><span class="small muted">${N.more} more gap${N.more === 1 ? "" : "s"} after these.</span>${S.canWrite && unlisted ? `<button class="btn ghost sm" data-act="shopAddAll">${unlisted === gaps.length ? `Put all ${unlisted} on your shopping list` : `Add ${unlisted} more to your shopping list`}</button>` : ""}</div>` : ""}
-    </div>
+  <div class="panel sum">
     <div class="sum-score">
       <p class="eyebrow">Household readiness</p>
       <div class="ring" style="--c:${c}" role="img" aria-label="Readiness ${sc} out of 100">
@@ -1723,11 +1532,13 @@ function viewOverview(M) {
         <div class="score"><span class="num" style="color:${overall == null ? "var(--ink)" : statusInk(sc)}">${overall ?? "–"}</span><span class="of">of 100</span></div>
       </div>
       ${overall == null ? "" : bandTag(sc)}
+    </div>
+    <div class="stack sum-meta">
       <p class="mono small muted">${pl(h.people, "person", "people")} · ${pl(h.pets, "pet")} · ${pl(S.kits.length, "kit")} · ${pl(S.items.length, "item")}${exp.length ? ` · <span style="color:var(--warn)">${exp.length} expiring</span>` : ""}</p>
       <p class="small muted">${hzNote}</p>
       ${how("score", "Your score is averaged across the emergencies that apply to you, weighted by how likely each one is, how bad it is to face unprepared and how much it matters to you.")}
     </div>
-  </div>`}
+  </div>
 
   <div class="ov-cols">
     <div class="stack">
@@ -2032,7 +1843,7 @@ function flTile(it) {
     + (open ? `<li class="fl-fields">${itemFields(it).filter(f => f[2]).map(([c, l, h]) => `<div class="fl-f ${c}" data-label="${l}">${h}</div>`).join("")}</li>` : "");
 }
 /* A missing essential's dashed tile: its icon, its label and the points adding it adds. While it is the household gap
-   Next steps' Add to list would add (`next`, by gapKey) it is that button; once on the list it says so; with no household
+   the Add to list button would add (`next`, by gapKey) it is that button; once on the list it says so; with no household
    gap there is nothing to add. Prescriptions slots share a key and shopAdd adds the first one off the list, so a later
    slot says which to add first, and every button flips the tile it is on. The two words too wide for a phone tile get a
    soft hyphen, since browsers don't hyphenate a capitalised word themselves; a name too wide breaks before its 's, and
@@ -2367,7 +2178,6 @@ function render() {
   const a = document.activeElement, field = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
   const keep = a?.id ? { id: a.id, field, value: a.value, s: a.selectionStart, e: a.selectionEnd } : null;
   const M = model();
-  tagReviewRows();
   if (S.sel.size) { const live = new Set(S.items.filter(i => i.kitId === S.openKit).map(i => i.id)); for (const id of S.sel) if (!live.has(id)) S.sel.delete(id); }
   if (!S.openKit && S.kits.length) S.openKit = [...S.kits].sort((x, y) => (x.createdAt || 0) - (y.createdAt || 0))[0].id;
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.v === S.view ? "page" : "false"));
@@ -2783,24 +2593,6 @@ function setPath(o, path, val) {
 
 /* ---------- events ---------- */
 const ACT = {
-  tagOpen: () => { if (!S.canWrite) return; S.tag = { picks: new Map() }; render(); },
-  tagCancel: () => { S.tag = null; render(); },
-  tagNoteOff: () => { S.tagNoteOff = true; render(); },
-  // One write per row with a value chosen, each the item's doc with only `essential` set.
-  tagSave: async () => {
-    const rows = tagChosen();
-    if (!S.canWrite || !S.tag || !rows.length) return;
-    try { await Promise.all(rows.map(({ it, v }) => setDoc("items", it.id, { ...strip(it), essential: v }))); } catch (_) { return; }
-    S.tag = null;
-    toast(`Saved ${pl(rows.length, "tag")}`);
-    render();
-  },
-  refile: async () => {
-    const rf = refileable();
-    try { await Promise.all(rf.map(({ it, to }) => setDoc("items", it.id, { ...strip(it), category: to }))); } catch (_) { return; }
-    toast(rf.length === 1 ? `Moved ${rf[0].it.name}` : `Moved ${rf.length} items`);
-    render();
-  },
   tab: b => { S.view = b.dataset.v; try { history.replaceState(null, "", "#" + S.view); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   addKit: () => { S.addKit = true; render(); $("#nk-name")?.focus(); },
   cancelKit: () => { S.addKit = false; render(); $(".add-kit")?.focus(); },
@@ -2981,9 +2773,6 @@ document.addEventListener("change", async e => {
     else if (f === "essential" && !essentialOk(it.category, v)) { t.value = essentialOf(it); return; }
     if (it[f] === v) return;
     await setDoc("items", it.id, { ...strip(it), [f]: v }).catch(() => {});
-  } else if (t.dataset.change === "tagPick") {
-    if (!S.tag) return;
-    S.tag.picks.set(t.dataset.id, t.value); render();
   } else if (t.dataset.change === "addCat") {
     S.add = { cat: Object.hasOwn(CATS, t.value) ? t.value : "water", ess: "" };
     const cell = $("#add-ess-td"); if (cell) cell.innerHTML = essPicker("add-ess", S.add.cat, "", `data-change="addEss"`);

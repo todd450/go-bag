@@ -17,6 +17,6 @@ for (const name of scenarios) {
     for (const v of json("VIEWS")) assert.doesNotThrow(() => run(`S.view = "${v}"; render()`), v);
     const scores = json(`(() => { const M = model(); return [M.overall ?? 0, ...M.results.map(r => r.score), ...Object.values(M.kitRes).map(r => r.score)]; })()`);
     for (const s of scores) assert.ok(Number.isFinite(s) && s >= 0 && s <= 100, `score ${s}`);
-    assert.doesNotThrow(() => run("nextActions(model()); viewShop(model()); reviewPrompt(model())"));
+    assert.doesNotThrow(() => run("viewShop(model()); reviewPrompt(model())"));
   });
 }
