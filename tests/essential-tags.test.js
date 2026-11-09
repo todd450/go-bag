@@ -145,16 +145,19 @@ test("each named category lists its fixed essentials, and every other category n
   for (const cat of ["null", "undefined", "7", "{}"]) assert.deepEqual(json(`essentialsFor(${cat}, household())`), [], cat);
 });
 
-// Nothing is scored by the tags yet: every score is the same with every tag removed, or with every
-// item in the five categories tagged as their first essential.
+// Tags are scored now (tests/essentials.test.js), so a tag can only add: every score with every tag removed
+// is at most what it was, and a scenario with no tags at all scores exactly the same.
 const scores = (run, json) => json(`(() => { const M = model(); return { overall: M.overall, results: M.results.map(r => [r.hz.id, r.score]), kits: Object.entries(M.kitRes).map(([k, r]) => [k, r.score]) }; })()`);
 for (const name of scenarios) {
-  test(`${name}: tags change no score yet`, () => {
+  test(`${name}: taking every tag off never raises a score`, () => {
     const { run, json } = load({ fixture: name });
-    const as = scores(run, json);
+    const as = scores(run, json), tagged = json(`S.items.some(it => "essential" in it)`);
     run(`S.items = S.items.map(({ essential, ...it }) => it)`);
-    assert.deepEqual(scores(run, json), as, "untagged");
-    run(`S.items = S.items.map(it => ({ ...it, essential: Object.hasOwn(ESSENTIALS, it.category) ? ESSENTIALS[it.category][0].id : "none" }))`);
-    assert.deepEqual(scores(run, json), as, "all tagged");
+    const un = scores(run, json);
+    if (!tagged) assert.deepEqual(un, as, "no tags to take off");
+    if (name.endsWith("essential-tags")) assert.notDeepEqual(un, as, "its valid tags count");
+    assert.ok((un.overall ?? 0) <= (as.overall ?? 0), "overall");
+    for (const [i, [id, s]] of un.results.entries()) assert.ok(s <= as.results[i][1], id);
+    for (const [i, [id, s]] of un.kits.entries()) assert.ok(s <= as.kits[i][1], id);
   });
 }

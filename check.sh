@@ -6,15 +6,29 @@ cd "$(dirname "$0")"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-# The whole app is one page with one inline script, published as a claude.ai Artifact.
+# The whole app is one page with one inline script, which Vercel serves as built by tools/build-web.js.
 [ "$(grep -c '<script' emergency-kit-audit.html)" = 1 ] || { echo "check: the page must have exactly one <script>"; exit 1; }
 awk '/<script>/{f=1;next}/<\/script>/{f=0}f' emergency-kit-audit.html > "$tmp/app.js"
 node --check "$tmp/app.js"
 
+# The Vercel version (issue #48): the runtime that stands in for window.claude, its build, and its
+# functions parse. Their behaviour is in tests/web-runtime.test.js.
+for f in web/runtime.js tools/build-web.js api/*.mjs; do node --check "$f"; done
+
 # Size budget for the page, gzipped, the way it travels to the founder's phone. Set on 4 Nov 2026
 # at about 20% over the 59.5 KB it was then (issue #25), so a few features fit before anyone
 # has to choose. Raising it is fine when it is a choice: change this one number in a PR and say why.
-budget=70000
+# Raised to 72,000 on 4 Nov 2026 by the founder's choice, for the named essentials work (#29):
+# the Essential picker (#39) took the page to about 70.4 KB.
+# Raised to 76,000 on 4 Nov 2026 by the founder's choice, for the flat-lay and bag-fill work (#59).
+# Raised to 77,000 on 5 Nov 2026 by the founder's choice (#64): the filled bag took the page to about
+# 76.4 KB, with no dead code left in scope to remove.
+# CI's Linux gzip and macOS gzip differ for the same page by up to about 1%, either way (CI read 29 bytes
+# less on 5 Nov 2026): CI's number counts.
+# Raised to 80,000 on 5 Nov 2026 for item pictures on the flat-lay tiles: the cutout (keyOut, cutThumb) and
+# "Add item pictures" took the page to about 79.3 KB. Waiting on the founder's yes in the PR.
+# Raised to 83,000 on 6 Nov 2026 by the founder's choice (#96), for each kit's real container: the container card and its editor, the bag's empty weight and the box outline.
+budget=83000
 size=$(gzip -9c emergency-kit-audit.html | wc -c | tr -d ' ')
 echo "check: page is $size bytes gzipped, budget $budget"
 [ "$size" -le "$budget" ] || { echo "check: the page is over its size budget by $((size - budget)) bytes gzipped. Make it smaller, or raise the budget in check.sh in its own line and say why in the PR."; exit 1; }

@@ -67,9 +67,9 @@ test("on a small kit the best pack is the best possible", () => {
       { id: "c", kitId: "go", name: "First aid", category: "first_aid", qty: 1, grams: 450, ml: 900 },
       { id: "d", kitId: "go", name: "Torch", category: "light", qty: 2, grams: 300, ml: 400 },
       { id: "e", kitId: "go", name: "Sleeping bag", category: "shelter", qty: 1, grams: 1500, ml: 6000 },
-      { id: "f", kitId: "go", name: "Knife", category: "tools", qty: 1, grams: 400, ml: 300 },
+      { id: "f", kitId: "go", name: "Knife", category: "tools", qty: 1, essential: "multitool", grams: 400, ml: 300 },
       { id: "g", kitId: "go", name: "Jacket", category: "clothing", qty: 1, grams: 600, ml: 2500 },
-      { id: "h", kitId: "go", name: "Pills", category: "medications", qty: 1, grams: 100, ml: 100 });`);
+      { id: "h", kitId: "go", name: "Pills", category: "medications", qty: 1, essential: "pain_reliever", grams: 100, ml: 100 });`);
   const best = json(`(${PLAN}).P.best.score`);
   const brute = json(`(() => {
     const { kit, r, lim } = ${PLAN};
@@ -160,7 +160,7 @@ test("weights show and are typed in pounds, and saved data stays in grams and kg
   const app = load({ fixture: "tests/household" });
   const { run, json, fire } = app;
   // A 450 g first-aid kit shows as 1 lb in the kit table, under an lb column
-  const html = run(`S.openKit = "go"; viewKits(model())`);
+  const html = run(`S.openKit = "go"; ACT.kitView({ dataset: { v: "list" } }); viewKits(model())`);
   assert.match(html, />lb<\/th>/);
   assert.match(html, /id="it-i4-g" value="1"/);
   assert.doesNotMatch(html, />kg<|in kg| kg\b/);
@@ -174,7 +174,7 @@ test("weights show and are typed in pounds, and saved data stays in grams and kg
   assert.match(panel, /id="pk-carryKg-go" value="20"/);
   assert.match(panel, /of 20 lb/);
   assert.doesNotMatch(panel, / kg\b/);
-  // Bag size is still litres, half-litre steps
+  // Bag size is still litres, in 0.01 L steps, as real containers are sized (#99)
   await fire("change", { dataset: { change: "packLim", id: "go", f: "bagL" }, value: "32.3" });
-  assert.equal(json(`S.kits.find(k => k.id === "go").bagL`), 32.5);
+  assert.equal(json(`S.kits.find(k => k.id === "go").bagL`), 32.3);
 });

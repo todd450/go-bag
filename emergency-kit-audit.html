@@ -1,10 +1,11 @@
-<title>Emergency Kit Audit</title>
+<title>Go Bag</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="icon" type="image/svg+xml" href="data:,">
 <style>
-/* Layout: calm white workspace — one typeface, black controls, safety orange only for the brand and progress.
+/* Layout: calm white workspace — one typeface, black controls, Cobalt for the brand, orange only for Partway progress.
    A sticky tab strip (a bottom bar on phones) over one working column; kits read as photo cards. */
 :root {
   --paper: #F7F7F7;
@@ -15,11 +16,24 @@
   --rule-2: #C8C8C8;
   --accent: #222222;
   --accent-ink: #FFFFFF;
-  --brand: #E0612A;
+  --brand: #2B59D9;
+  --brand-track: #CCD8F6;
+  --brand-tint: #E8EEFC;
+  --brand-deep: #1E43AE;
+  --brand-ink: #FFFFFF;
   --meter: #E0612A;
   --good: #1F7A4A;
   --warn: #A86A12;
   --bad: #C1281B;
+  /* The bag's band colours, one per zone of ZONES */
+  --zone-0: light-dark(#2A78D6, #3987E5);
+  --zone-1: light-dark(#EB6834, #D95926);
+  --zone-2: light-dark(#1BAF7A, #199E70);
+  --zone-3: light-dark(#EDA100, #C98500);
+  --zone-4: light-dark(#E87BA4, #D55181);
+  --zone-5: light-dark(#008300, #008300);
+  --zone-6: light-dark(#6250D6, #9085E9);
+  --zone-7: var(--ink-2);
   --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 2px 8px rgba(0, 0, 0, .04);
   --f-display: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -27,13 +41,13 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --paper: #121212; --card: #1C1C1C; --ink: #F2F2F2; --ink-2: #A3A3A3; --rule: #2E2E2E; --rule-2: #4A4A4A;
-    --accent: #F2F2F2; --accent-ink: #121212; --brand: #F07A45; --meter: #F07A45;
+    --accent: #F2F2F2; --accent-ink: #121212; --brand: #8AA8FF; --brand-track: #28385F; --brand-ink: #121212; --meter: #F07A45;
     --good: #5BC489; --warn: #E2AE4A; --bad: #F2695C; --shadow: none; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --paper: #121212; --card: #1C1C1C; --ink: #F2F2F2; --ink-2: #A3A3A3; --rule: #2E2E2E; --rule-2: #4A4A4A;
-  --accent: #F2F2F2; --accent-ink: #121212; --brand: #F07A45; --meter: #F07A45;
+  --accent: #F2F2F2; --accent-ink: #121212; --brand: #8AA8FF; --brand-track: #28385F; --brand-ink: #121212; --meter: #F07A45;
   --good: #5BC489; --warn: #E2AE4A; --bad: #F2695C; --shadow: none; color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -61,9 +75,16 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .top-in, .wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .top-in { display: flex; align-items: center; justify-content: space-between; gap: 4px 24px; flex-wrap: wrap; padding-block: 12px 0; }
 .brand { display: flex; align-items: center; gap: 10px; }
-.brand-mark { position: relative; width: 28px; height: 28px; border-radius: 8px; background: var(--brand); flex: none; }
-.brand-mark::after { content: ""; position: absolute; inset: 7px 7px 8px; background: #fff; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
-.brand h1 { font-size: 1.1rem; }
+.brand-mark { width: 28px; height: 28px; flex: none; }
+.case { display: block; flex: none; }
+.case .ct { stroke: var(--brand-track); }
+.case .cf { stroke: var(--brand); }
+.case .cs { fill: var(--brand); }
+/* The wordmark (founder's pick E, PR #91): the case stands in for the space, so "Go [case] Bag" is one lockup.
+   Real spaces in the markup keep the heading's name "Go Bag"; the flex row lays out without them. */
+.brand h1 { display: flex; align-items: center; gap: .22em; font-size: 1.1rem; font-weight: 700; letter-spacing: -.02em; line-height: 1; white-space: nowrap; }
+.brand h1 .go { color: var(--brand); }
+.brand h1 .brand-mark { margin-top: -.12em; }
 .hdr-score { font-size: .8rem; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; background: var(--paper); border-radius: 999px; padding: 4px 14px; }
 .hdr-score:empty { display: none; }
 .hdr-score b { font-family: var(--f-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
@@ -75,14 +96,14 @@ nav.tabs button:hover { color: var(--ink); }
 @media (max-width: 640px) {
   .top-in { padding-block: 10px; flex-wrap: nowrap; }
   .brand { min-width: 0; }
-  .brand h1 { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .brand h1 { font-size: 1rem; }
   .hdr-score { flex: none; padding: 3px 12px; }
   .hdr-score .eyebrow:first-child { display: none; }
   nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; gap: 0; justify-content: space-around; background: var(--card); border-top: 1px solid var(--rule); padding: 6px max(8px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)); }
   nav.tabs button { flex: 1; flex-direction: column; gap: 3px; padding: 4px 0; border-bottom: 0; font-size: .7rem; position: relative; }
   nav.tabs button .ic { display: block; width: 22px; height: 22px; }
   nav.tabs button[aria-current="page"] .ic { stroke-width: 2.1; }
-  nav.tabs .tab-n { position: absolute; top: 0; left: calc(50% + 8px); background: var(--brand); color: #fff; border-radius: 999px; padding: 0 5px; font-size: .65rem; line-height: 1.5; }
+  nav.tabs .tab-n { position: absolute; top: 0; left: calc(50% + 8px); background: var(--brand); color: var(--brand-ink); border-radius: 999px; padding: 0 5px; font-size: .65rem; line-height: 1.5; }
   main.wrap { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
 }
 
@@ -114,26 +135,16 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 
 /* Overview */
 .ell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sum { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 12px 28px; }
+.sum { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 16px 32px; }
+.sum .sum-score { border-right: 1px solid var(--rule); padding-right: 28px; }
 .sum-score { display: grid; gap: 8px; align-content: start; }
-@media (max-width: 760px) { .sum { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .sum { grid-template-columns: 1fr; } .sum .sum-score { border-right: 0; padding-right: 0; border-bottom: 1px solid var(--rule); padding-bottom: 16px; } }
 .tab-n { font-size: .75rem; font-variant-numeric: tabular-nums; color: var(--ink-2); font-weight: 500; }
-.next { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px 32px; }
-.next .sum-score { order: -1; border-right: 1px solid var(--rule); padding-right: 28px; }
-@media (max-width: 760px) { .next { grid-template-columns: 1fr; } .next .sum-score { border-right: 0; padding-right: 0; border-bottom: 1px solid var(--rule); padding-bottom: 16px; } }
-.acts { list-style: none; margin: 0; padding: 0; display: grid; }
-.act { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 6px 14px; align-items: start; padding: 14px 0; border-top: 1px solid var(--rule); }
-.act-n { width: 40px; height: 40px; border-radius: 12px; background: var(--paper); color: var(--ink); display: grid; place-items: center; }
 .ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.act-n .ic { width: 20px; height: 20px; }
 .ic-s { width: 14px; height: 14px; }
 .cat-td { display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
 .shop-chk > .ic { color: var(--ink-2); margin-top: 1px; }
-.act-b { display: grid; gap: 2px; min-width: 0; }
-.act-b b { font-size: 1rem; font-weight: 600; }
-.act-do { display: flex; align-items: center; gap: 12px; padding-top: 2px; }
 .gain { color: var(--good); font-size: .85rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-@media (max-width: 560px) { .act { grid-template-columns: 40px minmax(0, 1fr); } .act-do { grid-column: 2; } }
 .score { display: flex; align-items: baseline; gap: 6px; }
 .score .num { font-family: var(--f-display); font-size: 3.2rem; font-weight: 700; line-height: .9; letter-spacing: -.04em; }
 .score .of { color: var(--ink-2); }
@@ -154,41 +165,100 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .gaps .amt { font-variant-numeric: tabular-nums; font-size: .8rem; white-space: nowrap; }
 .gaps .why { font-size: .8rem; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
 
-.ov-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 32px; align-items: start; }
-@media (max-width: 900px) { .ov-cols { grid-template-columns: 1fr; } }
 .sec-h { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
 .grp { display: grid; gap: 4px; }
 .grp + .grp { margin-top: 14px; }
 .grp-h { display: grid; gap: 2px; }
 
 .hz { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--rule); }
-.hz-row { display: grid; grid-template-columns: minmax(0, 1fr) 104px 56px 36px 24px; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
-.hz-row.off { opacity: .5; }
-.hz-name, .kit-name { display: flex; gap: 8px; align-items: baseline; background: none; border: 0; padding: 2px 0; text-align: left; cursor: pointer; }
-.hz-name b, .kit-name b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
-.hz-name .mode, .kit-name .mode { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.hz-name:hover b, .kit-name:hover b { text-decoration: underline; text-underline-offset: 2px; }
+/* The emergencies: two columns of rows, each its name, its likelihood and importance pickers, score and needs; an
+   opened one's panel spans both, and dense packing pulls the row beside it back up beside it. The name's button
+   covers the whole row, and the pickers sit above it. */
+.hz-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; column-gap: 40px; border-top: 1px solid var(--rule); }
+.hz-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; align-content: start; padding: 9px 0 10px; border-bottom: 1px solid var(--rule); font-size: .9rem; }
+.hz-row.off :is(.hz-nm, .hz-needs, .pct) { opacity: .5; }
+.kit-name { display: flex; gap: 8px; align-items: baseline; background: none; border: 0; padding: 2px 0; text-align: left; cursor: pointer; }
+.kit-name b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.kit-name .mode { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.kit-name:hover b, .hz-row:hover .hz-tg, .hz-row.open .hz-tg { text-decoration: underline; text-underline-offset: 2px; }
+.hz-nm { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+.hz-nm .mode, .hz-tg { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hz-nm .mode { flex: 1 1 0; }
+.hz-tg { flex: 0 1 auto; font-weight: 600; background: none; border: 0; padding: 2px 0; text-align: left; cursor: pointer; }
+.hz-tg::after { content: ""; position: absolute; inset: 0; border-radius: 6px; }
+.hz-tg:focus-visible { outline: 0; }
+.hz-tg:focus-visible::after { outline: 2px solid var(--brand); }
+.hz-sc { display: inline-flex; gap: 6px; align-items: center; }
+.hz-sc .pct { min-width: 42px; }
+/* A picker on a row: its skin (bars or stars, a word, a chevron) with the real select lying invisibly over it, so a
+   tap anywhere on it opens the browser's own list. 16px text stops phones zooming in on it. */
+.pick { position: relative; z-index: 1; display: inline-flex; gap: 6px; align-items: center; height: 24px; padding: 0 8px; border: 1px solid var(--rule-2); border-radius: 999px; background: var(--card); font-size: .78rem; white-space: nowrap; }
+.pick::after { content: ""; width: 5px; height: 5px; margin: -3px 0 0 1px; border: solid var(--ink-2); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
+.pick:hover { border-color: var(--ink-2); }
+.pick:focus-within { outline: 2px solid var(--brand); outline-offset: 1px; }
+.pick > span { display: inline-flex; gap: 6px; align-items: center; }
+.pick select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.pick.ro { border-color: transparent; background: none; }
+.pick.ro::after { display: none; }
+.pick.ro select { cursor: default; }
+.pick-t { min-width: 4.7em; }
+.imp, .imp-k { color: var(--ink-2); letter-spacing: -.1em; }
+.pick > .imp { min-width: 1.7em; }
+.imp.up, .imp-k { color: var(--brand); }
+/* Positioned so it clips its hidden words on a phone; clicks pass through it to the row's button. */
+.hz-needs { grid-column: 1 / -1; position: relative; pointer-events: none; display: flex; flex-wrap: wrap; gap: 3px 12px; font-size: .78rem; }
+/* Likelihood as three bars, and a need as its icon and name: missing in ink, some in amber with the amount, have in green with a check. */
+.lik { display: inline-flex; gap: 2px; align-items: flex-end; height: 11px; flex: none; }
+.lik i { width: 3px; height: 5px; border-radius: 1px; background: var(--rule-2); }
+.lik i + i { height: 8px; } .lik i + i + i { height: 11px; }
+.lik i.on { background: var(--ink); }
+.legend { display: flex; gap: 4px 14px; flex-wrap: wrap; align-items: center; font-size: .78rem; color: var(--ink-2); }
+.legend > span { display: inline-flex; gap: 5px; align-items: center; }
+.need { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+.need .ic { width: 14px; height: 14px; color: var(--ink-2); }
+.need.miss { color: var(--ink); }
+.need.part, .need.part .ic { color: var(--warn); }
+.need.have, .need.have .ic { color: var(--good); }
+.need .amt, .need.more { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.hz-panel { grid-column: 1 / -1; display: grid; gap: 10px; margin: 10px 0 14px; padding: 16px 20px; }
+.hzp-needs { border-top: 1px solid var(--rule); }
+.hzp-need { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: .85rem; }
+.hzp-need .ic { align-self: start; margin-top: 2px; width: 16px; height: 16px; color: var(--ink-2); }
+.hzp-need b { font-weight: 500; }
+.hzp-need.part .ic, .hzp-need.part .amt { color: var(--warn); }
+.hzp-need.have, .hzp-need.have .ic { color: var(--good); }
+.hzp-need .amt { font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; font-size: .8rem; text-align: right; }
+.hzp-note { display: block; font-size: .8rem; }
+@media (max-width: 760px) { .hz-grid { grid-template-columns: minmax(0, 1fr); } }
 .mode { font-size: .8rem; color: var(--ink-2); }
 .bar { height: 6px; background: var(--rule); border-radius: 999px; overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--c); border-radius: 999px; }
 .band { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
 .band i { width: 9px; height: 9px; border-radius: 2px; }
 .pct { font-size: .85rem; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
-.hz-row .x { padding: 2px 6px; font-size: 1rem; }
-.hz-detail { grid-column: 1 / -1; display: grid; gap: 8px; padding: 4px 0 12px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; border: 1px solid transparent; background: var(--paper); color: var(--ink); border-radius: 999px; padding: 4px 11px 4px 9px; font-variant-numeric: tabular-nums; }
 .chip .ic { color: var(--ink-2); }
 .chip.full { border-color: color-mix(in srgb, var(--good) 30%, transparent); background: color-mix(in srgb, var(--good) 9%, var(--card)); }
 .chip.full .ic { color: var(--good); }
-.lvl { font-size: .8rem; padding: 4px 6px; }
-.hz-lvl.alarm { color: var(--bad); font-weight: 600; }
-.hz-lvl .pri { color: var(--brand); }
-.hz-like { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--ink-2); }
+/* An essential pill: present is .chip.full with a check, missing is outlined with an empty circle and its points. */
+.chip.ess { line-height: 1.3; text-align: left; max-width: 100%; }
+.chip.ess .ic { stroke-width: 2; }
+.chip.ess.miss { background: var(--card); border-color: var(--rule-2); }
+.chip.ess .gain { font-size: inherit; }
+/* One checklist category of named essentials: icon, name, "1 of 4" and a bar, its pills, then its button and notes. */
+.ess-blk { display: grid; gap: 8px; padding: 10px 0 12px; border-top: 1px solid var(--rule); min-width: 0; }
+.ess-h { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto 72px; gap: 8px; align-items: center; font-size: .9rem; }
+.ess-h .ic { color: var(--ink-2); }
+.ess-h b { font-weight: 600; }
+.ess-h .of { font-variant-numeric: tabular-nums; font-weight: 600; font-size: .85rem; }
+.ess-f { display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 560px) {
-  .hz-row { grid-template-columns: minmax(0, 1fr) 100px 36px 24px; }
-  .hz-row .bar, .hz-name .mode { display: none; }
-  .hz-name, .hz-name b { white-space: normal; }
+  .hz-row { padding: 8px 0; gap: 2px 12px; }
+  .hz-nm .mode, .hz-needs .more, .pick-t { display: none; }
+  .hz-needs { flex-wrap: nowrap; overflow: hidden; -webkit-mask-image: linear-gradient(to right, #000 82%, transparent); mask-image: linear-gradient(to right, #000 82%, transparent); }
+  .hz-panel { padding: 14px 16px; }
 }
 .kit-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px 40px; gap: 2px 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
 .kit-row .kit-miss { grid-column: 1 / -1; margin-top: -2px; }
@@ -200,14 +270,15 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .kits-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 24px; align-items: start; }
 @media (max-width: 860px) { .kits-grid { grid-template-columns: 1fr; } }
 .tags { display: grid; gap: 8px; }
-.add-kit { justify-content: center; border-style: dashed; }
+.add-kit, .ctr-add { justify-content: center; border-style: dashed; }
 .tag { position: relative; text-align: left; background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 14px; padding: 10px 60px 10px 10px; cursor: pointer; display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 0 12px; width: 100%; line-height: 1.3; box-shadow: var(--shadow); transition: border-color .15s, box-shadow .15s; }
 .tag:hover { border-color: var(--rule-2); }
 .tag[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
 .tag-img { grid-row: span 3; width: 48px; height: 48px; border-radius: 10px; background: var(--paper); color: var(--ink-2); display: grid; place-items: center; overflow: hidden; }
 .tag-img img { width: 100%; height: 100%; object-fit: cover; }
 .tag-img .ic { width: 22px; height: 22px; }
-.tag-pct { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-family: var(--f-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+/* The case sits above the score in the same 60px gutter, so it takes no room from the kit's name. */
+.tag-pct { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1; font-family: var(--f-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .tag b { font-size: 1rem; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tag .mono { font-size: .72rem; color: var(--ink-2); }
 .tag .small { color: var(--ink-2); font-size: .8rem; }
@@ -246,11 +317,29 @@ tr.addrow td { background: var(--paper); }
 @keyframes pulse { 50% { opacity: .25; } }
 @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
 
-.pack-ms { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 28px; }
-.pack-m { display: grid; gap: 6px; }
+/* The bag: its outline up to the rim, and its bands stacked from the bottom */
+.bag { position: relative; width: min(100%, 320px); margin: 26px auto 0; }
+.bag-body, .bag-body::before { position: absolute; border: 2px solid var(--ink-2); }
+.bag-body { inset: auto 0 0; border-radius: 12px 12px 22px 22px; }
+.bag-body::before { content: ""; inset: auto 34% 100%; height: 13px; border-bottom: 0; border-radius: 10px 10px 0 0; }
+.bag-st { position: absolute; inset: 4px 5px 5px; display: flex; flex-direction: column-reverse; overflow: hidden; border-radius: 4px 4px 16px 16px; font-size: .75rem; }
+.bag-b { flex: none; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 0 8px; border-top: 2px solid var(--card); background: color-mix(in srgb, var(--c, var(--rule-2)) 40%, var(--card)); white-space: nowrap; }
+.bag-own { --c: var(--ink-2); }
+.bag-free { flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; background: repeating-linear-gradient(135deg, var(--rule) 0 2px, transparent 0 8px); color: var(--ink-2); }
+.bag-over { position: absolute; inset: 0 0 auto; border: 2px dashed var(--bad); border-bottom: 0; background: color-mix(in srgb, var(--bad) 22%, transparent); color: var(--bad); font-weight: 600; text-align: center; }
+.bag-over span { position: absolute; inset: auto 0 100%; }
+/* A bin or box (issue 101): square corners, and a lid across the full top in place of the handle */
+.bag.box .bag-body { border-radius: 3px; }
+.bag.box .bag-body::before { inset: auto -5px 100%; height: 9px; border-bottom: 2px solid var(--ink-2); border-radius: 3px; background: var(--rule); }
+.bag.box .bag-st { border-radius: 1px; }
 .pack-lim { display: inline-flex; align-items: center; gap: 6px; }
 .pack-lim input { width: 72px; }
-.pack-over { color: var(--bad); font-weight: 600; }
+.ctr-h { flex-wrap: nowrap; align-items: flex-start; }
+.ctr-h > .ic { width: 28px; height: 28px; color: var(--ink-2); }
+.ctr-t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ctr-card .chip { max-width: 100%; overflow-wrap: anywhere; }
+.ctr-miss { border: 1px dashed var(--rule-2); background: var(--card); color: var(--ink-2); font-family: inherit; cursor: pointer; }
+.ctr-g { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
 .pack-l { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: .88rem; }
 
 /* Household */
@@ -258,8 +347,9 @@ tr.addrow td { background: var(--paper); }
 .people { display: grid; gap: 10px; }
 .person { display: grid; grid-template-columns: minmax(0, 1.2fr) 76px minmax(0, 2fr) 32px; gap: 8px; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--rule); }
 .pneeds { grid-column: 1 / -1; font-size: .75rem; color: var(--ink-2); }
+.conds { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 16px; }
 .pet { display: grid; grid-template-columns: minmax(0, 1fr) 90px 32px; gap: 8px; align-items: center; max-width: 420px; }
-@media (max-width: 640px) { .person { grid-template-columns: minmax(0, 1fr) 76px 32px; } .person .needs { grid-column: 1 / -1; grid-row: 2; } .person .pneeds { grid-row: 3; } }
+@media (max-width: 640px) { .person { grid-template-columns: minmax(0, 1fr) 76px 32px; } .person .needs { grid-column: 1 / -1; grid-row: 2; } .person .pneeds { grid-row: 3; } .person .conds { grid-row: 4; } }
 .cond-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; align-items: start; }
 .cond { border: 1px solid var(--rule); border-radius: 12px; background: var(--card); transition: border-color .15s; }
 .cond:hover { border-color: var(--rule-2); }
@@ -301,6 +391,7 @@ tr.addrow td { background: var(--paper); }
   .shop-kit { grid-column: 1; grid-row: 3; padding-left: 62px; }
   .shop-kit:empty, .shop-meta:empty { display: none; }
   .shop-row > .x { align-self: start; }
+  .shop-chk .buy { display: inline-flex; align-items: center; min-height: 40px; }
 }
 .reasons { display: grid; gap: 0; }
 .reasons div { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
@@ -321,9 +412,10 @@ tr.addrow td { background: var(--paper); }
 td.sel, th.sel { width: 40px; text-align: center; padding-left: 10px; }
 td.sel input, th.sel input { width: 16px; height: 16px; accent-color: var(--ink); cursor: pointer; }
 tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
-/* The page gives the inventory at most ~810px, too narrow for eleven columns, so under 900px each item is a card:
-   name, category, quantity and value on the first line, the numbers and expiry on the second (four short lines on a phone) */
-@container (max-width: 899px) {
+/* The page gives the inventory at most ~810px, too narrow for twelve columns, so under 1000px each item is a card:
+   name, category, quantity and value on the first line, the numbers and expiry on the second (four short lines on a phone).
+   An item in a checklist category gets a line between them with its Essential picker, under Category. */
+@container (max-width: 999px) {
   .inv, .inv tbody { display: block; }
   .inv thead tr { display: flex; align-items: center; gap: 0 16px; border-bottom: 1px solid var(--rule); }
   .inv thead th { border: 0; width: auto !important; }
@@ -345,13 +437,65 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
   .inv td[data-label="Value"] { grid-area: val; align-self: start; } .inv td[data-label="Water L"] { grid-area: water; } .inv td[data-label="Food kcal"] { grid-area: food; }
   .inv td[data-label="lb"] { grid-area: wt; } .inv td[data-label="Size L"] { grid-area: size; } .inv td[data-label="Expires"] { grid-area: exp; }
   .inv td.val .val-in { padding: 6px 5px 0; }
+  /* The photo draft has no tick box or Value: its category and Essential share a line, so both labels show in full */
+  .draft .inv tbody tr { grid-template-areas: ". name name name name name name name name qty qty qty qty x" ". cat cat cat cat cat cat ess ess ess ess ess ess ." ". water water food food wt wt size size exp exp exp exp ."; }
+  .inv td.d-ess { grid-area: ess; }
   .inv .val-note { padding-left: 5px; }
   .inv td.num input { text-align: left; }
+  .inv td.ess-td { grid-area: ess; }
+  .inv tbody tr:has(> td.ess-td > select) {
+    grid-template-areas: "sel name name name name name cat cat cat qty val val val x" ". . . . . . ess ess ess . . . . ." ". water water food food wt wt size size exp exp exp . ."; }
 }
 @container (max-width: 599px) {
   .inv tbody tr { grid-template-columns: 24px repeat(4, minmax(0, 1fr)) 28px;
     grid-template-areas: "sel name name name name x" ". cat cat qty val val" ". water food wt size size" ". exp exp exp . ."; }
+  .inv tbody tr:has(> td.ess-td > select) {
+    grid-template-areas: "sel name name name name x" ". cat cat qty val val" ". ess ess ess . ." ". water food wt size size" ". exp exp exp . ."; }
+  .draft .inv tbody tr { grid-template-columns: repeat(4, minmax(0, 1fr)) 28px;
+    grid-template-areas: "name name name name x" "cat cat cat cat cat" "ess ess ess ess ess" "water food wt size ." "qty exp exp exp ."; }
 }
+/* The Contents panel: a Flat-lay | List switch, and the flat-lay's zones of item tiles, 4 a row on a phone and more as it widens. */
+.seg { display: inline-flex; padding: 2px; border: 1px solid var(--rule-2); border-radius: 999px; background: var(--card); }
+.seg button { min-height: 30px; padding: 3px 14px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: inherit; font-size: .82rem; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 500; }
+.fl-zone { display: grid; gap: 6px; }
+.fl-h { font-size: .8rem; font-weight: 500; color: var(--ink-2); }
+.fl-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+@media (min-width: 561px) { .fl-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; } }
+.fl-tile, .fl-add { position: relative; display: flex; flex-direction: column; gap: 1px; min-width: 0; min-height: 76px; padding: 8px 5px 6px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); color: var(--ink); font-size: .72rem; line-height: 1.25; }
+.fl-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0 4px; margin-bottom: 3px; }
+.fl-tile .ic { width: 22px; height: 22px; color: var(--ink-2); }
+.fl-pic { width: 34px; height: 34px; object-fit: contain; }
+.fl-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-weight: 500; }
+.fl-note { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.fl-note, .fl-exp { color: var(--ink-2); font-size: .68rem; }
+.fl-q { min-width: 0; overflow-wrap: anywhere; font-size: .72rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.fl-tile.expired { border-color: var(--bad); box-shadow: inset 0 0 0 1px var(--bad); }
+.fl-tile.expired .fl-name { text-decoration: line-through; }
+.fl-tile.expired .fl-exp { color: var(--bad); font-weight: 500; }
+.fl-tile.soon { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); }
+.fl-tile.soon .fl-exp { color: var(--warn); font-weight: 500; }
+.fl-add { align-items: center; justify-content: center; border-style: dashed; border-color: var(--rule-2); background: var(--card); font: inherit; font-size: .78rem; font-weight: 500; text-align: center; cursor: pointer; }
+.fl-add:hover { border-color: var(--ink); }
+.fl-tile.miss { padding-inline: 3px; border-style: dashed; border-color: var(--rule-2); background: var(--card); color: var(--ink-2); }
+.fl-tile.miss .gain { font-size: .72rem; }
+.fl-tile.miss .fl-name { display: block; -webkit-line-clamp: none; line-clamp: none; overflow: visible; overflow-wrap: break-word; }
+.fl-do { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; margin: -8px -3px -6px; padding: 8px 3px 6px; border: 0; border-radius: 9px; background: none; text-align: left; cursor: pointer; }
+.fl-tile.miss:has(.fl-do):hover { border-color: var(--ink); }
+/* A present tile's button fills its tile. Its item's fields open under the tile's row, across the grid: dense packing
+   lets the rest of that row fill in before them. */
+.fl-ed { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; margin: -8px -5px -6px; padding: 8px 5px 6px; border: 0; border-radius: 9px; background: none; text-align: left; cursor: pointer; }
+.fl-tile:has(.fl-ed):hover, .fl-tile:has([aria-expanded="true"]) { border-color: var(--ink); }
+.fl-grid:has(.fl-fields) { grid-auto-flow: row dense; }
+.fl-fields { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; border: 1px solid var(--ink); border-radius: 10px; background: var(--card); }
+.fl-f { display: flex; flex: 1 1 64px; flex-flow: column; gap: 2px; min-width: 0; }
+.fl-f::before { content: attr(data-label); font-size: .7rem; color: var(--ink-2); }
+.fl-f[data-label="Item"] { flex-basis: 100%; }
+.fl-f.cat-td, .fl-f.ess-td { flex-basis: auto; } .fl-f[data-label="Expires"] { flex: 0 1 200px; }
+.fl-f.cat-td { flex-flow: row wrap; } .fl-f.cat-td::before { flex-basis: 100%; }
+.fl-f input, .fl-f select { width: 100%; } .fl-f.cat-td select { flex: 1; width: auto; }
+.fl-f a { align-self: flex-start; } .fl-f .flag { font-size: .78rem; font-weight: 500; }
+.kit-ck > div > .ess-blk:first-child { border-top: 0; padding-top: 0; }
 .selbar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border: 1px solid var(--bad); border-radius: 12px; background: color-mix(in srgb, var(--bad) 7%, var(--card)); }
 .selbar b { font-weight: 600; font-variant-numeric: tabular-nums; }
 
@@ -368,7 +512,7 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 
 <header class="top">
   <div class="top-in">
-    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><h1>Emergency Kit Audit</h1></div>
+    <div class="brand"><h1><span class="go">Go</span> <span class="brand-mark" aria-hidden="true"></span> <span>Bag</span></h1></div>
     <div class="hdr-score" id="hdr-score"></div>
     <nav class="tabs" id="tabs" aria-label="Sections">
       <button data-act="tab" data-v="overview">Readiness</button>
@@ -430,6 +574,19 @@ const CATS = {
   kids: ["Kids' comfort", "comfort toy, cards, books, crayons, games for children"],
   other: ["Other", "anything that fits nowhere else"],
 };
+/* The flat-lay's zones, in the order the Contents panel shows them. Every CATS key is in exactly one, and an
+   item whose category isn't in CATS goes to Other. */
+const ZONES = [
+  { label: "Water & food", cats: ["water", "food"] },
+  { label: "First aid & medicine", cats: ["first_aid", "wound", "trauma", "burns", "splint", "cpr", "allergy", "breathing", "aspirin", "naloxone", "sugar", "seizure", "bites", "diagnostics", "medications"] },
+  { label: "Light, power & comms", cats: ["light", "power", "communication"] },
+  { label: "Shelter, clothing & hygiene", cats: ["shelter", "clothing", "hygiene", "sanitation", "masks"] },
+  { label: "Tools & safety", cats: ["tools", "fire_safety", "co_alarm", "poison", "car"] },
+  { label: "Documents & cash", cats: ["documents"] },
+  { label: "Family & pets", cats: ["pets", "baby", "kids"] },
+  { label: "Other", cats: ["comfort", "other"] },
+];
+const zoneOf = c => ZONES.find(z => z.cats.includes(c)) || ZONES.at(-1);
 /* The named essentials a kit needs in five checklist categories. An item's `essential` stores one of these ids,
    or "none" when the household said it is not one of them. Ids are saved in item docs, so they never change once
    shipped: new ones can be added, and an id taken off the list just reads as untagged. `perMed` is needed once
@@ -448,6 +605,8 @@ function essentialOf(it) {
   if (e === "none") return "none";
   return typeof e === "string" && essentialList(it.category).some(x => x.id === e) ? e : "";
 }
+/* Whether `v` may be saved as the essential of an item in category `cat`: one of its ids, or "none", in the five only. */
+const essentialOk = (cat, v) => essentialList(cat).length > 0 && !!v && essentialOf({ category: cat, essential: v }) === v;
 /* The essentials one checklist row needs for household `h`. One person's prescriptions carry their name;
    with several, no label says whose is in the kit. */
 function essentialsFor(cat, h) {
@@ -495,18 +654,35 @@ const ICONS = {
   comfort: '<path d="M4 10h13v4a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6zM17 11h1.5a2.5 2.5 0 0 1 0 5H17M8 3c-1 1.5 1 2.5 0 4M12 3c-1 1.5 1 2.5 0 4"/>',
   other: '<circle cx="12" cy="12" r="8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/>',
   home: '<path d="M4 11l8-7 8 7M6 9.5V20h12V9.5M10 20v-5h4v5"/>',
-  pin: '<path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/>',
   person: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
   flag: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
   bag: '<path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/>',
+  duffel: '<rect x="3" y="8" width="18" height="11" rx="3"/><path d="M9 8V6h6v2M3 13h18"/>',
+  box: '<path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4"/>',
   gauge: '<path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/>',
   cart: '<path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/>',
   list: '<path d="M10 6h10M10 12h10M10 18h10"/><path d="m3.5 6 1.5 1.5 2.5-2.5M3.5 12l1.5 1.5 2.5-2.5M3.5 18l1.5 1.5 2.5-2.5"/>',
+  yes: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  no: '<circle cx="12" cy="12" r="7.5"/>',
 };
-const icon = (k, cls = "ic") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ICONS.other}</svg>`;
+const icon = (k, cls = "ic") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${Object.hasOwn(ICONS, k) ? ICONS[k] : ICONS.other}</svg>`;
+/* The brand mark (#49): a supply case whose outline is the gauge. Two halves run from the bottom centre up
+   each side and meet under the handle, filled to the score; handle, seam, latches and cross stay solid. */
+const caseScore = s => Math.round(Math.min(100, Math.max(0, Number(s) || 0)));
+function caseParts(score, size) {
+  const s = caseScore(score), halves = ["M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32", "M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"];
+  const fill = !s ? "" : halves.map(d => `<path class="cf" d="${d}" pathLength="100"${s < 100 ? ` style="stroke-dasharray:${s} 100"` : ""}/>`).join("");
+  return `<g fill="none" stroke-width="${size <= 32 ? 6.5 : 5}" stroke-linecap="round" stroke-linejoin="round">`
+    + `<path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/>${halves.map(d => `<path class="ct" d="${d}"/>`).join("")}${fill}`
+    + `<path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/>`
+    + `<path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/>`;
+}
+const caseMark = (score, size) => `<svg class="case" viewBox="0 0 64 64" width="${size}" height="${size}" aria-hidden="true">${caseParts(score, size)}</svg>`;
+// The browser tab icon: the case in white on a rounded Cobalt tile, with the small-size strokes.
+const tabIconHref = score => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -5.5 80 80">`
+  + `<style>.ct{stroke:#fff;stroke-opacity:.4}.cf{stroke:#fff}.cs{fill:#fff}</style><rect x="-8" y="-5.5" width="80" height="80" rx="18" fill="#2B59D9"/>${caseParts(score, 16)}</svg>`);
 const KIT_ICON = { go: "bag", home: "home", car: "car" };
 const TAB_ICON = { overview: "gauge", kits: "bag", shop: "cart", household: "person", plan: "flag" };
-const KIND_ICON = { setup: "home", hazards: "pin", refill: "medications", refile: "list", ages: "person", plan: "flag", shop: "list" };
 const AGE = { adult: ["Adult", 2000], teen: ["Teen (13–17)", 2200], child: ["Child (3–12)", 1600], infant: ["Under 3", 1000], senior: ["Senior (65+)", 1800] };
 /* An exact age, when given, decides the group and the calories (roughly the USDA estimates for a
    moderately active person); without one the saved group is used. */
@@ -541,6 +717,24 @@ const CONDITIONS = {
 /* Conditions that mean someone takes medication every day, so a pharmacy closing cuts them off. */
 const DAILY_MEDS = ["meds", "diabetes", "seizures", "opioids"];
 const onDailyMeds = m => Array.isArray(m.conditions) && m.conditions.some(c => DAILY_MEDS.includes(c));
+/* Words in a person's note naming a health need. Notes never score: a match only offers to switch it on. */
+const CONDITION_WORDS = {
+  meds: /\b(medications?|medicines?(?! cabinet)|meds|prescription (meds|drugs?|medicines?)|daily pills|blood[- ]pressure|thyroid)\b/,
+  allergy: /\b(epi-?pens?|anaphyla\w*|severe allerg\w*)\b/,
+  diabetes: /\b(diabet\w*|insulin|blood sugar)\b/,
+  heart: /\b(heart (condition|disease|failure|problems?|attack)|cardiac|pacemaker|a-?fib|arrhythmia)\b/,
+  asthma: /\b(asthma|copd|inhalers?)\b/,
+  seizures: /\b(epilep\w*|seizures?)\b/,
+  opioids: /\b(opioids?|oxycodone|oxycontin|hydrocodone|morphine|fentanyl|methadone)\b/,
+  device: /\b(oxygen|c-?pap|ventilator|nebuli[sz]er|dialysis)\b/,
+  mobility: /\b(wheelchair|crutches|(an?|uses|with) (cane|walker)|limited mobility|mobility (aid|issues?|problems?))\b/,
+};
+function conditionHints(m) {
+  const have = new Set(Array.isArray(m.conditions) ? m.conditions : []);
+  const clauses = String(m.needs || "").toLowerCase().replace(/[‘’]/g, "'").split(/[,;.\n]|\band\b|\bbut\b/)
+    .filter(c => !/\b(no|not|non|none|never|off|stopped|quit|without|\w+n't)\b/.test(c));
+  return Object.keys(CONDITIONS).filter(k => !have.has(k) && !(k === "meds" && onDailyMeds(m)) && clauses.some(c => CONDITION_WORDS[k].test(c)));
+}
 const KIT_TYPES = { go: "Go-bag", home: "Home supply", car: "Vehicle kit" };
 const MODES = {
   evacuate: { label: "Evacuate", kits: ["go", "car"] },
@@ -591,7 +785,7 @@ const HAZARDS = [
   { id: "bites", group: "health", name: "Bites and stings", severity: "minor", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Pets, outdoors · first hour", base: h => h.pets || h.kids ? "moderate" : "low", needs: ["bites", "wound", "medications"] },
   { id: "anaphylaxis", group: "health", name: "Severe allergic reaction", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · use the epinephrine, then call 911", base: h => h.allergic ? "high" : "none", needs: ["allergy", "first_aid"] },
   { id: "illness", group: "health", name: "Serious illness at home", severity: "serious", mode: "shelter", days: 3, when: "At home · 72 h", base: () => "moderate", needs: ["diagnostics", "medications", "hygiene", "masks", "water", "food"] },
-  { id: "meds", group: "health", name: "Medication supply cut off", severity: "serious", mode: "anywhere", kits: ["home", "go"], days: 14, when: "Pharmacy closed or evacuated · 2 weeks", base: h => h.dailyMeds ? "high" : "none", needs: ["medications", "diagnostics"], qty: { medications: h => Math.max(1, h.dailyMeds) } },
+  { id: "meds", group: "health", name: "Medication supply cut off", severity: "serious", mode: "anywhere", kits: ["home", "go"], days: 14, when: "Pharmacy closed or evacuated · 2 weeks", base: h => h.dailyMeds ? "high" : "none", needs: ["medications", "diagnostics"] },
   { id: "asthma", group: "health", name: "Asthma attack", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · smoke and colds set it off", base: h => h.asthma ? "high" : "none", needs: ["breathing"], qty: { breathing: h => Math.max(1, h.asthma) } },
   { id: "seizure", group: "health", name: "Seizure", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · time it, call 911 past 5 minutes", base: h => h.seizures ? "high" : "none", needs: ["seizure"], qty: { seizure: h => Math.max(1, h.seizures) } },
   { id: "lowsugar", group: "health", name: "Low blood sugar", severity: "critical", mode: "anywhere", kits: ["home", "go", "car"], days: 1, when: "Anywhere · 15 g of fast sugar, recheck in 15 minutes", base: h => h.diabetes ? "high" : "none", needs: ["sugar", "diagnostics"], qty: { sugar: h => Math.max(1, h.diabetes) } },
@@ -607,8 +801,12 @@ const S = {
   profile: null, hazards: null, review: null, shopping: null, plan: null, kits: [], items: [],
   live: false, loaded: false, slow: false, canWrite: true,
   openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
+  listKit: null, // the kit whose Contents panel shows List; any other kit shows Flat-lay. Memory only: never saved
+  flOpen: null, // the item whose flat-lay tile shows its fields, cleared when a kit is opened. Memory only
+  ctr: null, // the open container editor: { id, ...typed }
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
-  scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null,
+  scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, bagM: null,
+  add: { cat: "water", ess: "" }, // the add-by-hand row's Category and Essential, so every redraw shows the two together
 };
 let db = null, assets = null, sample = null;
 
@@ -629,7 +827,7 @@ const band = s => BANDS.find(b => s >= b[0]);
 const statusColor = s => band(s)[2];
 const statusInk = s => s >= 40 && s < 75 ? "var(--ink)" : band(s)[2];
 const bandTag = s => `<span class="band"><i style="background:${statusColor(s)}"></i>${band(s)[1]}</span>`;
-const catLabel = c => (CATS[c] || CATS.other)[0];
+const catLabel = c => (Object.hasOwn(CATS, c) ? CATS[c] : CATS.other)[0];
 const D = () => S.canWrite ? "" : "disabled";
 const when = t => t ? new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
 /* Where to buy an item on Amazon: a saved product page when one was found (only a plain amazon.com/dp/ link counts),
@@ -718,22 +916,50 @@ function relevance(hz, h) {
   if (LEVELS[lv]) return lv;
   return (typeof hz.base === "function" ? hz.base(h) : hz.base) || "none";
 }
-function stock(types) {
-  const kitIds = new Set(S.kits.filter(k => types.includes(k.type)).map(k => k.id));
-  return stockItems(S.items.filter(it => kitIds.has(it.kitId)));
+const FACT_WORDS = { seniors: "aged 65 or over", mobility: "with limited mobility", heart: "with a heart condition", dailyMeds: "on daily medication", allergic: "with a severe allergy", asthma: "with asthma or COPD", seizures: "with epilepsy or seizures", diabetes: "with diabetes", opioids: "on opioid pain medication", devices: "on a powered medical device" };
+const FACTS = ["kids", "infants", "pets", ...Object.keys(FACT_WORDS)];
+const factText = (k, n) => k === "pets" ? `${n} pet${n > 1 ? "s" : ""}` : k === "kids" || k === "infants" ? `${n} ${n > 1 ? "children" : "child"} ${k === "kids" ? "aged 3 to 12" : "under 3"}` : `${n > 1 ? n + " people" : "someone"} ${FACT_WORDS[k]}`;
+/* Why a health or everyday emergency is rated as it is (the location check writes no reason for these):
+   the household's own rating, then each fact that alone raises it above a household with none. */
+function householdWhy(hz, h) {
+  const at = x => (typeof hz.base === "function" ? hz.base(x) : hz.base) || "none";
+  const rank = x => LEVELS[at(x)]?.[1] ?? 0;
+  const bare = { ...h, home: "" };
+  for (const k of FACTS) bare[k] = 0;
+  const floor = rank(bare);
+  const facts = FACTS.filter(k => h[k] && rank({ ...bare, [k]: h[k] }) > floor).map(k => factText(k, h[k]));
+  const home = h.home && rank({ ...bare, home: h.home }) > floor;
+  if (hz.vehicle && !h.vehicles) return "There's no vehicle in your household.";
+  const own = S.hazards?.levels?.[hz.id], lv = at(h), out = [];
+  if (LEVELS[own] && own !== lv) out.push(`You ${own === "none" ? "marked this as not relevant" : "rated this " + LEVELS[own][0].toLowerCase()} (${LEVELS[lv][0].toLowerCase()} from who lives here).`);
+  if (facts.length) out.push(`Your household includes ${orList(facts, "and")}.`);
+  if (home) out.push(`You live in a ${h.home.toLowerCase()}.`);
+  if (!facts.length && !home) out.push(floor < LEVELS.moderate[1] ? "Nothing about who lives here or your home raises it." : hz.vehicle ? "Anyone who drives faces this." : "Every household faces this, whoever lives there.");
+  return out.join(" ");
 }
+/* The items in every kit of these types. */
+function itemsIn(types) {
+  const kitIds = new Set(S.kits.filter(k => types.includes(k.type)).map(k => k.id));
+  return S.items.filter(it => kitIds.has(it.kitId));
+}
+const stock = types => stockItems(itemsIn(types));
+/* What a set of items holds: units per category, litres, calories, and in the five checklist categories
+   how many items are tagged with each named essential. Expired items hold nothing. */
 function stockItems(items) {
-  const st = { count: {}, liters: 0, kcal: 0 };
+  const st = { count: {}, ess: {}, liters: 0, kcal: 0 };
   for (const it of items) {
     if (expState(it) === "expired") continue;
     const c = CATS[it.category] ? it.category : "other";
     st.count[c] = (st.count[c] || 0) + Math.max(1, num(it.qty));
+    const e = essentialOf(it);
+    if (e && e !== "none") { const x = st.ess[c] ||= {}; x[e] = (x[e] || 0) + 1; }
     st.liters += num(it.liters); st.kcal += num(it.kcal);
   }
   return st;
 }
 function needFor(cat, hz, h) {
   const d = hz.days;
+  if (Object.hasOwn(ESSENTIALS, cat)) return { need: essentialsFor(cat, h).length };
   if (hz.qty?.[cat]) return { need: hz.qty[cat](h) };
   switch (cat) {
     case "trauma": return { need: 2 };
@@ -744,7 +970,6 @@ function needFor(cat, hz, h) {
     case "light": return { need: Math.max(1, Math.ceil(h.people / 2)) };
     case "shelter": case "masks": return { need: h.people };
     case "clothing": return { need: hz.mode === "evacuate" ? h.people : 1 };
-    case "tools": return { need: 2 };
     case "car": return { need: 3 };
     case "comfort": return { need: 4 };
     case "pets": return { need: Math.max(1, h.pets) };
@@ -769,13 +994,23 @@ function model() {
   const active = results.filter(r => r.wt > 0);
   const tw = active.reduce((a, r) => a + r.wt, 0);
   const overall = tw ? Math.round(active.reduce((a, r) => a + r.wt * r.score, 0) / tw) : null;
+  /* One gap per counted category short anywhere, and one per missing named essential: each prescriptions
+     slot is its own gap, so two people's prescriptions are two. */
   const g = {};
   for (const r of active) for (const row of r.rows) {
     if (row.cov >= 1) continue;
-    const x = g[row.cat] ||= { cat: row.cat, imp: 0, worst: null, hazards: [] };
-    x.imp += r.wt * (1 - row.cov) * row.w;
-    x.hazards.push(r.hz.name);
-    if (!x.worst || row.need > x.worst.need) x.worst = { ...row, hz: r.hz };
+    const add = (key, gap, share) => {
+      const x = g[key] ||= { ...gap, imp: 0, worst: null, hazards: [] };
+      x.imp += r.wt * share * row.w;
+      x.hazards.push(r.hz.name);
+      if (!x.worst || row.need > x.worst.need) x.worst = { ...row, hz: r.hz };
+    };
+    if (!row.ess) { add(row.cat, { cat: row.cat }, 1 - row.cov); continue; }
+    const nth = {};
+    for (const e of row.ess) {
+      nth[e.id] = (nth[e.id] || 0) + 1;
+      if (!e.have) add(`${row.cat}|${e.id}|${nth[e.id]}`, { cat: row.cat, essential: e.id, label: e.label }, 1 / row.need);
+    }
   }
   const gaps = Object.values(g).sort((a, b) => b.imp - a.imp);
   const kitName = Object.fromEntries(S.kits.map(k => [k.id, k.name]));
@@ -787,16 +1022,37 @@ function model() {
 const haveOf = (cat, st) => cat === "water" ? st.liters : cat === "food" ? st.kcal : (st.count[cat] || 0);
 function needRow(cat, hz, h, st) {
   const { need, unit } = needFor(cat, hz, h);
-  const have = haveOf(cat, st);
-  return { cat, need, have, unit, cov: need > 0 ? Math.min(1, have / need) : 1, w: cat === "water" || cat === "food" || cat === "comfort" && hz.mode === "vehicle" ? 2 : 1 };
+  const ess = essentialsFor(cat, h);
+  return fillRow({ cat, need, unit, ...(ess.length ? { ess } : {}), w: cat === "water" || cat === "food" || cat === "comfort" && hz.mode === "vehicle" ? 2 : 1 }, st);
 }
+/* A checklist row's have and coverage from stock `st`. A row of named essentials (`ess`, one per essential,
+   each marked `have`) counts each one once, and each prescriptions item for one person, so it never has
+   more than it needs. */
+function fillRow(r, st) {
+  if (!r.ess) { const have = haveOf(r.cat, st); return { ...r, have, cov: r.need > 0 ? Math.min(1, have / r.need) : 1 }; }
+  const n = st.ess?.[r.cat] || {}, used = {};
+  const ess = r.ess.map(e => ({ ...e, have: (used[e.id] = (used[e.id] || 0) + 1) <= (n[e.id] || 0) }));
+  return essCov({ ...r, ess });
+}
+const essCov = r => { const have = r.ess.filter(e => e.have).length; return { ...r, have, cov: r.need > 0 ? Math.min(1, have / r.need) : 1 }; };
 const rawScore = rows => rows.length ? 100 * rows.reduce((a, r) => a + r.w * r.cov, 0) / rows.reduce((a, r) => a + r.w, 0) : 0;
 const scoreRows = rows => Math.round(rawScore(rows));
-/* The household score if these categories were fully stocked: what closing a gap is worth. */
-function overallIf(M, cats) {
+/* The household score if these list entries were in the kits: a counted category fully stocked, and a named
+   essential filled once. What closing a gap is worth when there is no kit to work it out exactly. A line in
+   the five checklist categories without an essential fills nothing, as the untagged item it makes does. */
+function overallIf(M, es) {
   const tw = M.active.reduce((a, r) => a + r.wt, 0);
   if (!tw) return null;
-  return Math.round(M.active.reduce((a, r) => a + r.wt * scoreRows(r.rows.map(x => cats.has(x.cat) ? { ...x, cov: 1 } : x)), 0) / tw);
+  const full = new Set(es.filter(e => !Object.hasOwn(ESSENTIALS, e.cat)).map(e => e.cat));
+  const adds = {};
+  for (const e of es) if (Object.hasOwn(ESSENTIALS, e.cat) && typeof e.essential === "string") (adds[e.cat] ||= []).push(e.essential);
+  const fill = x => {
+    if (full.has(x.cat)) return { ...x, cov: 1 };
+    if (!x.ess || !adds[x.cat]) return x;
+    const left = [...adds[x.cat]];
+    return essCov({ ...x, ess: x.ess.map(e => { const i = e.have ? -1 : left.indexOf(e.id); if (i < 0) return e; left.splice(i, 1); return { ...e, have: true }; }) });
+  };
+  return Math.round(M.active.reduce((a, r) => a + r.wt * scoreRows(r.rows.map(fill)), 0) / tw);
 }
 const orList = (xs, word = "or") => xs.length < 2 ? xs.join("") : xs.slice(0, -1).join(", ") + ` ${word} ` + xs.at(-1);
 const gal = l => f1(l / 3.785);
@@ -807,6 +1063,7 @@ function gapPlan(g, h) {
   const others = g.hazards.length - 1;
   const why = `For ${row.hz.name.toLowerCase()}${others ? ` and ${others} other emergenc${others > 1 ? "ies" : "y"}` : ""}. Goes in a ${orList(kits.map(k => KIT_TYPES[k].toLowerCase()))}.`;
   const hint = (CATS[g.cat] || CATS.other)[1];
+  if (g.essential) return { kits, why, hint, qty: 1, unit: "", name: g.label, title: `Add ${g.label}`, detail: `One of the ${catLabel(g.cat).toLowerCase()} essentials. One in a kit is enough.`, text: `${g.label} (${catLabel(g.cat)})` };
   if (row.unit === "L") {
     const L = Math.ceil(short), days = L / (h.people * 3.8 + h.pets);
     return { kits, why, hint, qty: L, unit: "L", name: "Drinking water", title: `Add ${L} L of drinking water`, detail: `About ${gal(L)} gallons: ${f1(days)} more days for everyone.`, text: `Drinking water: ${L} L (${gal(L)} gal)` };
@@ -819,54 +1076,11 @@ function gapPlan(g, h) {
   return { kits, why, hint, qty: n, unit: "", name: catLabel(g.cat), title: `${catLabel(g.cat)}: add ${n}`, detail: `Such as ${hint}.`, text: `${catLabel(g.cat)} × ${n}` };
 }
 /* Readiness if these list entries were bought and put in the kit each would go in, the same sum ticking uses.
-   An entry with no kit of the right type yet can only be estimated, as if its category were full. */
+   An entry with no kit of the right type yet can only be estimated (overallIf), as if its category were full or its essential filled. */
 function scoreIfShopped(M, es) {
-  return es.every(e => shopKit(e)) ? scoreIfBought(es) : overallIf(M, new Set(es.map(e => e.cat)));
+  return es.every(e => shopKit(e)) ? scoreIfBought(es) : overallIf(M, es);
 }
 const scoreIfFilled = (M, gaps) => scoreIfShopped(M, gaps.map(g => shopFromGap(g, M.h)));
-/* Items saved before their supply type had a category of its own: the name says what it is, so Next steps
-   offers to move them. Nothing moves until that button is tapped. Pain-reliever aspirin stays a medication. */
-const REFILE = [
-  [/\b(inhaler|albuterol|ventolin|proair|nebuli[sz]er)\b/i, "breathing", ["medications", "first_aid", "other"]],
-  [/\b(narcan|naloxone)\b/i, "naloxone", ["medications", "poison", "first_aid", "other"]],
-  [/\b(chewable|low[- ]dose|baby|81 ?mg)\b.*\baspirin\b|\baspirin\b.*\b(chewable|low[- ]dose|81 ?mg)\b/i, "aspirin", ["medications", "first_aid", "other"]],
-  [/\b(midazolam|nayzilam|valtoco|diastat)\b/i, "seizure", ["medications", "other"]],
-  [/\b(glucose (tabs?|tablets?|gel)|dex4|glucagon|baqsimi|gvoke)\b/i, "sugar", ["food", "medications", "diagnostics", "first_aid", "other"]],
-  [/\b(carbon monoxide|co (alarm|detector))\b/i, "co_alarm", ["poison", "fire_safety", "tools", "other"]],
-];
-function refileable(items = S.items) {
-  return items.flatMap(it => { const r = REFILE.find(([re, , from]) => from.includes(it.category) && re.test(String(it.name || ""))); return r ? [{ it, to: r[1] }] : []; });
-}
-/* Up to three things to do next: setup that changes every number first, then the gaps worth the most points. */
-function nextActions(M) {
-  const p = S.profile, out = [];
-  if (!p || p.example) out.push({ kind: "setup", title: "Tell us who lives with you", detail: "Where you live, everyone's age and any health needs. Four quick steps, and everything else is sized from them." });
-  else if (!S.hazards?.assessedAt && p.location) out.push({ kind: "hazards", title: `Check which emergencies are likely in ${p.location}`, detail: "Claude rates floods, earthquakes, wildfire and more for where you live, so your gaps target the right risks." });
-  const ms = p && !p.example && Array.isArray(p.members) ? p.members : [];
-  const plan = S.plan || {};
-  const due = (Array.isArray(plan.meds) ? plan.meds : []).map(x => ({ x, st: refillState(x) })).filter(o => o.st.days != null && o.st.days <= 7).sort((a, b) => a.st.days - b.st.days)[0];
-  if (due && out.length < 2) out.push({ kind: "refill", title: `Refill ${due.x.who ? due.x.who + "'s " : ""}${due.x.name || "medication"}`, detail: `${due.st.text}. Pharmacies close in emergencies, so try to keep a week or two spare.` });
-  const rf = refileable();
-  if (rf.length && out.length < 2) out.push({ kind: "refile", title: rf.length === 1 ? `Move ${rf[0].it.name} to ${catLabel(rf[0].to)}` : `Move ${rf.length} items to their own supply types`,
-    detail: `${orList([...new Set(rf.map(x => catLabel(x.to)))], "and")} now ${new Set(rf.map(x => x.to)).size > 1 ? "have their own types" : "has its own type"}. Until ${rf.length === 1 ? "it moves, it doesn't" : "they move, they don't"} count for the emergencies ${rf.length === 1 ? "it covers" : "they cover"}.` });
-  const noAge = ms.filter(m => yearsOf(m) == null);
-  if (noAge.length && out.length < 2) out.push({ kind: "ages", title: noAge.length === ms.length ? "Add everyone's age" : `Add ${orList(noAge.map((m, i) => m.label || "a person"), "and")}'s age`, detail: "Food is sized by age, and toddlers and young kids need supplies of their own." });
-  if (p && !p.example && !String(plan.meetNear || "").trim() && !String(plan.contactName || "").trim() && out.length < 2)
-    out.push({ kind: "plan", title: "Pick a meeting place and an out-of-area contact", detail: "Two minutes now saves a frantic search later. They go on your family plan." });
-  const base = M.overall;
-  const gain = gs => base == null ? 0 : Math.max(0, scoreIfFilled(M, gs) - base);
-  // Gaps already on the shopping list fold into one step, so a listed gap doesn't hold a slot with nothing left to do
-  const listed = new Set(shopItems().filter(x => !x.done).map(x => x.cat));
-  const onList = M.gaps.filter(g => listed.has(g.cat));
-  const gaps = M.gaps.filter(g => !listed.has(g.cat)).map(g => ({ kind: "gap", g, ...gapPlan(g, M.h), gain: gain([g]) }));
-  if (onList.length) gaps.push({ kind: "shop", gs: onList, gain: gain(onList),
-    title: `Buy the ${onList.length === 1 ? "thing" : onList.length + " things"} on your list`,
-    detail: `${(onList.length > 3 ? onList.slice(0, 3).map(g => catLabel(g.cat).toLowerCase()).join(", ") + ` and ${onList.length - 3} more` : orList(onList.map(g => catLabel(g.cat).toLowerCase()), "and")).replace(/^./, c => c.toUpperCase())}. Tick each one off as you buy it and it goes straight into a kit.` });
-  gaps.sort((a, b) => b.gain - a.gain || (b.g?.imp ?? 0) - (a.g?.imp ?? 0));
-  const acts = [...out, ...gaps].slice(0, 3);
-  const filled = acts.flatMap(a => a.kind === "gap" ? [a.g] : a.kind === "shop" ? a.gs : []);
-  return { acts, filled, more: M.gaps.length - filled.length, after: base == null ? null : scoreIfFilled(M, filled) };
-}
 
 /* ---------- shopping list ---------- */
 /* What to put in the cart for a gap: store-sized packs, a ballpark US price for comparing and budgeting
@@ -879,25 +1093,84 @@ const hasCond = c => m => (m.conditions || []).includes(c);
 /* A prescription-only rescue medicine: who it's for, and asking their doctor for a spare for the kit. */
 const forWho = who => who.length ? ` for ${orList(who, "and")}` : "";
 const rxAsk = (who, what, doctor = "doctor") => `Prescription only. Ask ${who.length ? orList(who, "and") + "'s" : "the"} ${doctor} for ${what}`;
-function buyGuide(cat, qty, unit, kt, h) {
+/* What to buy for one named essential (ESSENTIALS): [line, price, tip]. The medications are worked out from who lives here. */
+const ESS_BUY = {
+  id_copies: ["Copies of everyone's ID, made at home", 0, "Copy the front and back of each driver's license, passport and birth certificate, and seal them in a zip-top bag. Keep the originals somewhere safe."],
+  insurance: ["Copies of your insurance cards, front and back", 0, "Health, home and car. Write each policy number and claims phone number on the copy."],
+  cash: ["Cash in small bills, in a waterproof pouch", 8, "$100 to $200 in ones, fives and tens. Card machines and ATMs stop working when the power's out. The cash isn't in the price."],
+  records: ["A USB drive with scans of your records", 10, "Scan IDs, insurance, prescriptions, deeds and medical records onto it. A printed set in a waterproof pouch works too."],
+  extinguisher: ["A 5 lb ABC fire extinguisher (2-A:10-B:C or bigger)", 45, "Mount it near the kitchen exit, not over the stove, and check its gauge every month."],
+  fire_blanket: ["A fire blanket for the kitchen", 20, "Hang it near the stove, not over it. It smothers a pan fire: never throw water on burning oil."],
+  escape_ladder: ["A fire escape ladder for an upstairs window", 45, "Keep it in the bedroom it hooks onto, and practice opening that window. A three-story ladder costs about $80."],
+  radio: ["A hand-crank NOAA emergency radio with a phone charger", 30, "It still gets weather alerts when phones and the internet are down. Crank it every few months to check it works."],
+  whistle: ["A loud safety whistle", 5, "Three blasts means help. It carries further than a voice and takes less breath than shouting."],
+  contact_list: ["A printed contact list, written at home", 0, "Family, neighbors, doctors, school and an out-of-area contact: phones die and numbers are hard to remember. Seal it in a zip-top bag."],
+  multitool: ["A multi-tool with a knife blade", 25, "Pliers, a knife, screwdrivers and a can opener cover most jobs."],
+  duct_tape: ["A roll of duct tape", 6, "It patches a tarp, a hose or a broken window. Wind a few feet around a pencil to save room in a go-bag."],
+  shutoff_wrench: ["A gas and water shut-off wrench", 12, "Hang it by the gas meter, and note where it is on the Plan tab. Only shut the gas off if you smell or hear a leak: the gas company has to turn it back on."],
+  fire_starter: ["A lighter and waterproof matches", 8, "Keep them dry in a zip-top bag. After an earthquake, never strike one indoors until you know there's no gas leak."],
+};
+/* The checked Amazon product for a shopping line (issue #97): one pick is one unit of what the line counts.
+   A product is a plain /dp/ page with no tag; `q` is a fixed search for a line that isn't one product.
+   Changed only through a pull request, and never built from a line's text, which can name household members. */
+const PICKS = {
+  water_home: { name: "Reliance Aqua-Tainer 7-gallon container", url: "https://www.amazon.com/dp/B001QC31G6" },
+  water_go: { name: "Crystal Geyser Alpine Spring Water", url: "https://www.amazon.com/dp/B0CMV9PF5Y", heavy: true },
+  food_go: { name: "Datrex 3,600-calorie ration bar", url: "https://www.amazon.com/dp/B0014EL48S" },
+  food_home: { q: "canned soup chili beans" },
+  extinguisher: { name: "Amerex B500 5 lb ABC extinguisher, 2-A:10-B:C", url: "https://www.amazon.com/dp/B0777R7JVF" },
+  radio: { name: "Midland ER210 hand-crank NOAA radio", url: "https://www.amazon.com/dp/B015QICDD2" },
+  masks: { name: "3M 8511 N95 respirators, box of 10", url: "https://www.amazon.com/dp/B0002YKBV2" },
+  blanket_go: { name: "UST Survival Blanket 2.0, reusable", url: "https://www.amazon.com/dp/B00YDQJ9EK" },
+  light: { name: "Petzl Tikkina headlamp", url: "https://www.amazon.com/dp/B01KYTR76Q" },
+  first_aid: { name: "Be Smart Get Prepared 110-piece first-aid kit", url: "https://www.amazon.com/dp/B00CYBXH7G" },
+  co_alarm: { name: "Kidde battery carbon monoxide alarm", url: "https://www.amazon.com/dp/B004Y6V6K4" },
+  fire_blanket: { name: "Tonyko fiberglass fire blanket", url: "https://www.amazon.com/dp/B076X7CRGH" },
+  escape_ladder: { name: "Kidde fire escape ladder", url: "https://www.amazon.com/dp/B00005OU7B" },
+  whistle: { name: "Fox 40 Sonik Blast CMG whistle", url: "https://www.amazon.com/dp/B00FOJCL1S" },
+  multitool: { name: "Leatherman Wave+ multi-tool", url: "https://www.amazon.com/dp/B079MJ6MLV" },
+  duct_tape: { name: "Scotch 2930 multi-use duct tape", url: "https://www.amazon.com/dp/B0013B1XHE" },
+  shutoff_wrench: { name: "Green Goods gas and water shut-off tool", url: "https://www.amazon.com/dp/B001CSCC7I" },
+};
+/* Prescriptions are one line per person on daily medication. With several, every line names them all and
+   none says whose is already in a kit, since the kit doesn't record whose an item is. */
+function essentialGuide(id, h) {
+  const kids = [...whoIs(h, m => groupOf(m) === "infant"), ...whoIs(h, m => groupOf(m) === "child")];
+  const allergic = whoIs(h, hasCond("allergy")), onMeds = whoIs(h, onDailyMeds);
+  if (id === "pain_reliever") return { line: `A bottle of pain and fever reliever${kids.length ? `, plus children's ibuprofen for ${orList(kids, "and")}` : ""}`, price: kids.length ? 16 : 8,
+    tip: `Ibuprofen or acetaminophen. Store-brand versions work the same and cost much less.${kids.length ? " Children's doses go by weight: check the label." : ""}` };
+  if (id === "allergy_med") return { line: "A box of antihistamine allergy tablets", price: 8,
+    tip: allergic.length ? `It eases hives and itching, but it doesn't stop anaphylaxis: ${orList(allergic, "and")} still ${allergic.length > 1 ? "need" : "needs"} their epinephrine.` : "It eases hives, itching and hay fever. Many kinds don't make you drowsy." };
+  if (id === "prescriptions") return onMeds.length > 1
+    ? { line: `A spare week of prescriptions for ${orList(onMeds)}`, price: null, tip: `Prescription only. ${orList(onMeds, "and")} each need a spare week of their own, one line each. Ask each pharmacy about an early refill, swap the spare into daily use before it expires, and track refills on the Plan tab.` }
+    : { line: `A spare week of ${onMeds.length ? onMeds[0] + "'s " : ""}prescriptions`, price: null, tip: `${rxAsk(onMeds, "a spare week to keep in the kit", "pharmacy")}. Swap it into daily use before it expires, and track refills on the Plan tab.` };
+  const [line, price, tip] = ESS_BUY[id];
+  return { line, price, tip, ...(PICKS[id] ? { pick: id, qty: 1 } : {}) };
+}
+/* A line that is `qty` of one product names its pick; a count of none (water or food of 0) names nothing. */
+const pk = (pick, qty) => qty >= 1 ? { pick, qty } : {};
+/* A line for a named essential (`ess`, on the category's own list) gets that essential's suggestion;
+   anything else, including old lines saved without one, gets the category's. */
+function buyGuide(cat, qty, unit, kt, h, ess) {
+  if (essentialList(cat).some(x => x.id === ess)) return essentialGuide(ess, h);
   const n = Math.max(1, Math.ceil(num(qty))), q = num(qty), go = kt === "go" || kt === "car";
   const kids = whoIs(h, m => groupOf(m) === "child"), little = whoIs(h, m => groupOf(m) === "infant");
   const allergic = whoIs(h, hasCond("allergy")), onMeds = whoIs(h, onDailyMeds);
   switch (cat) {
     case "water": {
-      if (go) { const c = Math.ceil(q / 12); return { line: `${pl(c, "case")} of 24 half-litre bottles`, price: c * 6, tip: "Bottles fit in a bag and don't leak. Pick cases with a best-by date printed on them." }; }
+      if (go) { const c = Math.ceil(q / 12); return { line: `${pl(c, "case")} of 24 half-litre bottles`, price: c * 6, ...pk("water_go", c), tip: "Bottles fit in a bag and don't leak. Pick cases with a best-by date printed on them." }; }
       const j = Math.ceil(q / 26.5), g1 = Math.ceil(q / 3.785);
-      return { line: `${pl(j, "7-gallon water container")}, filled from your tap`, price: j * 22, tip: `The cheapest way to store a lot of water. Keep them out of sunlight and refill every 6 months. Or buy ${g1} one-gallon jugs, about $${Math.round(g1 * 1.5)}, which are easier to carry.` };
+      return { line: `${pl(j, "7-gallon water container")}, filled from your tap`, price: j * 22, ...pk("water_home", j), tip: `The cheapest way to store a lot of water. Keep them out of sunlight and refill every 6 months. Or buy ${g1} one-gallon jugs, about $${Math.round(g1 * 1.5)}, which are easier to carry.` };
     }
     case "food": {
-      if (go) { const b = Math.ceil(q / 3600); return { line: pl(b, "3,600-calorie ration bar"), price: b * 10, tip: "They last 5 years, need no water or cooking, and won't make you thirsty." }; }
+      if (go) { const b = Math.ceil(q / 3600); return { line: pl(b, "3,600-calorie ration bar"), price: b * 10, ...pk("food_go", b), tip: "They last 5 years, need no water or cooking, and won't make you thirsty." }; }
       const safe = allergic.length > 0;
       const cans = Math.ceil(q * .35 / 450), jars = Math.ceil(q * .25 / 6700), crack = Math.ceil(q * .2 / 1800), snack = Math.ceil(q * .2 / (safe ? 1900 : 2700));
       return { line: `${pl(cans, "can")} of soup, chili and beans, ${pl(jars, "big jar")} of ${safe ? "sunflower seed butter" : "peanut butter"}, ${pl(crack, "box", "boxes")} of crackers and ${safe ? pl(snack, "box", "boxes") + " of nut-free granola bars" : pl(snack, "bag") + " of trail mix"}`,
-        price: Math.round(cans * 1.8 + jars * 6 + crack * 4 + snack * (safe ? 5 : 8)),
+        price: Math.round(cans * 1.8 + jars * 6 + crack * 4 + snack * (safe ? 5 : 8)), pick: "food_home",
         tip: `${safe ? `Nut-free picks because ${orList(allergic, "and")} ${allergic.length > 1 ? "have" : "has"} a severe allergy. Check every label. ` : ""}Choose food that needs no cooking and that you already eat, and get ring-pull cans or a manual can opener. Eat and replace it before it expires.` };
     }
-    case "first_aid": return { line: n > 1 ? pl(n, "family first-aid kit") : "A family first-aid kit (around 100 pieces)", price: n * 25, tip: "Get one with a printed contents list, so you can see what's been used and restock it." };
+    case "first_aid": return { line: n > 1 ? pl(n, "family first-aid kit") : "A family first-aid kit (around 100 pieces)", price: n * 25, ...pk("first_aid", n), tip: "Get one with a printed contents list, so you can see what's been used and restock it." };
     case "trauma": return { line: pl(n, "CAT or SOF-T tourniquet"), price: n * 30, tip: "Buy from a medical supplier rather than a marketplace seller: counterfeit tourniquets break. A one-hour Stop the Bleed class shows you how to use one." };
     case "burns": return { line: "Burn gel and 2 sterile burn dressings", price: 15, tip: "Cool a burn under running water for 20 minutes first. The gel comes after." };
     case "splint": return { line: "A SAM splint and 2 elastic wraps", price: 20, tip: "A SAM splint rolls flat and bends to fit an arm, leg or ankle." };
@@ -923,7 +1196,7 @@ function buyGuide(cat, qty, unit, kt, h) {
       return { line: `Rescue seizure medication${forWho(who)} and a printed seizure action plan`, price: null,
         tip: `${rxAsk(who, "a spare dose to keep in the kit", "neurologist")}. Time every seizure: past 5 minutes, give the rescue medication and call 911.` };
     }
-    case "co_alarm": return { line: pl(n, "battery carbon monoxide alarm"), price: n * 30,
+    case "co_alarm": return { line: pl(n, "battery carbon monoxide alarm"), price: n * 30, ...pk("co_alarm", n),
       tip: "Put one on each floor and outside the bedrooms. Never run a generator, grill or camp stove indoors or in the garage, even with the door open. If it sounds, get everyone outside before calling 911." };
     case "diagnostics": {
       const dia = whoIs(h, hasCond("diabetes"));
@@ -935,19 +1208,19 @@ function buyGuide(cat, qty, unit, kt, h) {
       return { line: `Pain relievers, an antihistamine and anti-diarrhea tablets${kidsMed.length ? `, plus children's ibuprofen for ${orList(kidsMed, "and")}` : ""}`, price: kidsMed.length ? 30 : 20,
         tip: onMeds.length ? `${orList(onMeds, "and")} also ${onMeds.length > 1 ? "need" : "needs"} a spare week of daily medication. Ask the pharmacy about an early refill, and track it on the Plan tab.` : "Store-brand versions work the same and cost much less. Spare glasses go here too." };
     }
-    case "light": return { line: pl(n, "LED headlamp"), price: n * 12, tip: "Headlamps keep both hands free. Get ones that take the same AA or AAA batteries as your radio." };
+    case "light": return { line: pl(n, "LED headlamp"), price: n * 12, ...pk("light", n), tip: "Headlamps keep both hands free. Get ones that take the same AA or AAA batteries as your radio." };
     case "power": return { line: "A 20,000 mAh power bank and a pack of lithium AA batteries", price: 40,
       tip: h.devices ? "Someone uses a powered medical device. Ask its supplier for a backup battery sized for it: a power bank won't be enough." : "Charge the power bank every 3 months. Lithium AAs keep for about 20 years in storage." };
-    case "communication": return { line: "A hand-crank NOAA weather radio", price: 30, tip: "Pick one with a USB port so it can charge a phone. Put a printed contact list next to it." };
+    case "communication": return { line: "A hand-crank NOAA weather radio", price: 30, ...pk("radio", 1), tip: "Pick one with a USB port so it can charge a phone. Put a printed contact list next to it." };
     case "documents": return { line: "A waterproof document pouch, a USB drive and cash in small bills", price: 15, tip: "Copy IDs, insurance and prescriptions onto the drive. Card machines stop working when the power's out. The cash isn't in the price." };
-    case "shelter": return go ? { line: pl(n, "reusable emergency blanket"), price: n * 5, tip: "The thicker reusable kind lasts. Thin foil ones tear the first time." }
+    case "shelter": return go ? { line: pl(n, "reusable emergency blanket"), price: n * 5, ...pk("blanket_go", n), tip: "The thicker reusable kind lasts. Thin foil ones tear the first time." }
       : { line: pl(n, "warm blanket or sleeping bag", "warm blankets or sleeping bags"), price: 0, tip: "Spare bedding from home counts. Put it in the bin and add it to the kit." };
     case "clothing": return { line: n > 1 ? `A change of clothes for ${h.members.length <= n ? "everyone" : n + " people"}` : "A change of clothes", price: 0, tip: `From your closet: sturdy shoes, socks, a rain jacket and a warm layer.${kids.length + little.length ? " Size kids' clothes up each year." : ""}` };
     case "hygiene": return { line: "Wet wipes, hand sanitizer, soap and travel toothbrushes", price: 20, tip: "Add menstrual products and any skin or eye care people use every day." };
     case "sanitation": return { line: "A 5-gallon bucket with a toilet seat lid, heavy-duty bags and kitty litter", price: 35, tip: "After an earthquake toilets may not flush for weeks. It's the thing people most often wish they'd bought." };
     case "tools": return { line: "A multi-tool, duct tape and a gas shut-off wrench", price: 40, tip: "Hang the wrench by the gas meter, and note where it is on the Plan tab." };
-    case "masks": { const packs = Math.ceil(n / 10); return { line: `${pl(packs, "pack")} of 10 N95 masks`, price: packs * 15, tip: kids.length + little.length ? `Adult masks won't seal on small faces. Look for kids' sizes for ${orList([...kids, ...little], "and")}.` : "Look for NIOSH approval printed on each mask." }; }
-    case "fire_safety": return { line: "An ABC fire extinguisher (2-A:10-B:C or bigger)", price: 45, tip: "Mount it near the kitchen exit, not over the stove." };
+    case "masks": { const packs = Math.ceil(n / 10); return { line: `${pl(packs, "pack")} of 10 N95 masks`, price: packs * 15, ...pk("masks", packs), tip: kids.length + little.length ? `Adult masks won't seal on small faces. Look for kids' sizes for ${orList([...kids, ...little], "and")}.` : "Look for NIOSH approval printed on each mask." }; }
+    case "fire_safety": return { line: "An ABC fire extinguisher (2-A:10-B:C or bigger)", price: 45, ...pk("extinguisher", 1), tip: "Mount it near the kitchen exit, not over the stove." };
     case "wound": return { line: "Saline wound wash, butterfly closures, non-stick pads and fine-point tweezers", price: 20, tip: "Rinse a cut under clean running water for a few minutes, then close and cover it. Saline also works as an eye wash." };
     case "bites": return { line: "A tick remover, sting relief wipes, hydrocortisone cream and an instant cold pack", price: 18,
       tip: `Pull ticks straight out, close to the skin. Wash any animal bite with soap and water for 5 minutes and see a doctor if it broke the skin.${allergic.length ? ` If ${orList(allergic)} ${allergic.length > 1 ? "are" : "is"} stung, follow their anaphylaxis plan.` : " Swelling of the face or trouble breathing after a sting means call 911."}` };
@@ -965,8 +1238,9 @@ function buyGuide(cat, qty, unit, kt, h) {
     default: return { line: `${catLabel(cat)} × ${n}`, tip: "" };
   }
 }
-/* The kit item a list entry becomes when ticked. */
-const itemFromShop = (e, kitId) => ({ kitId, name: e.name || catLabel(e.cat), category: e.cat, qty: e.unit ? 1 : Math.max(1, num(e.qty)), liters: e.unit === "L" ? num(e.qty) : 0, kcal: e.unit === "kcal" ? num(e.qty) : 0, expires: "", note: "Bought from the shopping list", source: "list" });
+/* The kit item a list entry becomes when ticked. A line for a named essential makes an item already tagged with it. */
+const itemFromShop = (e, kitId) => ({ kitId, name: e.name || catLabel(e.cat), category: e.cat, qty: e.unit ? 1 : Math.max(1, num(e.qty)), liters: e.unit === "L" ? num(e.qty) : 0, kcal: e.unit === "kcal" ? num(e.qty) : 0, expires: "", note: "Bought from the shopping list", source: "list",
+  ...(essentialList(e.cat).some(x => x.id === e.essential) ? { essential: e.essential } : {}) });
 /* Household readiness if these entries were bought and put in their kits: the same sum ticking them does. */
 function scoreIfBought(list) {
   const add = list.filter(e => CATS[e.cat] && shopKit(e)).map(e => ({ id: "_sim", ...itemFromShop(e, shopKit(e)) }));
@@ -978,15 +1252,34 @@ function scoreIfBought(list) {
 function shopInfo(e, M) {
   if (!CATS[e.cat]) return { line: e.text, sub: "", tip: "", gain: 0 };
   const kt = S.kits.find(k => k.id === (e.done ? e.inKit : shopKit(e)))?.type || (Array.isArray(e.kits) && e.kits[0]) || "home";
-  const b = buyGuide(e.cat, e.qty, e.unit, kt, M.h);
+  const b = buyGuide(e.cat, e.qty, e.unit, kt, M.h, e.essential);
+  // The bold line says what to buy; below it, water and food say how much and everything else its category
   return { ...b, sub: e.unit ? e.text : catLabel(e.cat), gain: e.done || e.kitId === "none" || M.overall == null ? 0 : Math.max(0, scoreIfShopped(M, [e]) - M.overall) };
 }
 const money = p => p === undefined ? "" : p === null ? "Prescription" : p === 0 ? "From home" : `$${p}`;
 const shopItems = () => Array.isArray(S.shopping?.items) ? S.shopping.items : [];
 const saveShop = items => setDoc("household", "shopping", { items, updatedAt: Date.now() }).catch(() => {});
+/* Adds these household gaps to the shopping list, a line each, and says so. */
+function shopGaps(M, add) {
+  if (!add.length) { toast("Already on your shopping list"); return; }
+  saveShop([...shopItems(), ...add.map(g => shopFromGap(g, M.h))]);
+  toast(add.length === 1 ? `Added ${gapName(add[0])} to your shopping list` : `Added ${add.length} items to your shopping list`);
+}
+/* Gaps and list lines match on category plus essential. Each line still to buy covers one gap, so two
+   prescriptions lines cover two people's, and an old line with no essential covers none of the five's. */
+const gapKey = x => `${x.cat}|${typeof x.essential === "string" ? x.essential : ""}`;
+function splitListed(gaps, lines = shopItems().filter(x => !x.done)) {
+  const n = new Map();
+  for (const e of lines) n.set(gapKey(e), (n.get(gapKey(e)) || 0) + 1);
+  const on = [], off = [];
+  for (const g of gaps) { const k = gapKey(g), left = n.get(k) || 0; if (left) { n.set(k, left - 1); on.push(g); } else off.push(g); }
+  return { on, off };
+}
+// A gap inside a sentence: an essential as named, a category lower-cased unless it starts with an acronym ("CPR & airway")
+const gapName = g => g.essential ? g.label : catLabel(g.cat).replace(/^[A-Z](?=[a-z])/, c => c.toLowerCase());
 function shopFromGap(g, h) {
   const p = gapPlan(g, h);
-  return { id: uid(), cat: g.cat, qty: p.qty, unit: p.unit, name: p.name, text: p.text, note: p.hint, kits: p.kits, kitId: "", done: false, at: Date.now() };
+  return { id: uid(), cat: g.cat, ...(g.essential ? { essential: g.essential } : {}), qty: p.qty, unit: p.unit, name: p.name, text: p.text, note: p.hint, kits: p.kits, kitId: "", done: false, at: Date.now() };
 }
 /* The kit a bought item goes into: the one picked on the row, else the first kit of a type that covers the gap. */
 function shopKit(e) {
@@ -1035,14 +1328,14 @@ const PACK = {
   power: { g: 250, ml: 300 }, communication: { g: 350, ml: 1000 }, documents: { g: 150, ml: 300 },
   shelter: { g: 900, ml: 3000, lite: { name: "emergency bivvy", many: "emergency bivvies", g: 110, ml: 250, trade: "far lighter, but less warm than a sleeping bag" } },
   clothing: { g: 600, ml: 2500 }, hygiene: { g: 150, ml: 300 }, sanitation: { g: 400, ml: 1200 },
-  tools: { g: 400, ml: 700, lite: { name: "multi-tool", g: 250, ml: 150, trade: "one tool for most small jobs" } },
+  tools: { g: 400, ml: 700, lite: { name: "multi-tool", ess: "multitool", g: 250, ml: 150, trade: "one tool for most small jobs" } },
   masks: { g: 15, ml: 100 }, fire_safety: { g: 1500, ml: 3000 }, car: { g: 1500, ml: 3000 },
   comfort: { g: 150, ml: 400 }, pets: { g: 500, ml: 1500 }, baby: { g: 400, ml: 1500 }, kids: { g: 200, ml: 600 }, other: { g: 300, ml: 600 },
 };
 const WATER_G = 1040, WATER_ML = 1100, FOOD_KCAL_G = 2.5, BAR_KCAL_G = 4.8, BAR_KCAL = 3600;
 /* An item's weight and size for the whole line and per unit; `est` when either is a guess. */
 function itemLoad(it) {
-  const c = CATS[it.category] ? it.category : "other", q = Math.max(1, num(it.qty)), p = PACK[c] || PACK.other;
+  const c = Object.hasOwn(CATS, it.category) ? it.category : "other", q = Math.max(1, num(it.qty)), p = Object.hasOwn(PACK, c) ? PACK[c] : PACK.other;
   const L = c === "water" ? num(it.liters) : 0, kc = c === "food" ? num(it.kcal) : 0;
   const estG = L ? L * WATER_G : kc ? kc / FOOD_KCAL_G : p.g * q;
   const estMl = L ? L * WATER_ML : kc ? kc / FOOD_KCAL_G * 1.6 : p.ml * q;
@@ -1055,26 +1348,43 @@ const bodyKg = m => { const y = yearsOf(m); return y == null ? { infant: 10, chi
 const carryShare = m => { const y = yearsOf(m), g = groupOf(m); return g === "infant" || y != null && y < 5 ? 0 : hasCond("mobility")(m) || g === "senior" || g === "child" ? .1 : g === "teen" ? .15 : .2; };
 const carryKg = m => Math.round(bodyKg(m) * carryShare(m) * 2) / 2;
 const PACK_L = { go: 40, car: 60 };
-/* Go-bags are limited by what their strongest carrier can lift and by the bag's litres; car kits by
-   the space they get in the trunk. Home supplies have no limits. */
+const CONTAINER_KINDS = { backpack: "Backpack", duffel: "Duffel", box: "Bin or box", other: "Other" };
+const CTR_MAX = { name: 60, size: 40, rating: 20 };
+const cutText = (v, n) => typeof v === "string" ? [...v.trim()].slice(0, n).join("").trim() : "";
+/* The kit's own bag or bin (#96), typed by hand, so any value may be odd: the only reader of kit.container.
+   Its litres stay in kit.bagL; emptyG 0 means its empty weight wasn't entered. */
+function containerOf(kit) {
+  const c = kit.container;
+  if (!PACK_L[kit.type] || Object.prototype.toString.call(c) !== "[object Object]") return null;
+  return { kind: typeof c.kind === "string" && Object.hasOwn(CONTAINER_KINDS, c.kind) ? c.kind : "other", name: cutText(c.name, CTR_MAX.name),
+    emptyG: Math.round(num(c.emptyG)), size: cutText(c.size, CTR_MAX.size), rating: cutText(c.rating, CTR_MAX.rating) };
+}
+/* Go-bags are limited by what their strongest carrier can lift, the bag's own weight included, and by
+   the bag's litres; car kits by the space they get in the trunk. Home supplies have no limits. */
 function kitLimits(kit, h) {
   if (!PACK_L[kit.type]) return null;
   const carriers = h.members.map((m, i) => ({ name: personName(m, i), kg: carryKg(m) })).filter(c => c.kg > 0).sort((a, b) => b.kg - a.kg);
-  const suggestedKg = kit.type === "go" ? carriers[0]?.kg || null : null;
+  const suggestedKg = kit.type === "go" ? carriers[0]?.kg || null : null, container = containerOf(kit);
   return { kg: kit.type === "go" ? num(kit.carryKg) || suggestedKg : null, L: num(kit.bagL) || PACK_L[kit.type], suggestedKg, suggestedL: PACK_L[kit.type],
-    carrier: carriers[0]?.name || "", totalKg: carriers.reduce((a, c) => a + c.kg, 0), carriers: carriers.length };
+    carrier: carriers[0]?.name || "", totalKg: carriers.reduce((a, c) => a + c.kg, 0), carriers: carriers.length, container, emptyG: container?.emptyG || 0 };
 }
 /* What to pack within a kit's limits. Each line splits into steps of whole units (at most 12 per
    line); the search adds the step that gains the most readiness for its share of the tighter limit,
    then tries one-for-one swaps, refilling after each. The score is capped at need per checklist line,
    so each extra unit is worth less than the last, and this lands at or near the best possible pack.
    Water filters and tablets add no litres but are always kept. Points come from kitReadiness on the
-   chosen items, so they are the points the kit would really score. */
+   chosen items, so they are the points the kit would really score. The bag's own weight comes off the
+   carry limit, so it changes what fits but never what an item scores; g and every weight here are items only. */
 function packPlan(kit, ready, lim) {
   const lines = S.items.filter(i => i.kitId === kit.id).map(it => ({ it, ...itemLoad(it) }));
-  const limG = lim.kg ? lim.kg * 1000 : Infinity, limMl = lim.L * 1000;
+  const limG = lim.kg ? Math.max(0, lim.kg * 1000 - (lim.emptyG || 0)) : Infinity, limMl = lim.L * 1000;
   const pick = keep => lines.flatMap((l, i) => keep[i] ? [{ ...l.it, qty: keep[i], liters: num(l.it.liters) * keep[i] / l.q, kcal: num(l.it.kcal) * keep[i] / l.q }] : []);
-  const raw = keep => rawScore(ready.rows.map(r => { const have = haveOf(r.cat, stockItems(pick(keep))); return { ...r, have, cov: r.need > 0 ? Math.min(1, have / r.need) : 1 }; }));
+  const raw = keep => { const st = stockItems(pick(keep)); return rawScore(ready.rows.map(r => fillRow(r, st))); };
+  /* Water filters and tablets are kept whatever the limits. Items in the five checklist categories not yet tagged
+     earn nothing until they are, but are likely an essential: they go back in while the pack has room, and are
+     never offered to take out. */
+  const must = lines.map(l => l.it.category === "water" && !num(l.it.liters));
+  const untagged = lines.map(l => ready.rows.some(r => r.ess && r.cat === l.it.category) && !essentialOf(l.it) && expState(l.it) !== "expired");
   const sumG = keep => lines.reduce((a, l, i) => a + l.unitG * keep[i], 0), sumMl = keep => lines.reduce((a, l, i) => a + l.unitMl * keep[i], 0);
   const fitsIn = keep => sumG(keep) <= limG + 1e-6 && sumMl(keep) <= limMl + 1e-6;
   const step = (i, keep, dir) => dir > 0 ? Math.min(lines[i].q - keep[i], Math.ceil(lines[i].q / 12)) : Math.min(keep[i], Math.ceil(lines[i].q / 12));
@@ -1082,7 +1392,7 @@ function packPlan(kit, ready, lim) {
   const fits = fitsIn(full);
   let best = null;
   if (!fits) {
-    let keep = lines.map(l => l.it.category === "water" && !num(l.it.liters) ? l.q : 0), cur = raw(keep);
+    let keep = lines.map((l, i) => must[i] ? l.q : 0), cur = raw(keep);
     const fill = () => {
       for (;;) {
         let pickI = -1, pickR = 0, pickS = 0, pickN = null;
@@ -1109,6 +1419,7 @@ function packPlan(kit, ready, lim) {
     };
     let rounds = 0;
     do fill(); while (swap() && ++rounds < 60);
+    lines.forEach((l, i) => { while (untagged[i] && keep[i] < l.q) { const next = keep.slice(); next[i]++; if (!fitsIn(next)) break; keep = next; } });
     const chosen = pick(keep);
     best = { keep, items: chosen, score: kitReadiness(kit, ready.h, ready.drivers, chosen).score, g: sumG(keep), ml: sumMl(keep),
       leave: lines.map((l, i) => ({ it: l.it, n: l.q - keep[i], g: l.unitG * (l.q - keep[i]) })).filter(x => x.n > 0).sort((a, b) => b.g - a.g) };
@@ -1117,27 +1428,28 @@ function packPlan(kit, ready, lim) {
   const lean = full.slice(), onList = new Set(ready.rows.map(r => r.cat));
   for (const i of lines.map((l, i) => i).sort((a, b) => lines[b].unitG - lines[a].unitG)) {
     const l = lines[i];
-    if (l.it.category === "water" && !num(l.it.liters) || l.it.category === "food" && !num(l.it.kcal)) continue;
+    if (must[i] || untagged[i] || l.it.category === "food" && !num(l.it.kcal)) continue;
     let lo = 0, hi = lean[i];
     while (lo < hi) { const mid = Math.ceil((lo + hi) / 2), t = lean.slice(); t[i] -= mid; if (raw(t) >= fullRaw - 1e-9) lo = mid; else hi = mid - 1; }
     lean[i] -= lo;
   }
   const takeOut = lines.map((l, i) => ({ it: l.it, n: l.q - lean[i], g: l.unitG * (l.q - lean[i]),
-    why: expState(l.it) === "expired" ? "Expired, so it adds nothing" : onList.has(CATS[l.it.category] ? l.it.category : "other") ? "More than this kit needs" : "Not on this kit's checklist" }))
+    why: expState(l.it) === "expired" ? "Expired, so it adds nothing" : essentialOf(l.it) === "none" ? "Not one of the essentials" : onList.has(CATS[l.it.category] ? l.it.category : "other") ? "More than this kit needs" : "Not on this kit's checklist" }))
     .filter(x => x.n > 0).sort((a, b) => b.g - a.g);
-  /* Lighter kinds of the same thing: same count on the checklist (same calories for food). */
+  /* Lighter kinds of the same thing: same count on the checklist (same calories for food). In the five
+     categories only an item that is the essential the lighter one fills, so the swap keeps it. */
   const swaps = lines.flatMap(l => {
     const c = CATS[l.it.category] ? l.it.category : "other", lite = PACK[c]?.lite, name = String(l.it.name || "");
     if (c === "food" && num(l.it.kcal) && !/ration|\bbars?\b|freeze|mre/i.test(name)) {
       const g2 = num(l.it.kcal) / BAR_KCAL_G;
       return l.g - g2 >= 200 ? [{ it: l.it, to: `${pl(Math.ceil(num(l.it.kcal) / BAR_KCAL), "ration bar")} (3,600 kcal each)`, saveG: l.g - g2, trade: "same calories, no cooking or water needed", est: !num(l.it.grams) }] : [];
     }
-    if (!lite || new RegExp(lite.name.split(" ").at(-1), "i").test(name) || l.unitG < 1.5 * lite.g) return [];
+    if (!lite || essentialList(c).length && essentialOf(l.it) !== lite.ess || new RegExp(lite.name.split(" ").at(-1), "i").test(name) || l.unitG < 1.5 * lite.g) return [];
     return [{ it: l.it, to: pl(l.q, lite.name, lite.many), saveG: (l.unitG - lite.g) * l.q, trade: lite.trade, est: !num(l.it.grams) }];
   }).sort((a, b) => b.saveG - a.saveG).slice(0, 5);
   const waterG = lines.filter(l => l.it.category === "water").reduce((a, l) => a + l.g, 0);
   const waterRow = ready.rows.find(r => r.cat === "water");
-  return { lines, fits, g: sumG(full), ml: sumMl(full), score: ready.score, best, takeOut, swaps, waterG,
+  return { lines, fits, g: sumG(full), ml: sumMl(full), bagG: lim.emptyG || 0, score: ready.score, best, takeOut, swaps, waterG,
     waterNeedG: waterRow ? waterRow.need * WATER_G : 0, estN: lines.filter(l => l.est).length };
 }
 /* Splits a kit's score across its items: each checklist row's points go to the items filling it,
@@ -1145,10 +1457,19 @@ function packPlan(kit, ready, lim) {
 function itemValues(kit, r) {
   const W = r.rows.reduce((a, x) => a + x.w, 0) || 1;
   const byRow = Object.fromEntries(r.rows.map(x => [x.cat, x]));
-  const out = {};
-  for (const it of S.items.filter(i => i.kitId === kit.id)) {
+  const out = {}, items = S.items.filter(i => i.kitId === kit.id), st = stockItems(items);
+  for (const it of items) {
     const c = CATS[it.category] ? it.category : "other";
     if (expState(it) === "expired") { out[it.id] = { pts: 0, note: "Expired, so it doesn't count" }; continue; }
+    /* A named essential's points are shared by the items tagged with it; an untagged item earns none yet. */
+    const row = byRow[c];
+    if (row?.ess) {
+      const e = essentialOf(it), n = e && e !== "none" ? st.ess[c]?.[e] || 0 : 0;
+      const filled = n ? row.ess.filter(x => x.id === e && x.have).length : 0;
+      out[it.id] = { pts: n ? 100 * row.w * filled / row.need / W / n : 0,
+        note: !e ? "Pick which essential it is so it counts" : e === "none" ? "Not one of the essentials, so it doesn't count" : n > filled ? "Kit has more of these than it needs" : "" };
+      continue;
+    }
     let pts = 0, over = false;
     const add = (row, amt) => {
       if (!row || !amt || !row.have) return;
@@ -1173,7 +1494,61 @@ function amount(row, h, days = "household-days") {
   if (row.unit === "kcal") return `${f1(row.have / h.kcalDay)} of ${f1(row.need / h.kcalDay)} ${days}`;
   return `${row.have} of ${row.need}`;
 }
-const chipsFor = (rows, h, days) => rows.map(row => `<span class="chip ${row.cov >= 1 ? "full" : ""}">${icon(row.cat, "ic ic-s")}${esc(catLabel(row.cat))} · ${amount(row, h, days).replace(/<[^>]+>/g, "")}</span>`).join("");
+// The counted categories, one chip each; the five of named essentials are blocks (essBlock)
+const chipsFor = (rows, h, days) => rows.filter(row => !row.ess).map(row => `<span class="chip ${row.cov >= 1 ? "full" : ""}">${icon(row.cat, "ic ic-s")}${esc(catLabel(row.cat))} · ${amount(row, h, days).replace(/<[^>]+>/g, "")}</span>`).join("");
+/* The household gap a row's missing essential is: the same essential with the same label. There is none when every
+   emergency that counts has it (another kit covers it, or the emergency doesn't apply), so adding it moves no score. */
+const essGap = (M, cat, e) => M.gaps.find(g => g.cat === cat && g.essential === e.id && g.label === e.label);
+// What ticking a gap's shopping line adds, worked out once per model: the shopping list's sum, shown on a kit's checklist and its tiles
+const gapGains = new WeakMap();
+function gapGain(M, g) {
+  if (!g || M.overall == null) return 0;
+  let c = gapGains.get(M); if (!c) gapGains.set(M, c = new Map());
+  if (!c.has(g)) c.set(g, Math.max(0, scoreIfShopped(M, [shopFromGap(g, M.h)]) - M.overall));
+  return c.get(g);
+}
+const itemNames = its => { const n = its.map(i => String(i.name || "Unnamed item")); return n.length > 3 ? `${n.slice(0, 3).join(", ")} and ${n.length - 3} more` : orList(n, "and"); };
+/* A category of named essentials' notes, as escaped text: its items still to tag, and its expired ones, which don't count. */
+function essNotes(cat, items) {
+  const mine = items.filter(it => it.category === cat), old = mine.filter(it => expState(it) === "expired");
+  const untagged = mine.filter(it => expState(it) !== "expired" && !essentialOf(it));
+  return [untagged.length && `${pl(untagged.length, "item")} still to tag: ${esc(itemNames(untagged))}`,
+    old.length && `${esc(itemNames(old))} expired${old.length === 1 ? " " + esc(old[0].expires) : ""}, so ${old.length === 1 ? "it doesn't" : "they don't"} count`].filter(Boolean);
+}
+/* One of the five categories as a block in a kit's panel: the essentials in (each once, however many items fill it),
+   the ones missing with the points adding each is worth, the most first, an Add button for those not on the list yet,
+   and its notes (essNotes). `items` are the kit's, and `at` says which kit ("kit:<id>") the block is in. */
+function essBlock(M, row, items, at) {
+  const live = items.filter(it => it.category === row.cat && expState(it) !== "expired");
+  const off = new Set(splitListed(M.gaps).off);
+  const miss = row.ess.filter(e => !e.have).map(e => { const g = essGap(M, row.cat, e); return { e, g, gain: gapGain(M, g) }; }).sort((a, b) => b.gain - a.gain);
+  const add = new Set(miss.filter(x => x.g && off.has(x.g)).map(x => x.g)).size;
+  const slots = id => row.ess.filter(e => e.id === id).length;
+  const has = row.ess.filter(e => e.have).map(e => {
+    const its = live.filter(it => essentialOf(it) === e.id);
+    return `<span class="chip ess full" title="${esc(its.map(i => i.name).join(", "))}">${icon("yes", "ic ic-s")}<span class="vh">Have </span>${esc(e.label)}${its.length > 1 && slots(e.id) === 1 ? `<span class="muted"> · ${its.length} items, counts once</span>` : ""}</span>`;
+  });
+  const lacks = miss.map(({ e, gain }) => `<span class="chip ess miss">${icon("no", "ic ic-s")}<span class="vh">Missing </span>${esc(e.label)}${gain ? ` · <span class="gain" title="Readiness points adding it adds">+${gain}</span>` : ""}</span>`);
+  const foot = [
+    add ? `<button class="btn ghost sm" data-act="shopAddBlock" data-cat="${esc(row.cat)}" data-at="${esc(at)}" ${D()}>Add ${add} to list</button>`
+      : miss.some(x => x.g) ? `<span class="small muted">On your shopping list</span>` : "",
+    ...essNotes(row.cat, items).map(n => `<span class="small muted">${n}</span>`),
+  ].filter(Boolean);
+  const pct = Math.round(row.cov * 100);
+  return `<section class="ess-blk">
+    <div class="ess-h">${icon(row.cat)}<b>${esc(catLabel(row.cat))}</b><span class="of">${row.have} of ${row.need}</span><div class="bar" style="--c:${statusColor(pct)}"><span style="width:${pct}%"></span></div></div>
+    <div class="chips">${[...has, ...lacks].join("")}</div>
+    ${foot.length ? `<div class="ess-f">${foot.join("")}</div>` : ""}
+  </section>`;
+}
+/* A kit's checklist: a block for each category of named essentials, then the counted ones as chips. */
+function checklist(M, rows, h, days, items, at) {
+  const counted = chipsFor(rows, h, days);
+  return rows.filter(r => r.ess).map(r => essBlock(M, r, items, at)).join("")
+    + (counted ? `<p class="eyebrow">Counted by amount</p><div class="chips">${counted}</div>` : "");
+}
+/* A missing essential's name inside a sentence: "insurance cards", but "ID copies" and "Sam's prescriptions" as they are. */
+const essWord = (cat, label) => essentialList(cat).some(x => label === x.label || x.perMed && label.startsWith(x.label + " (")) && !/^.[A-Z]/.test(label) ? label[0].toLowerCase() + label.slice(1) : label;
 const modeLine = hz => hz.when || `${MODES[hz.mode].label} · ${hz.days === 1 ? "24 h" : hz.days === 3 ? "72 h" : hz.days + " days"}`;
 
 /* ---------- views ---------- */
@@ -1190,27 +1565,8 @@ function viewBanner() {
   return parts.join("");
 }
 
-function actBtn(a, i) {
-  const b = i ? "btn ghost sm" : "btn sm";
-  if (a.kind === "setup") return `<button class="${b}" data-act="startWizard" ${D()}>Start</button>`;
-  if (a.kind === "hazards") return S.hzCheck?.state === "working" ? `<span class="working small"><span class="pulse"></span>Checking…</span>` : `<button class="${b}" data-act="hzCheck" ${D()}>Check now</button>`;
-  if (a.kind === "ages") return `<button class="${b}" data-act="tab" data-v="household">Add ages</button>`;
-  if (a.kind === "refill" || a.kind === "plan") return `<button class="${b}" data-act="tab" data-v="plan">Open plan</button>`;
-  if (a.kind === "shop") return `<button class="${b}" data-act="tab" data-v="shop">Open list</button>`;
-  if (a.kind === "refile") return `<button class="${b}" data-act="refile" ${D()}>Move</button>`;
-  return `<button class="${b}" data-act="shopAdd" data-cat="${a.g.cat}" ${D()}>Add to list</button>`;
-}
-const actRow = (a, i) => `<li class="act">
-  <span class="act-n" title="Step ${i + 1}">${icon(a.kind === "gap" ? a.g.cat : KIND_ICON[a.kind])}</span>
-  <div class="act-b"><b>${esc(a.title)}</b><p class="small">${esc(a.detail)}</p>${a.why ? `<p class="small muted">${esc(a.why)}</p>` : ""}${a.kind === "hazards" && S.hzCheck?.state === "error" ? `<p class="small" style="color:var(--bad)">${esc(S.hzCheck.msg)}</p>` : ""}</div>
-  <div class="act-do">${a.gain > 0 ? `<span class="gain mono" title="Readiness points this adds">+${a.gain}</span>` : ""}${actBtn(a, i)}</div>
-</li>`;
 function viewOverview(M) {
-  const { h, results, overall, gaps, exp } = M;
-  const N = nextActions(M);
-  const nGap = N.filled.length;
-  const listed = new Set(shopItems().filter(x => !x.done).map(x => x.cat));
-  const unlisted = gaps.filter(g => !listed.has(g.cat)).length;
+  const { h, results, overall, exp } = M;
   const sc = overall ?? 0;
   const c = statusColor(sc);
   const assessed = S.hazards?.assessedAt;
@@ -1222,20 +1578,9 @@ function viewOverview(M) {
   const offCount = results.filter(r => !applies(r)).length;
   const group = (label, rows, note) => { rows = S.showOff ? rows : rows.filter(applies); return rows.length ? `<div class="grp">
     <div class="grp-h"><span class="eyebrow">${label}</span>${note ? `<span class="small muted">${note}</span>` : ""}</div>
-    <div class="hz">${rows.map(r => hzRow(r, h)).join("")}</div></div>` : ""; };
+    <div class="hz-grid">${rows.map(r => hzRow(r, h, M)).join("")}</div></div>` : ""; };
   return `
-  <div class="panel next">
-    <div class="stack">
-      <div class="stack" style="gap:2px">
-        <p class="eyebrow">Next steps</p>
-        <h2>${N.acts.length ? (N.acts.length === 1 ? "Your next step" : `Your next ${N.acts.length} steps`) : "Nothing urgent"}</h2>
-        <p class="small muted">${nGap && overall != null && N.after > overall ? `${nGap === N.acts.length ? `Filling ${nGap === 1 ? "this gap" : `these ${nGap} gaps`}` : `Adding ${nGap === 1 ? "the supply" : `the ${nGap} supplies`} below`} takes readiness from ${overall} to ${N.after}.`
-          : N.acts.length ? "Start here. These shape every number the app works out."
-          : "No gaps against the emergencies you've marked as relevant. Keep an eye on expiry dates."}</p>
-      </div>
-      ${N.acts.length ? `<ol class="acts">${N.acts.map(actRow).join("")}</ol>` : ""}
-      ${N.more > 0 ? `<div class="row"><span class="small muted">${N.more} more gap${N.more === 1 ? "" : "s"} after these.</span>${S.canWrite && unlisted ? `<button class="btn ghost sm" data-act="shopAddAll">${unlisted === gaps.length ? `Put all ${unlisted} on your shopping list` : `Add ${unlisted} more to your shopping list`}</button>` : ""}</div>` : ""}
-    </div>
+  <div class="panel sum">
     <div class="sum-score">
       <p class="eyebrow">Household readiness</p>
       <div class="ring" style="--c:${c}" role="img" aria-label="Readiness ${sc} out of 100">
@@ -1247,9 +1592,6 @@ function viewOverview(M) {
       <p class="small muted">${hzNote}</p>
       ${how("score", "Your score is averaged across the emergencies that apply to you, weighted by how likely each one is, how bad it is to face unprepared and how much it matters to you.")}
     </div>
-  </div>
-
-  <div class="ov-cols">
     <div class="stack">
       <div class="sec-h"><h2>Kits</h2><span class="small muted">Each against a standard kit of its type</span></div>
       ${S.kits.length ? `<div class="hz">${[...S.kits].sort((a, b) => M.kitRes[a.id].score - M.kitRes[b.id].score).map(k => kitRow(k, M.kitRes[k.id])).join("")}</div>`
@@ -1258,19 +1600,25 @@ function viewOverview(M) {
       ${exp.length ? `<div class="hz">${exp.map(x => `<div class="exp-row"><span class="ell"><b>${esc(x.it.name)}</b> <span class="muted">· ${esc(x.kit)}</span></span><span class="mono flag ${x.st}">${x.st === "expired" ? "Expired" : "Expires"} ${esc(x.it.expires)}</span></div>`).join("")}</div>`
         : `<p class="small muted">Nothing expires in the next 90 days${S.items.some(i => i.expires) ? "" : ". Add expiry dates to food, water, batteries and medications so they show up here"}.</p>`}
     </div>
-    <div class="stack">
-      <div class="sec-h"><h2>Emergencies</h2><span class="small muted">Open one to see what it needs, or to change how likely it is</span></div>
-      ${group("Disasters and outages", sorted.filter(r => !r.hz.group))}
-      ${group("Health emergencies", sorted.filter(r => r.hz.group === "health"), "Set from who lives here and their health on the Household tab. A first-aid course matters more than any kit.")}
-      ${group("Everyday", sorted.filter(r => r.hz.group === "everyday"), "Small things that go wrong often. A kit that handles them is one you'll open, and so keep stocked.")}
-      ${offCount ? `<div><button class="btn ghost sm" data-act="toggleOff" aria-expanded="${!!S.showOff}">${S.showOff ? "Hide" : "Show"} ${offCount} that ${offCount === 1 ? "doesn't" : "don't"} apply to you</button></div>` : ""}
-    </div>
+  </div>
+
+  <div class="stack">
+    <div class="sec-h"><h2>Emergencies</h2><div class="legend"><span class="need miss">${icon("water")}Missing</span><span class="need part">${icon("water")}Some</span><span class="need have">${icon("yes")}Have</span><span>${lik("moderate")}How likely</span><span><span class="imp-k" aria-hidden="true">★</span>Matters more to you</span></div></div>
+    ${group("Disasters and outages", sorted.filter(r => !r.hz.group))}
+    ${group("Health emergencies", sorted.filter(r => r.hz.group === "health"), "Set from who lives here and their health on the Household tab. A first-aid course matters more than any kit.")}
+    ${group("Everyday", sorted.filter(r => r.hz.group === "everyday"), "Small things that go wrong often. A kit that handles them is one you'll open, and so keep stocked.")}
+    ${offCount ? `<div><button class="btn ghost sm" data-act="toggleOff" aria-expanded="${!!S.showOff}">${S.showOff ? "Hide" : "Show"} ${offCount} that ${offCount === 1 ? "doesn't" : "don't"} apply to you</button></div>` : ""}
   </div>`;
 }
 function kitRow(k, r) {
   const c = statusColor(r.score);
   const miss = r.rows.filter(x => x.cov < 1).sort((a, b) => a.cov - b.cov);
-  const missText = miss.length ? "Short on " + miss.map(x => catLabel(x.cat).toLowerCase()).join(", ") + "." : "Has everything on its checklist.";
+  // The missing essentials by name, in the categories' order, then the counted categories it is short on
+  const lacks = Object.keys(ESSENTIALS).flatMap(cat => miss.find(x => x.cat === cat && x.ess)?.ess.filter(e => !e.have).map(e => essWord(cat, e.label)) || []);
+  const short = miss.filter(x => !x.ess).map(x => catLabel(x.cat).toLowerCase());
+  const missText = !miss.length ? "Has everything on its checklist."
+    : [lacks.length ? `Missing ${lacks.length > 3 ? `${lacks.slice(0, 2).join(", ")} and ${lacks.length - 2} more` : orList(lacks, "and")}.` : "",
+      short.length ? `Short on ${short.join(", ")}.` : ""].filter(Boolean).join(" ");
   return `<div class="kit-row">
     <button class="kit-name ell" data-act="gotoKit" data-id="${esc(k.id)}" title="Open ${esc(k.name)}"><b>${esc(k.name)}</b><span class="mode">${esc(r.std.label)} · ${esc(servesLine(r))}</span></button>
     <div class="bar" style="--c:${c}"><span style="width:${r.score}%"></span></div>
@@ -1278,7 +1626,7 @@ function kitRow(k, r) {
     <p class="kit-miss small muted ell" title="${esc(missText)}">${esc(missText)}</p>
   </div>`;
 }
-function kitReadyPanel(kit, r) {
+function kitReadyPanel(kit, r, M = model()) {
   const c = statusColor(r.score);
   return `<div class="panel stack">
     <div class="row" style="justify-content:space-between;align-items:flex-end">
@@ -1287,7 +1635,11 @@ function kitReadyPanel(kit, r) {
       ${S.canWrite ? `<label class="f">People this kit is for<input type="number" min="1" max="50" id="kit-serves-${esc(kit.id)}" value="${r.serves}" data-change="serves" data-id="${esc(kit.id)}" style="width:110px"></label>` : ""}
     </div>
     <div class="bar" style="--c:${c}"><span style="width:${r.score}%"></span></div>
-    <div class="chips">${chipsFor(r.rows, r.kh, "days")}</div>
+  </div>`;
+}
+function kitChecklist(kit, r, M = model()) {
+  return `<div class="panel stack kit-ck">
+    <div>${checklist(M, r.rows, r.kh, "days", S.items.filter(i => i.kitId === kit.id), "kit:" + kit.id)}</div>
     <p class="small muted">${r.drivers.length ? `Checklist covers ${esc(r.drivers.map(d => d.hz.name.toLowerCase()).join(", "))}. ` : ""}${r.whole ? "" : "Pet, baby and kids' supplies are expected only in kits for the whole household. "}Expired items don't count.</p>
   </div>`;
 }
@@ -1297,6 +1649,49 @@ const lbText = g => f1(g / LB_G);
 const lb1 = g => Math.round(g / LB_G * 10) / 10;
 const gOfLb = lb => Math.round(num(lb) * LB_G);
 const kgOfLb = lb => Math.round(num(lb) / KG_LB * 100) / 100;
+/* The bag by weight (m "g") or space: bands under 18px merge into one, and a load over the limit rises above the rim.
+   By weight, the bag's own empty weight is one grey band at the bottom, never merged or shortened. */
+function bagFig(P, lim, m) {
+  const w = m === "g", k = w ? LB_G : 1e3, u = w ? " lb" : " L", max = (w ? lim.kg : lim.L) * 1e3, bagG = w && P.bagG || 0, have = (w ? P.g : P.ml) + bagG, c = lim.container;
+  // Bands fill the stack, which sits 4px + 5px inside the bag (.bag-st), so a full bag's bands are exactly its height.
+  const r = Math.max(1, have / max), tall = Math.round(240 * Math.min(r, 1.5)), inner = tall - 9, px = inner / max / r, body = Math.round(tall / r);
+  const xs = P.lines.map(l => [w ? l.g : l.ml, l.it]).sort((a, b) => b[0] - a[0]), sm = xs.filter(x => x[0] * px < 18), n = sm.length > 1 && sm.length;
+  const rows = n ? xs.filter(x => !sm.includes(x)).concat([[sm.reduce((a, x) => a + x[0], 0)]]) : xs;
+  // A band is at least 18px to fit its label; whatever that adds past the stack comes off the biggest item's band, never the bag's.
+  const bh = bagG && Math.max(18, Math.round(bagG * px)), hs = rows.map(([v]) => Math.max(18, Math.round(v * px))), extra = hs.reduce((a, h) => a + h, bh) - inner;
+  if (extra > 0 && hs.length) hs[0] = Math.max(18, hs[0] - extra);
+  // The free band is what's left; under 18px its label would be cut in half, so it shows none (the bag's label has it).
+  const band = ([v, it], i) => `<div class="bag-b" data-v="${Math.round(v)}" ${it ? `data-id="${esc(it.id)}" style="--c:var(--zone-${ZONES.indexOf(zoneOf(it.category))});` : `data-n="${n}" style="`}height:${hs[i]}px"><span class="ell">${it ? esc(String(it.name ?? "").trim() || catLabel(it.category)) : n + " small items"}</span>${f1(v / k) + u}</div>`;
+  const own = bagG ? `<div class="bag-b bag-own" data-v="${Math.round(bagG)}" style="height:${bh}px"><span class="ell">${esc(c.name || CONTAINER_KINDS[c.kind])}</span>${f1(bagG / k) + u}</div>` : "";
+  // With a container the label names it, and gives its litres as saved (to 0.01 L)
+  const where = c ? ` in the ${esc(c.name || CONTAINER_KINDS[c.kind].toLowerCase())}${bagG ? ", bag included" : ""}` : "";
+  return `<div class="bag${c?.kind === "box" ? " box" : ""}${r > 1 ? " over" : ""}" role="img" aria-label="${f1(have / k)} of ${(c && !w ? (Math.round(max / 10) / 100).toLocaleString() : f1(max / k)) + u} packed${where}" style="height:${tall}px"><div class="bag-body" style="height:${body}px"></div>
+    <div class="bag-st">${own}${rows.map(band).join("")}${r > 1 ? "" : `<div class="bag-free">${extra <= -18 ? f1((max - have) / k) + u + (w ? " to spare" : " free") : ""}</div>`}</div>
+    ${r > 1 ? `<div class="bag-over" style="height:${tall - body}px"><span>${f1((have - max) / k) + u} over</span></div>` : ""}</div>`;
+}
+// "What holds this kit" (#96): typed facts only, never a guess. Its editor is kit.container's only writer
+const ctrVals = (kit, c = containerOf(kit)) => ({ name: "", size: "", rating: "", kind: kit.type === "go" ? "backpack" : "box", ...c, L: num(kit.bagL) || "",
+  lb: c?.emptyG ? lb1(c.emptyG) : "", ...S.ctr });
+function containerCard(kit, h) {
+  const lim = kitLimits(kit, h), w = S.canWrite, c = lim?.container, id = esc(kit.id), hd = `<p class="eyebrow">What holds this kit</p>`;
+  if (!lim || !c && !w) return "";
+  const open = (t, cls = "btn ghost sm", f = "name") => `<button type="button" class="${cls}" data-act="ctrOpen" data-id="${id}" data-f="${f}">${t}</button>`;
+  if (w && S.ctr?.id === kit.id) {
+    const v = ctrVals(kit), fld = (f, label, ph) => `<label class="f">${label}<input id="ctr-${f}" value="${esc(v[f])}" data-input="ctr" data-f="${f}" ${CTR_MAX[f] ? `type="text" maxlength="${CTR_MAX[f]}"` : `type="number" min="0" step="any"`}${ph ? ` placeholder="${ph}"` : ""}></label>`;
+    return `<form class="panel stack ctr-card" data-submit="ctr">${hd}
+      <div class="seg" role="group" aria-label="What kind">${Object.entries(CONTAINER_KINDS).map(([k, l]) => `<button type="button" id="ctr-k-${k}" data-act="ctrKind" data-k="${k}" aria-pressed="${v.kind === k}">${l}</button>`).join("")}</div>
+      ${fld("name", "Name")}
+      <div class="ctr-g">${fld("L", "Capacity, L")}${fld("lb", "Empty weight, lb")}${fld("size", "Outside size", "19 × 12.5 × 7.5 in")}${fld("rating", "Weather rating", "IP65")}</div>
+      <div class="row"><button class="btn" type="submit">Save</button><button class="btn ghost" type="button" data-act="ctrCancel">Cancel</button></div></form>`;
+  }
+  if (!c) return `<div class="panel stack ctr-card">${hd}${open("+ Add the bag or box", "btn ghost ctr-add")}</div>`;
+  const L = Math.round(num(kit.bagL) * 100) / 100, g = c.emptyG;
+  const facts = [[L, L + " L", "Capacity", "L"], [g, lbText(g) + " lb", "Empty weight", "lb"], [c.size, esc(c.size), "Outside size", "size"], [c.rating, esc(c.rating), "Weather rating", "rating"]]
+    .map(([on, t, l, f]) => on ? `<span class="chip" title="${l}">${t}</span>` : w ? open("+ " + l, "chip ctr-miss", f) : "").join("");
+  const notes = [L && `Space is now ${L} L, ${L === lim.suggestedL ? "the same as the" : `not the ${lim.suggestedL} L`} guess.`, kit.type === "go" && g && lim.kg && `The bag's own ${lbText(g)} lb comes off the ${Math.round(lim.kg * KG_LB)} lb carry limit.`];
+  return `<div class="panel stack ctr-card"><div class="row ctr-h">${icon(c.kind === "backpack" ? "bag" : c.kind)}<div class="ctr-t">${hd}<b>${esc(c.name || CONTAINER_KINDS[c.kind])}</b></div>${w ? open("Change") : ""}</div>
+    ${facts && `<div class="chips">${facts}</div>`}${notes.map(n => n ? `<p class="small muted">${n}</p>` : "").join("")}</div>`;
+}
 function packPanel(kit, ready) {
   const lim = kitLimits(kit, ready.h);
   if (!lim || !S.items.some(i => i.kitId === kit.id)) return "";
@@ -1304,14 +1699,9 @@ function packPanel(kit, ready) {
   const est = S.packEst?.kitId === kit.id ? S.packEst : null;
   // The carry limit is saved in kg and typed in pounds; bag size is litres both ways
   const shown = f => f === "carryKg" ? Math.round(num(kit[f]) * KG_LB) : num(kit[f]);
-  const input = (f, sugg, unit, label) => S.canWrite ? `<label class="small muted pack-lim">${label}<input type="number" min="0" step="${f === "carryKg" ? 1 : 0.5}" id="pk-${f}-${esc(kit.id)}" value="${shown(f) || ""}" placeholder="${sugg}" data-change="packLim" data-id="${esc(kit.id)}" data-f="${f}" aria-label="${label} in ${unit}">${unit}</label>` : "";
-  const meter = (label, have, max, unit, field, sugg, fieldLabel) => {
-    const over = max != null && have > max;
-    return `<div class="pack-m">
-      <div class="row" style="justify-content:space-between"><span><b>${label}</b> <span class="mono ${over ? "pack-over" : ""}">${f1(have)}${max != null ? ` of ${f1(max)}` : ""} ${unit}</span></span>${field ? input(field, sugg, unit, fieldLabel) : ""}</div>
-      ${max != null ? `<div class="bar" style="--c:${over ? "var(--bad)" : "var(--good)"}" role="img" aria-label="${label}: ${f1(have)} of ${f1(max)} ${unit}"><span style="width:${Math.min(100, Math.round(100 * have / max))}%"></span></div>` : ""}
-    </div>`;
-  };
+  const input = (f, sugg, unit, label) => S.canWrite ? `<label class="small muted pack-lim">${label}<input type="number" min="0" step="${f === "carryKg" ? 1 : 0.01}" id="pk-${f}-${esc(kit.id)}" value="${shown(f) || ""}" placeholder="${sugg}" data-change="packLim" data-id="${esc(kit.id)}" data-f="${f}" aria-label="${label} in ${unit}">${unit}</label>` : "";
+  const m = lim.kg && S.bagM?.id === kit.id ? S.bagM.m : lim.kg && (P.g + P.bagG) / lim.kg > P.ml / lim.L ? "g" : "ml";
+  const seg = (v, label) => `<button type="button" data-act="bagM" data-id="${esc(kit.id)}" data-m="${v}" aria-pressed="${m === v}">${label}</button>`;
   const li = (it, what, note) => `<li><b>${esc(it.name)}</b> <span>${what}</span>${note ? ` <span class="muted">· ${note}</span>` : ""}</li>`;
   const go = kit.type === "go";
   const notes = [];
@@ -1323,14 +1713,13 @@ function packPanel(kit, ready) {
       <span class="small muted">${P.estN ? `${P.estN} of ${P.lines.length} item${P.lines.length === 1 ? "" : "s"} estimated` : "Every item has its own weight and size"}${P.estN && sample && S.canWrite ? ` <button class="btn ghost sm" data-act="packEstimate" data-id="${esc(kit.id)}" ${est?.state === "working" ? "disabled" : ""}>${est?.state === "working" ? "Estimating…" : "Estimate with Claude"}</button>` : ""}</span>
     </div>
     ${est?.state === "error" ? `<p class="small" style="color:var(--bad)">${esc(est.msg)}</p>` : ""}
-    <div class="pack-ms">
-      ${meter("Weight", P.g / LB_G, lim.kg ? lim.kg * KG_LB : null, "lb", go ? "carryKg" : "", lim.suggestedKg ? Math.round(lim.suggestedKg * KG_LB) : "", "Carry limit")}
-      ${meter("Space", P.ml / 1000, lim.L, "L", "bagL", lim.suggestedL, go ? "Bag size" : "Trunk space")}
-    </div>
+    <div class="row" style="justify-content:space-between">${lim.kg ? `<div class="seg" role="group" aria-label="Show the bag by">${seg("ml", "Space")}${seg("g", "Weight")}</div>` : "<b>Space</b>"}
+      <span class="row">${go ? input("carryKg", lim.suggestedKg ? Math.round(lim.suggestedKg * KG_LB) : "", "lb", "Carry limit") : ""}${input("bagL", lim.suggestedL, "L", go ? "Bag size" : "Trunk space")}</span></div>
+    ${bagFig(P, lim, m)}
     <p class="small muted">${go ? (lim.suggestedKg ? `Suggested carry limit ${Math.round(lim.suggestedKg * KG_LB)} lb, about what ${esc(lim.carrier)} can carry (a fifth of body weight for an adult, less for children and seniors). ` : "") + `Suggested bag ${lim.suggestedL} L, a typical hiking pack.` : `Suggested ${lim.suggestedL} L, a typical trunk bin.`}</p>
     ${notes.map(n => `<p class="small">${n}</p>`).join("")}
     ${P.best ? `<div class="stack"><b>Best pack within your limits</b>
-      <p class="small">Leave these out and the kit scores <b>${P.best.score}%</b> (now ${P.score}%) at ${lbText(P.best.g)} lb and ${f1(P.best.ml / 1000)} L.</p>
+      <p class="small">Leave these out and the kit scores <b>${P.best.score}%</b> (now ${P.score}%) at ${lbText(P.best.g + P.bagG)} lb and ${f1(P.best.ml / 1000)} L.</p>
       <ul class="pack-l">${P.best.leave.map(x => li(x.it, `leave out ${x.n === Math.max(1, num(x.it.qty)) ? "all" : x.n}`, `${lbText(x.g)} lb`)).join("")}</ul></div>` : ""}
     ${P.takeOut.length ? `<div class="stack"><b>Take out</b><p class="small muted">These earn no points, so the kit keeps its ${P.score}% without them.</p>
       <ul class="pack-l">${P.takeOut.map(x => li(x.it, x.n === Math.max(1, num(x.it.qty)) ? "" : `× ${x.n}`, `${esc(x.why)} · saves ${lbText(x.g)} lb`)).join("")}</ul></div>` : ""}
@@ -1339,31 +1728,54 @@ function packPanel(kit, ready) {
     ${P.fits && !P.takeOut.length && !P.swaps.length ? `<p class="small">Fits, and every item earns its place.</p>` : ""}
   </div>`;
 }
-const RISK = { high: "High risk", moderate: "Moderate risk", low: "Low risk", none: "Doesn't apply" };
-function hzRow(r, h) {
-  const open = S.openHz.has(r.hz.id);
-  const off = LEVELS[r.rel][1] === 0;
-  const c = statusColor(r.score);
-  const why = S.hazards?.reasons?.[r.hz.id];
+/* Likelihood as three bars, and a need's state: 0 missing, 1 some, 2 have. */
+const lik = rel => `<span class="lik" role="img" aria-label="${LEVELS[rel][0]} likelihood" title="${LEVELS[rel][0]} likelihood">${[1, 2, 3].map(i => `<i${i <= LEVELS[rel][1] ? ` class="on"` : ""}></i>`).join("")}</span>`;
+const NEED = ["miss", "part", "have"];
+const needRank = x => x.cov >= 1 ? 2 : x.cov > 0 ? 1 : 0;
+const NEED_WORD = ["Missing", "Some", "Have"];
+/* The household gaps an emergency is short of: each counted category's one gap and each missing essential's (essGap). */
+const hzGaps = (M, r) => [...new Set(r.rows.flatMap(x => x.cov >= 1 ? [] : x.ess ? x.ess.filter(e => !e.have).map(e => essGap(M, x.cat, e)) : M.gaps.filter(g => g.cat === x.cat && !g.essential)).filter(Boolean))];
+/* An emergency's two pickers, changed right on its row: how likely it is (bars, and the word on wider screens) and how
+   much it matters (a hollow star as much as the others, one or two filled when more). One that doesn't apply keeps
+   only its likelihood, so it can be turned back on. */
+const opts = (o, on) => Object.entries(o).map(([k, v]) => `<option value="${k}"${k === on ? " selected" : ""}>${v[0]}</option>`).join("");
+const STARS = { normal: "☆", more: "★", most: "★★" };
+function hzPicks(hz, rel, off) {
+  const ro = S.canWrite ? "" : " ro", imp = Object.hasOwn(IMPORTANCE, S.hazards?.importance?.[hz.id] || "") ? S.hazards.importance[hz.id] : "normal";
+  return `<span class="pick${ro}" title="How likely: ${LEVELS[rel][0]}"><span aria-hidden="true">${lik(rel)}<span class="pick-t">${LEVELS[rel][0]}</span></span><select id="lv-${hz.id}" data-change="level" data-id="${hz.id}" aria-label="How likely ${esc(hz.name)} is for you" ${D()}>${opts(LEVELS, rel)}</select></span>`
+    + (off ? "" : `<span class="pick${ro}" title="How much it matters: ${IMPORTANCE[imp][0]}"><span class="imp${imp === "normal" ? "" : " up"}" aria-hidden="true">${STARS[imp]}</span><select id="im-${hz.id}" data-change="importance" data-id="${hz.id}" aria-label="How much ${esc(hz.name)} matters to you" ${D()}>${opts(IMPORTANCE, imp)}</select></span>`);
+}
+/* An emergency as a row: its name and when, its pickers and score, then its needs, missing first, six at most.
+   The name's button opens it, and covers the whole row. */
+function hzRow(r, h, M = model()) {
+  const id = r.hz.id, open = S.openHz.has(id), off = LEVELS[r.rel][1] === 0;
   const lockedOff = r.hz.vehicle && h.vehicles === 0;
   const alarm = r.hz.group === "health" && r.rel === "high" && r.score < 50;
-  const pri = importanceOf(r.hz.id);
-  return `<div class="hz-row ${off ? "off" : ""}">
-    <button class="hz-name ell" data-act="toggleHz" data-id="${r.hz.id}" aria-expanded="${open}" title="${esc(r.hz.name)} · ${esc(modeLine(r.hz))}"><b>${esc(r.hz.name)}</b><span class="mode">${esc(modeLine(r.hz))}</span></button>
-    <div class="hz-lvl small ${alarm ? "alarm" : "muted"}">${pri > 1 && !off && !lockedOff ? `<span class="pri" title="${esc(IMPORTANCE[S.hazards.importance[r.hz.id]][0])}: counts ${pri}× in your score">★</span> ` : ""}${lockedOff ? "No vehicle" : alarm ? "Needs attention" : RISK[r.rel] || ""}</div>
-    <div class="bar" style="--c:${c}"><span style="width:${r.score}%"></span></div>
-    <div class="pct" ${alarm ? `style="color:var(--bad)"` : ""}>${r.score}%</div>
-    <button class="x" data-act="toggleHz" data-id="${r.hz.id}" aria-expanded="${open}" aria-label="Details for ${esc(r.hz.name)}">${open ? "−" : "+"}</button>
-    ${open ? `<div class="hz-detail">
-      <p class="small"><b>${SEVERITY[r.hz.severity][0]} if you're unprepared:</b> ${SEVERITY[r.hz.severity][2]}.${severityOf(r.hz) > 1 ? ` Counts ${severityOf(r.hz)}× in your score.` : ""}</p>
-      ${why ? `<p class="small">${esc(why)}</p>` : ""}
-      ${lockedOff ? "" : `<label class="hz-like small">How likely is this for you?
-        <select class="lvl" data-change="level" data-id="${r.hz.id}" aria-label="Likelihood of ${esc(r.hz.name)}" ${D()}>${Object.entries(LEVELS).map(([k, v]) => `<option value="${k}" ${k === r.rel ? "selected" : ""}>${v[0]}</option>`).join("")}</select></label>
-      <label class="hz-like small">How much does it matter to you?
-        <select class="lvl" data-change="importance" data-id="${r.hz.id}" aria-label="Importance of ${esc(r.hz.name)}" ${D()}>${Object.entries(IMPORTANCE).map(([k, v]) => `<option value="${k}" ${v[1] === pri ? "selected" : ""}>${v[0]}</option>`).join("")}</select></label>`}
-      <p class="small muted">Counts ${kitsFor(r.hz).map(k => KIT_TYPES[k].toLowerCase().replace(/y$/, "ie") + "s").join(", ").replace(/, ([^,]*)$/, " and $1")}. ${r.hz.group ? (r.hz.days > 1 ? `Needs sized for ${r.hz.days} days.` : "") : `Needs sized for ${h.people} ${h.people === 1 ? "person" : "people"}${h.pets ? ` and ${h.pets} pet${h.pets > 1 ? "s" : ""}` : ""} over ${r.hz.days === 1 ? "24 hours" : r.hz.days + " days"}.`}</p>
-      <div class="chips">${chipsFor(r.rows, h)}</div>
-    </div>` : ""}
+  const ink = alarm ? "var(--bad)" : statusInk(r.score);
+  const rows = [...r.rows].sort((a, b) => needRank(a) - needRank(b)), more = rows.length - 6;
+  return `<div class="hz-row${off ? " off" : ""}${open ? " open" : ""}">
+    <span class="hz-nm"><button class="hz-tg" data-act="toggleHz" data-id="${id}" aria-expanded="${open}"${open ? ` aria-controls="hzp-${id}"` : ""} title="${esc(r.hz.name)} · ${esc(modeLine(r.hz))}">${esc(r.hz.name)}</button><span class="mode">${esc(modeLine(r.hz))}</span></span>
+    <span class="hz-sc">${lockedOff ? `<span class="small muted">No vehicle</span>` : hzPicks(r.hz, r.rel, off)}<span class="pct" style="color:${ink}">${r.score}%${alarm ? `<span class="vh">, needs attention</span>` : ""}</span></span>
+    <span class="hz-needs">${rows.slice(0, 6).map(x => { const s = needRank(x); return `<span class="need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span class="vh">${NEED_WORD[s]} </span>${esc(catLabel(x.cat))}${s === 1 ? ` <span class="amt">${amount(x, h, "days").replace(/ <span[\s\S]*/, "")}</span>` : ""}</span>`; }).join("")}${more > 0 ? `<span class="need more">+${more} more</span>` : ""}</span>
+  </div>${open ? hzPanel(r, h, M, rows) : ""}`;
+}
+/* What an opened emergency involves: where you'd be and with what, how bad it is and why it's rated as it is, each
+   need on a line with the essentials still missing and its notes, and a button adding the household gaps it is short
+   of to the list. Its name, score and pickers stay on the row above. */
+function hzPanel(r, h, M, rows) {
+  const hz = r.hz, [sev, mult, what] = SEVERITY[hz.severity];
+  const why = hz.group ? householdWhy(hz, h) : S.hazards?.reasons?.[hz.id];
+  const who = `${pl(h.people, "person", "people")}${h.pets ? ` and ${pl(h.pets, "pet")}` : ""}`, d = hz.days === 1 ? "a day" : hz.days + " days";
+  const where = hz.group ? `${hz.when}.` : hz.mode === "evacuate" ? `You leave home with ${d} of supplies for ${who}.`
+    : hz.mode === "shelter" ? `You stay home for ${d} on what you have stored, for ${who}.` : "You're stuck in the car for up to a day.";
+  const items = itemsIn(kitsFor(hz)), gs = hzGaps(M, r), off = new Set(splitListed(M.gaps).off), add = gs.filter(g => off.has(g));
+  return `<div class="panel hz-panel" id="hzp-${hz.id}">
+    <p class="small">${esc(where)} Counts ${kitsFor(hz).map(k => KIT_TYPES[k].toLowerCase().replace(/y$/, "ie") + "s").join(", ").replace(/, ([^,]*)$/, " and $1")}.</p>
+    <p class="small muted"><b>${sev} if you're unprepared:</b> ${what}${mult > 1 ? `, so it counts ${mult}× in your score` : ""}.${why ? ` ${esc(why)}` : ""}</p>
+    <div class="hzp-needs">${rows.map(x => { const s = needRank(x), miss = x.ess ? x.ess.filter(e => !e.have).map(e => essWord(x.cat, e.label)) : [];
+      return `<div class="hzp-need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span><span class="vh">${NEED_WORD[s]}: </span><b>${esc(catLabel(x.cat))}</b>${miss.length ? `<span class="muted"> · missing ${esc(orList(miss, "and"))}</span>` : ""}${x.ess ? essNotes(x.cat, items).map(n => `<span class="hzp-note muted">${n}</span>`).join("") : ""}</span><span class="amt">${amount(x, h)}</span></div>`; }).join("")}</div>
+    ${add.length ? `<div><button class="btn sm" data-act="shopAddHz" data-id="${hz.id}" ${D()}>${add.length === 1 ? `Add ${esc(gapName(add[0]))} to your shopping list` : `Add the ${add.length} missing to your shopping list`}</button></div>`
+      : gs.length ? `<p class="small muted">All of it is on your shopping list.</p>` : ""}
   </div>`;
 }
 
@@ -1379,7 +1791,7 @@ function viewKits(M) {
         <span class="tag-img">${k.photos?.length ? `<img src="/_blob/${esc(k.photos[0])}" alt="" loading="lazy">` : icon(KIT_ICON[k.type])}</span>
         <span class="mono">${esc(KIT_TYPES[k.type] || "Kit")}${isExampleKit(k) ? " · EXAMPLE" : ""}</span><b>${esc(k.name)}</b>
         <span class="small">${pl(counts[k.id] || 0, "item")}${k.where ? " · " + esc(k.where) : ""}</span>
-        <span class="tag-pct" style="color:${statusInk(M.kitRes[k.id].score)}" aria-label="Readiness ${M.kitRes[k.id].score} percent">${M.kitRes[k.id].score}%</span></button>`).join("") || `<p class="muted">No kits yet. Add the first one below: a go-bag, a home supply bin or a car kit.</p>`}</div>
+        <span class="tag-pct" style="color:${statusInk(M.kitRes[k.id].score)}" aria-label="Readiness ${M.kitRes[k.id].score} percent">${caseMark(M.kitRes[k.id].score, 24)}${M.kitRes[k.id].score}%</span></button>`).join("") || `<p class="muted">No kits yet. Add the first one below: a go-bag, a home supply bin or a car kit.</p>`}</div>
       ${!S.canWrite ? "" : S.kits.length && !S.addKit ? `<button class="btn ghost add-kit" data-act="addKit">+ Add a kit</button>` : `<form class="panel stack" data-submit="newKit">
         <p class="eyebrow">Add a kit</p>
         <label class="f">Name<input type="text" id="nk-name" name="name" required placeholder="Hall closet go-bag" maxlength="60"></label>
@@ -1388,10 +1800,26 @@ function viewKits(M) {
         <div class="row"><button class="btn" type="submit">Add kit</button>${S.kits.length ? `<button class="btn ghost" type="button" data-act="cancelKit">Cancel</button>` : ""}</div>
       </form>`}
     </div>
-    <div class="stack">${kit ? kitDetail(kit, M.kitRes[kit.id]) : `<div class="panel"><p class="muted">Pick a kit to see its contents, or add one.</p></div>`}</div>
+    <div class="stack">${kit ? kitDetail(kit, M.kitRes[kit.id], M) : `<div class="panel"><p class="muted">Pick a kit to see its contents, or add one.</p></div>`}</div>
   </div>`;
 }
-function kitDetail(kit, ready) {
+/* An item's fields, as [class, label, html]: its List row's cells and its opened tile's fields, so the two never drift.
+   Each writes through the data-change="item" handler. The Essential html is empty outside the five checklist categories. */
+function itemFields(it) {
+  const st = expState(it), ld = itemLoad(it), a = f => `data-change="item" data-id="${esc(it.id)}" data-f="${f}"`;
+  return [
+    ["", "Item", `<input type="text" id="it-${esc(it.id)}-name" value="${esc(it.name)}" ${a("name")} aria-label="Item name" ${D()}>${it.note ? `<div class="small muted" style="padding:0 6px">${esc(it.note)}</div>` : ""}${amazonA(it)}`],
+    ["cat-td", "Category", `${icon(it.category)}<select id="it-${esc(it.id)}-cat" ${a("category")} aria-label="Category" ${D()}>${catOptions(it.category)}</select>`],
+    ["ess-td", "Essential", essPicker(`it-${esc(it.id)}-ess`, it.category, essentialOf(it), `${a("essential")} ${D()}`)],
+    ["num", "Qty", `<input type="number" min="1" id="it-${esc(it.id)}-qty" value="${esc(Math.max(1, num(it.qty)))}" ${a("qty")} aria-label="Quantity" ${D()}>`],
+    ["num", "Water L", `<input type="number" min="0" step="0.1" id="it-${esc(it.id)}-l" value="${num(it.liters) || ""}" ${a("liters")} aria-label="Litres of water" ${D()}>`],
+    ["num", "Food kcal", `<input type="number" min="0" step="50" id="it-${esc(it.id)}-k" value="${num(it.kcal) || ""}" ${a("kcal")} aria-label="Food calories" ${D()}>`],
+    ["num", "lb", `<input type="number" min="0" step="0.1" id="it-${esc(it.id)}-g" value="${num(it.grams) ? lb1(num(it.grams)) : ""}" placeholder="${lb1(ld.estG)}" ${a("grams")} aria-label="Weight in pounds" ${D()}>`],
+    ["num", "Size L", `<input type="number" min="0" step="0.1" id="it-${esc(it.id)}-ml" value="${num(it.ml) ? num(it.ml) / 1000 : ""}" placeholder="${Math.round(ld.estMl / 100) / 10}" ${a("ml")} aria-label="Size in litres" ${D()}>`],
+    ["", "Expires", `<input type="month" id="it-${esc(it.id)}-exp" value="${esc(it.expires || "")}" ${a("expires")} aria-label="Expiry month" ${D()}>${st ? `<span class="flag ${st}">${st === "expired" ? "expired" : "expiring soon"}</span>` : ""}`],
+  ];
+}
+function kitDetail(kit, ready, M = model()) {
   const val = itemValues(kit, ready);
   const maxPts = Math.max(1, ...Object.values(val).map(v => v.pts));
   const byValue = S.itemSort === "value";
@@ -1402,51 +1830,27 @@ function kitDetail(kit, ready) {
   const draft = S.draft?.kitId === kit.id ? S.draft : null;
   const tray = S.tray?.kitId === kit.id ? S.tray.photos : [];
   const working = scanning?.state === "working";
-  return `
-  <div class="row" style="justify-content:space-between;align-items:flex-end">
-    <div><p class="eyebrow">${esc(KIT_TYPES[kit.type] || "Kit")}${kit.where ? " · " + esc(kit.where) : ""}</p><h2>${esc(kit.name)}</h2></div>
-    ${S.canWrite ? (S.confirm === "kit:" + kit.id
-      ? `<div class="row"><span class="small">Delete this kit, its ${pl(items.length, "item")} and ${pl(photos.length, "photo")}?</span><button class="btn danger sm" data-act="delKit" data-id="${esc(kit.id)}">Delete</button><button class="btn ghost sm" data-act="cancelConfirm">Cancel</button></div>`
-      : `<button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button>`) : ""}
-  </div>
-  ${kitReadyPanel(kit, ready)}
-  ${packPanel(kit, ready)}
-  ${photos.length ? `<div class="photos">${photos.map(id => `<img src="/_blob/${esc(id)}" alt="Photo of ${esc(kit.name)}" loading="lazy">`).join("")}</div>` : ""}
-  ${S.canWrite ? `<div class="panel stack" data-drop="photos">
-    <div class="row" style="justify-content:space-between">
-      <div><b>Photograph the contents</b><p class="small muted">Lay items out so labels face up. Add as many photos as you need, from the camera or your library, or drop them here. Claude reads them together, then you check the list before anything is saved.</p></div>
-      ${working ? `<button class="btn ghost" data-act="stopScan">Stop</button>` : tray.length ? "" : `<button class="btn" data-act="pickPhotos">Add photos</button>`}
-    </div>
-    ${tray.length ? `<div class="tray">${tray.map((p, i) => `<figure class="tray-ph"><img src="${esc(p.url)}" alt="Photo ${i + 1}">${working ? "" : `<button class="x" data-act="trayDrop" data-k="${esc(p.key)}" aria-label="Remove photo ${i + 1}">×</button>`}</figure>`).join("")}</div>
-    ${working ? "" : `<div class="row"><button class="btn" data-act="readTray">Read ${tray.length} photo${tray.length === 1 ? "" : "s"}</button><button class="btn ghost" data-act="pickPhotos">Add more</button><button class="btn ghost" data-act="trayClear">Clear</button></div>`}` : ""}
-    ${scanning ? (working ? `<div class="working"><span class="pulse"></span><span>${esc(scanning.msg)}</span></div>` : `<p class="small" style="color:var(--bad)">${esc(scanning.msg)}</p>`) : ""}
-  </div>` : ""}
-  ${draft ? draftTable(draft) : ""}
+  // List: the item table as it always was, shown in the Contents panel once List is pressed
+  const list = S.listKit !== kit.id ? "" : `
   ${S.canWrite && S.sel.size ? `<div class="selbar">
     <b>${S.sel.size} selected</b>
     <button class="btn danger sm" data-act="removeSel">Remove from kit</button>
     <button class="btn ghost sm" data-act="clearSel">Cancel</button>
   </div>` : ""}
   <div class="tbl-wrap"><table class="inv">
-    <thead><tr>${S.canWrite ? `<th class="sel"><input type="checkbox" id="sel-all" data-change="selAll" aria-label="Select all items" ${items.length && items.every(i => S.sel.has(i.id)) ? "checked" : ""} ${items.length ? "" : "disabled"}></th>` : ""}<th>Item</th><th style="width:136px">${sortTh("cat", "Category")}</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px" title="Weight of the whole line in pounds. Grey numbers are estimates.">lb</th><th style="width:56px" title="Packed size of the whole line. Grey numbers are estimates.">Size L</th><th style="width:136px">Expires</th><th style="width:100px" title="Kit readiness points this item earns. Every item's points add up to the kit's score.">${sortTh("value", "Value")}</th><th style="width:28px"></th></tr></thead>
+    <thead><tr>${S.canWrite ? `<th class="sel"><input type="checkbox" id="sel-all" data-change="selAll" aria-label="Select all items" ${items.length && items.every(i => S.sel.has(i.id)) ? "checked" : ""} ${items.length ? "" : "disabled"}></th>` : ""}<th>Item</th><th style="width:136px">${sortTh("cat", "Category")}</th><th style="width:136px">Essential</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px" title="Weight of the whole line in pounds. Grey numbers are estimates.">lb</th><th style="width:56px" title="Packed size of the whole line. Grey numbers are estimates.">Size L</th><th style="width:136px">Expires</th><th style="width:100px" title="Kit readiness points this item earns. Every item's points add up to the kit's score.">${sortTh("value", "Value")}</th><th style="width:28px"></th></tr></thead>
     <tbody>
-      ${items.map(it => { const st = expState(it); const on = S.sel.has(it.id); const ld = itemLoad(it); return `<tr class="${on ? "picked" : ""}">
+      ${items.map(it => { const on = S.sel.has(it.id); return `<tr class="${on ? "picked" : ""}">
         ${S.canWrite ? `<td class="sel"><input type="checkbox" id="sel-${esc(it.id)}" data-change="sel" data-id="${esc(it.id)}" aria-label="Select ${esc(it.name)}" ${on ? "checked" : ""}></td>` : ""}
-        <td data-label="Item"><input type="text" id="it-${esc(it.id)}-name" value="${esc(it.name)}" data-change="item" data-id="${esc(it.id)}" data-f="name" aria-label="Item name" ${D()}>${it.note ? `<div class="small muted" style="padding:0 6px">${esc(it.note)}</div>` : ""}${amazonA(it)}</td>
-        <td class="cat-td" data-label="Category">${icon(it.category)}<select id="it-${esc(it.id)}-cat" data-change="item" data-id="${esc(it.id)}" data-f="category" aria-label="Category" ${D()}>${catOptions(it.category)}</select></td>
-        <td class="num" data-label="Qty"><input type="number" min="1" id="it-${esc(it.id)}-qty" value="${esc(Math.max(1, num(it.qty)))}" data-change="item" data-id="${esc(it.id)}" data-f="qty" aria-label="Quantity" ${D()}></td>
-        <td class="num" data-label="Water L"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-l" value="${num(it.liters) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="liters" aria-label="Litres of water" ${D()}></td>
-        <td class="num" data-label="Food kcal"><input type="number" min="0" step="50" id="it-${esc(it.id)}-k" value="${num(it.kcal) || ""}" data-change="item" data-id="${esc(it.id)}" data-f="kcal" aria-label="Food calories" ${D()}></td>
-        <td class="num" data-label="lb"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-g" value="${num(it.grams) ? lb1(num(it.grams)) : ""}" placeholder="${lb1(ld.estG)}" data-change="item" data-id="${esc(it.id)}" data-f="grams" aria-label="Weight in pounds" ${D()}></td>
-        <td class="num" data-label="Size L"><input type="number" min="0" step="0.1" id="it-${esc(it.id)}-ml" value="${num(it.ml) ? num(it.ml) / 1000 : ""}" placeholder="${Math.round(ld.estMl / 100) / 10}" data-change="item" data-id="${esc(it.id)}" data-f="ml" aria-label="Size in litres" ${D()}></td>
-        <td data-label="Expires"><input type="month" id="it-${esc(it.id)}-exp" value="${esc(it.expires || "")}" data-change="item" data-id="${esc(it.id)}" data-f="expires" aria-label="Expiry month" ${D()}>${st ? `<span class="flag ${st}">${st === "expired" ? "expired" : "expiring soon"}</span>` : ""}</td>
+        ${itemFields(it).map(([c, l, h]) => `<td${c ? ` class="${c}"` : ""} data-label="${l}">${h}</td>`).join("\n        ")}
         <td class="val" data-label="Value" title="${esc(val[it.id].note || `Earns ${ptsLabel(val[it.id].pts)} of this kit's ${ready.score} points`)}"><div class="val-in"><span class="vbar"><i style="width:${Math.round(100 * val[it.id].pts / maxPts)}%"></i></span><b class="mono">${ptsLabel(val[it.id].pts)}</b></div>${val[it.id].note ? `<span class="val-note">${esc(val[it.id].note)}</span>` : ""}</td>
         <td class="x-td">${S.canWrite ? `<button class="x" data-act="delItem" data-id="${esc(it.id)}" aria-label="Remove ${esc(it.name)}">×</button>` : ""}</td>
       </tr>`; }).join("")}
       ${S.canWrite ? `<tr class="addrow">
         <td class="sel"></td>
         <td data-label="Item"><input type="text" id="add-name" placeholder="Add an item by hand…" maxlength="80" aria-label="New item name"></td>
-        <td data-label="Category"><select id="add-cat" aria-label="New item category">${catOptions("water")}</select></td>
+        <td data-label="Category"><select id="add-cat" data-change="addCat" aria-label="New item category">${catOptions(S.add.cat)}</select></td>
+        <td class="ess-td" data-label="Essential" id="add-ess-td">${essPicker("add-ess", S.add.cat, S.add.ess, `data-change="addEss"`)}</td>
         <td class="num" data-label="Qty"><input type="number" id="add-qty" min="1" value="1" aria-label="New item quantity"></td>
         <td class="num" data-label="Water L"><input type="number" id="add-l" min="0" step="0.1" aria-label="New item litres"></td>
         <td class="num" data-label="Food kcal"><input type="number" id="add-k" min="0" step="50" aria-label="New item calories"></td>
@@ -1460,19 +1864,94 @@ function kitDetail(kit, ready) {
   </table></div>
   ${S.canWrite && items.length ? `<p class="small muted">Tick anything that's no longer in this kit, then remove it.</p>` : ""}
   ${how("kit-table", `Water L, Food kcal, lb and Size L are totals for the whole line (a 24-pack of 500 ml bottles is 12 L). Grey lb and Size L numbers are estimates until you type your own. Only Water L and Food kcal count toward water and food needs. Value is how many of the kit's ${ready.score} readiness points each item earns: a checklist line's points are shared by the items that fill it, so a lone tourniquet is worth more than one of twenty water bottles.`)}`;
+  return `
+  <div class="row" style="justify-content:space-between;align-items:flex-end">
+    <div><p class="eyebrow">${esc(KIT_TYPES[kit.type] || "Kit")}${kit.where ? " · " + esc(kit.where) : ""}</p><h2>${esc(kit.name)}</h2></div>
+    ${S.canWrite ? (S.confirm === "kit:" + kit.id
+      ? `<div class="row"><span class="small">Delete this kit, its ${pl(items.length, "item")} and ${pl(photos.length, "photo")}?</span><button class="btn danger sm" data-act="delKit" data-id="${esc(kit.id)}">Delete</button><button class="btn ghost sm" data-act="cancelConfirm">Cancel</button></div>`
+      : `<button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button>`) : ""}
+  </div>
+  ${containerCard(kit, ready.h)}
+  ${kitReadyPanel(kit, ready, M)}
+  ${contentsPanel(kit, items, list, ready, M)}
+  ${kitChecklist(kit, ready, M)}
+  ${packPanel(kit, ready)}
+  ${photos.length ? `<div class="photos">${photos.map(id => `<img src="/_blob/${esc(id)}" alt="Photo of ${esc(kit.name)}" loading="lazy">`).join("")}</div>` : ""}
+  ${photos.length && S.canWrite && sample && assets && !working && items.some(i => !i.thumb) ? `<div class="row"><button class="btn ghost sm" data-act="findPics">Add item pictures from these photos</button><span class="small muted">${pl(items.filter(i => !i.thumb).length, "item")} without one</span></div>` : ""}
+  ${S.canWrite ? `<div class="panel stack" data-drop="photos">
+    <div class="row" style="justify-content:space-between">
+      <div><b>Photograph the contents</b><p class="small muted">Lay items out so labels face up. Add as many photos as you need, from the camera or your library, or drop them here. Claude reads them together, then you check the list before anything is saved.</p></div>
+      ${working ? `<button class="btn ghost" data-act="stopScan">Stop</button>` : tray.length ? "" : `<button class="btn" data-act="pickPhotos">Add photos</button>`}
+    </div>
+    ${tray.length ? `<div class="tray">${tray.map((p, i) => `<figure class="tray-ph"><img src="${esc(p.url)}" alt="Photo ${i + 1}">${working ? "" : `<button class="x" data-act="trayDrop" data-k="${esc(p.key)}" aria-label="Remove photo ${i + 1}">×</button>`}</figure>`).join("")}</div>
+    ${working ? "" : `<div class="row"><button class="btn" data-act="readTray">Read ${tray.length} photo${tray.length === 1 ? "" : "s"}</button><button class="btn ghost" data-act="pickPhotos">Add more</button><button class="btn ghost" data-act="trayClear">Clear</button></div>`}` : ""}
+    ${scanning ? (working ? `<div class="working"><span class="pulse"></span><span>${esc(scanning.msg)}</span></div>` : `<p class="small" style="color:var(--bad)">${esc(scanning.msg)}</p>`) : ""}
+  </div>` : ""}
+  ${draft ? draftTable(draft) : ""}`;
+}
+/* The Contents panel: Flat-lay, one tile per item in the zones of ZONES, then a dashed tile per missing essential
+   (`ready`'s rows, as the checklist shows them), or List, the item table (`list`). */
+function contentsPanel(kit, items, list, ready, M) {
+  const seg = (v, label) => `<button type="button" data-act="kitView" data-v="${v}" aria-pressed="${!!list === (v === "list")}">${label}</button>`;
+  const byZone = new Map(ZONES.map(z => [z, []]));
+  for (const it of [...items].sort((a, b) => String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name)))) byZone.get(zoneOf(it.category)).push(flTile(it));
+  const { off } = splitListed(M.gaps), offs = new Set(off), next = new Map();
+  for (const g of off) if (!next.has(gapKey(g))) next.set(gapKey(g), g);
+  for (const row of ready.rows) if (row.ess) for (const e of row.ess) if (!e.have) byZone.get(zoneOf(row.cat)).push(flMiss(M, row.cat, e, offs, next));
+  const flat = (items.length ? "" : `<p class="fl-empty muted">Nothing in this kit yet.</p>`)
+    + [...byZone].filter(([, ts]) => ts.length).map(([z, ts]) => `<section class="fl-zone"><h3 class="fl-h">${esc(z.label)}</h3><ul class="fl-grid">${ts.join("")}</ul></section>`).join("");
+  return `<div class="panel stack">
+    <div class="row" style="justify-content:space-between"><p class="eyebrow">Contents</p><div class="seg" role="group" aria-label="Show contents as">${seg("flat", "Flat-lay")}${seg("list", "List")}</div></div>
+    ${list || flat + (S.canWrite ? `<div class="fl-grid"><button type="button" class="fl-add" data-act="flAdd">+ Add by hand</button></div>` : "")}
+  </div>`;
+}
+/* One item's tile: its picture cut from the kit's photos (else its category icon), name, ×N over 1 and its expiry when
+   near. Its note shows only in its opened fields. For a viewer who can write it is a button that opens the item's
+   fields (itemFields) under its row, one tile at a time. */
+function flTile(it) {
+  const st = expState(it), q = Math.max(1, num(it.qty)), name = String(it.name ?? "").trim() || catLabel(it.category);
+  const pic = typeof it.thumb === "string" && it.thumb ? `<img class="fl-pic" src="/_blob/${esc(it.thumb)}" alt="" loading="lazy">` : icon(it.category);
+  const body = `<span class="fl-top">${pic}${q > 1 ? `<span class="fl-q">×${f1(q)}</span>` : ""}</span><span class="fl-name">${esc(name)}</span>`
+    + `${st ? `<span class="fl-exp">${st === "expired" ? "Expired" : "Expires"} ${esc(it.expires)}</span>` : ""}`;
+  const open = S.canWrite && S.flOpen === it.id;
+  return `<li class="fl-tile${st ? " " + st : ""}" data-id="${esc(it.id)}">${S.canWrite ? `<button type="button" class="fl-ed" id="fl-${esc(it.id)}" data-act="flEdit" data-id="${esc(it.id)}" aria-expanded="${open}" aria-label="${esc(name + ", edit")}">${body}</button>` : body}</li>`
+    + (open ? `<li class="fl-fields">${itemFields(it).filter(f => f[2]).map(([c, l, h]) => `<div class="fl-f ${c}" data-label="${l}">${h}</div>`).join("")}</li>` : "");
+}
+/* A missing essential's dashed tile: its icon, its label and the points adding it adds. While it is the household gap
+   the Add to list button would add (`next`, by gapKey) it is that button; once on the list it says so; with no household
+   gap there is nothing to add. Prescriptions slots share a key and shopAdd adds the first one off the list, so a later
+   slot says which to add first, and every button flips the tile it is on. The two words too wide for a phone tile get a
+   soft hyphen, since browsers don't hyphenate a capitalised word themselves; a name too wide breaks before its 's, and
+   "(1 of 2)" stays on one line. */
+const flWord = s => esc(s).replace(/(prescrip)(tions)|(extin)(guisher)/gi, (_, a, b, c, d) => `${a || c}\u00ad${b || d}`)
+  .replace(/&#39;s\b/g, "<wbr>&#39;s").replace(/\((\d+) of (\d+)\)/g, "($1\u00a0of\u00a0$2)");
+function flMiss(M, cat, e, off, next) {
+  const g = essGap(M, cat, e), gain = gapGain(M, g), first = g && next.get(gapKey(g));
+  const act = !!g && first === g && S.canWrite, before = first && first !== g && S.canWrite && off.has(g);
+  const body = `<span class="fl-top">${icon(cat)}${gain ? `<span class="gain" title="Readiness points adding it adds">+${gain}</span>` : ""}</span><span class="fl-name">${flWord(e.label)}</span>`
+    + (g && !off.has(g) ? `<span class="fl-note">On your list</span>` : act ? `<span class="fl-note">Add to list</span>`
+      : before ? `<span class="fl-note">Add ${esc((first.label.match(/\((\d+ of \d+)\)$/) || [, first.label])[1])} first</span>` : "");
+  return `<li class="fl-tile miss">${act ? `<button type="button" class="fl-do" data-act="shopAdd" data-cat="${esc(cat)}" data-essential="${esc(e.id)}" aria-label="${esc(`Add ${e.label} to your shopping list`)}">${body}</button>` : body}</li>`;
 }
 function catOptions(sel) { return Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${k === sel ? "selected" : ""}>${v[0]}</option>`).join(""); }
+/* An Essential picker's options for category `cat` with `v` chosen: "Pick one…" (left out once tagged, when `blank` is
+   false), the category's essentials in order, then "Not one of these". */
+const essOptions = (cat, v, blank = true) => [...blank ? [["", "Pick one…"]] : [], ...essentialList(cat).map(e => [e.id, e.label]), ["none", "Not one of these"]]
+  .map(([id, label]) => `<option value="${esc(id)}"${id === (v || "") ? " selected" : ""}>${esc(label)}</option>`).join("");
+/* The Essential select for an item in category `cat` tagged `sel` (essentialOf). Nothing outside the five checklist categories. */
+const essPicker = (id, cat, sel, attrs = "") => essentialList(cat).length ? `<select id="${id}" aria-label="Essential" ${attrs}>${essOptions(cat, sel, !sel)}</select>` : "";
 function draftTable(d) {
   return `<div class="panel stack" style="border-color:var(--accent)">
     <div class="row" style="justify-content:space-between">
       <div><b>Claude found ${d.rows.length} item${d.rows.length === 1 ? "" : "s"}</b><p class="small muted">Fix anything it misread, remove what isn't there, then add them to the kit.</p></div>
       <div class="row"><button class="btn" data-act="draftSave" ${d.rows.length ? "" : "disabled"}>Add ${d.rows.length} to kit</button><button class="btn ghost" data-act="draftCancel">Discard</button></div>
     </div>
-    <div class="tbl-wrap"><table class="inv">
-      <thead><tr><th>Item</th><th style="width:136px">Category</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px">lb</th><th style="width:56px">Size L</th><th style="width:136px">Expires</th><th style="width:28px"></th></tr></thead>
+    <div class="tbl-wrap draft"><table class="inv">
+      <thead><tr><th>Item</th><th style="width:136px">Category</th><th style="width:136px">Essential</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px">lb</th><th style="width:56px">Size L</th><th style="width:136px">Expires</th><th style="width:28px"></th></tr></thead>
       <tbody>${d.rows.map((r, i) => `<tr>
         <td data-label="Item"><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted" style="padding:0 6px">${esc(r.note)}</div>` : ""}${amazonA({ shopQuery: r.shop })}</td>
         <td data-label="Category"><select id="d-${r.key}-cat" data-input="draft" data-i="${i}" data-f="category" aria-label="Category">${catOptions(r.category)}</select></td>
+        <td class="d-ess" data-label="Essential">${essentialList(r.category).length ? `<select id="d-${r.key}-ess" data-input="draft" data-i="${i}" data-f="essential" aria-label="Which essential ${esc(r.name)} is">${essOptions(r.category, essentialOf(r))}</select>` : ""}</td>
         <td class="num" data-label="Qty"><input type="number" min="1" id="d-${r.key}-qty" value="${r.qty}" data-input="draft" data-i="${i}" data-f="qty" aria-label="Quantity"></td>
         <td class="num" data-label="Water L"><input type="number" min="0" step="0.1" id="d-${r.key}-l" value="${r.liters || ""}" data-input="draft" data-i="${i}" data-f="liters" aria-label="Litres"></td>
         <td class="num" data-label="Food kcal"><input type="number" min="0" step="50" id="d-${r.key}-k" value="${r.kcal || ""}" data-input="draft" data-i="${i}" data-f="kcal" aria-label="Calories"></td>
@@ -1500,8 +1979,14 @@ function hhPeople(members) {
       <input class="needs" type="text" id="hh-m${i}-needs" value="${esc(m.needs || "")}" data-input="hh" data-p="members.${i}.needs" placeholder="Anything else: medications, glasses, devices…" aria-label="Person ${i + 1} special needs" ${D()}>
       ${S.canWrite ? `<button type="button" class="x" data-act="hhDel" data-k="members" data-i="${i}" aria-label="Remove ${esc(personName(m, i))}">×</button>` : ""}
       <p class="pneeds mono" id="hh-m${i}-sizing">${personNeeds(m)}</p>
+      ${S.canWrite ? (h => `<div class="conds hint" id="hh-m${i}-hints" ${h ? "" : "hidden"}>${h}</div>`)(hintButtons(m, i)) : ""}
     </div>`).join("")}</div>
     ${S.canWrite ? `<div><button type="button" class="btn ghost sm" data-act="hhAdd" data-k="members">Add person</button></div>` : ""}`;
+}
+/* The health needs a person's note names but that aren't switched on, each one tap to switch on. */
+function hintButtons(m, i) {
+  const ks = conditionHints(m);
+  return ks.length ? `<span class="small muted">The note sounds like a health need:</span>${ks.map(k => `<button type="button" class="btn ghost sm" data-act="condAdd" data-i="${i}" data-k="${k}" ${D()}>Add “${esc(CONDITIONS[k])}”</button>`).join("")}` : "";
 }
 /* One question per condition instead of a checkbox grid per person: switch a need on, then say who has it. */
 function hhHealth(members) {
@@ -1572,7 +2057,7 @@ function viewHousehold() {
     </div>
     ${!S.profile?.location ? `<p class="small muted">Save a location first.</p>` : S.hhDirty ? `<p class="small muted">Save your changes first.</p>` : ""}
     ${chk?.state === "error" ? `<p class="small" style="color:var(--bad)">${esc(chk.msg)}</p>` : ""}
-    ${hz?.assessedAt ? `<div class="reasons">${HAZARDS.filter(h => hz.levels?.[h.id]).sort((a, b) => LEVELS[hz.levels[b.id]][1] - LEVELS[hz.levels[a.id]][1]).map(h => `<div><span><b>${esc(h.name)}</b><br><span class="mono small">${esc(LEVELS[hz.levels[h.id]]?.[0] || "")}</span></span><span>${esc(hz.reasons?.[h.id] || "")}</span></div>`).join("")}</div>
+    ${hz?.assessedAt ? `<div class="reasons">${HAZARDS.filter(h => LEVELS[hz.levels?.[h.id]]).sort((a, b) => LEVELS[hz.levels[b.id]][1] - LEVELS[hz.levels[a.id]][1]).map(h => `<div><span><b>${esc(h.name)}</b><br><span class="mono small">${esc(LEVELS[hz.levels[h.id]]?.[0] || "")}</span></span><span>${esc(h.group ? householdWhy(h, household()) : hz.reasons?.[h.id] || "")}</span></div>`).join("")}</div>
       ${hz.notes ? `<p class="small"><b>Also:</b> ${esc(hz.notes)}</p>` : ""}<p class="small muted">Checked ${when(hz.assessedAt)} for ${esc(hz.location || "")}.</p>` : ""}
   </div>`;
 }
@@ -1580,8 +2065,7 @@ function viewHousehold() {
 function viewShop(M) {
   const items = shopItems();
   const left = items.filter(x => !x.done), got = items.filter(x => x.done);
-  const listed = new Set(left.map(x => x.cat));
-  const unlisted = M.gaps.filter(g => !listed.has(g.cat)).length;
+  const unlisted = splitListed(M.gaps, left).off.length;
   const info = new Map(items.map(e => [e.id, shopInfo(e, M)]));
   const I = e => info.get(e.id);
   const kitName = id => S.kits.find(k => k.id === id)?.name;
@@ -1602,8 +2086,15 @@ function viewShop(M) {
   const after = M.overall == null ? null : scoreIfBought(left);
   const pickAfter = pick && M.overall != null ? scoreIfBought(left.filter(e => pick.has(e.id))) : null;
   const total = left.reduce((a, e) => a + (I(e).price || 0), 0), rx = left.filter(e => I(e).price === null).length;
+  /* The checked product, its quantity and its page, or why there's nothing to buy online. Links come only from PICKS. */
+  const product = i => PICKS[i.pick]?.url ? PICKS[i.pick] : null;
+  const buyLine = (e, i) => { const p = product(i), q = PICKS[i.pick]?.q;
+    if (p) return `<span class="small"><b>${esc(p.name)}</b> · Qty ${i.qty} · ${amazonA({ amazonUrl: p.url })}${p.heavy ? ` <span style="color:var(--warn)">Heavy to ship: often cheaper to pick up locally</span>` : ""}</span>`;
+    const why = q ? `Mixed groceries: ${amazonA({ shopQuery: q })}` : i.price === null ? "Prescription: ask the pharmacy" : i.price === 0 ? "From home: nothing to buy"
+      : e.cat === "trauma" ? "Buy from a medical supplier: counterfeits are sold on marketplaces" : "";
+    return why ? `<span class="small muted">${why}</span>` : ""; };
   const row = e => { const i = I(e); return `<li class="shop-row ${e.done ? "done" : ""} ${S.flash === e.id ? "flash" : ""} ${pick && !pick.has(e.id) && !e.done ? "over" : ""}">
-    <label class="shop-chk"><input type="checkbox" id="shop-${esc(e.id)}" data-change="shopTick" data-id="${esc(e.id)}" ${e.done ? "checked" : ""} ${D()}>${icon(e.cat || "other")}<span><b>${esc(i.line)}</b>${!e.done && i.sub ? `<span class="small muted">${esc(i.sub)}</span>` : ""}${!e.done && i.tip ? `<span class="small shop-tip">${esc(i.tip)}</span>` : ""}</span></label>
+    <label class="shop-chk"><input type="checkbox" id="shop-${esc(e.id)}" data-change="shopTick" data-id="${esc(e.id)}" ${e.done ? "checked" : ""} ${D()}>${icon(e.cat || "other")}<span><b>${esc(i.line)}</b>${!e.done && i.sub ? `<span class="small muted">${esc(i.sub)}</span>` : ""}${!e.done && i.tip ? `<span class="small shop-tip">${esc(i.tip)}</span>` : ""}${e.done ? "" : buyLine(e, i)}</span></label>
     <div class="shop-meta">${e.done ? "" : `${i.gain ? `<span class="gain mono" title="Readiness points this adds">+${i.gain}</span>` : ""}${money(i.price) ? `<span class="small muted">${money(i.price)}</span>` : ""}`}</div>
     <div class="shop-kit">${e.done ? (kitName(e.inKit) ? `<span class="small muted">In ${esc(kitName(e.inKit))}</span>` : "")
       : CATS[e.cat] && S.kits.length ? `<select id="shop-${esc(e.id)}-kit" data-change="shopKit" data-id="${esc(e.id)}" aria-label="Kit for ${esc(i.line)}" ${D()}>${kitOpts(e)}</select>` : ""}</div>
@@ -1627,6 +2118,7 @@ function viewShop(M) {
     </div>
     ${left.length ? `
     <p class="shop-sum">About <b>$${total.toLocaleString()}</b>${rx ? ` plus ${rx} prescription item${rx === 1 ? "" : "s"}` : ""}.${after != null && after > M.overall ? ` Buying it all takes readiness from ${M.overall} to <b>${after}</b>.` : ""}</p>
+    ${left.some(e => product(I(e))) ? `<p class="small muted">Each product is one we've checked. Links carry no tracking tag.</p>` : ""}
     <div class="shop-tools">
       <label class="small">Order <select id="shop-sort" data-change="shopSort">
         <option value="points" ${sort === "points" ? "selected" : ""}>Most points first</option>
@@ -1746,15 +2238,33 @@ function formatReview(t) {
 }
 
 /* ---------- render ---------- */
+let tabIcon = null;
+/* A field saves on blur, and saving redraws. A redraw while a press is down, or while focus is leaving a field, would
+   replace what the tap or Tab is moving to, losing the tap and dropping focus. So it waits for the click, or the next task. */
+const hold = { press: 0, blur: 0, owed: 0 };
+const unhold = k => setTimeout(() => { hold[k] = 0; if (hold.owed) render(); });
+for (const t of ["pointerdown", "mousedown"]) document.addEventListener(t, () => { hold.press = 1; }, true);
+for (const t of ["pointerup", "pointercancel", "mouseup", "dragend", "contextmenu"]) document.addEventListener(t, () => unhold("press"), true);
+document.addEventListener("click", () => { hold.press = hold.blur = 0; }, true);
+document.addEventListener("change", () => { if (document.activeElement === document.body) { hold.blur = 1; unhold("blur"); } }, true);
 function render() {
-  const a = document.activeElement;
-  const keep = a && a.id && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.tagName === "SELECT")
-    ? { id: a.id, value: a.value, s: a.selectionStart, e: a.selectionEnd } : null;
+  if (hold.press || hold.blur) { hold.owed = 1; return; }
+  hold.owed = 0;
+  const a = document.activeElement, field = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+  const keep = a?.id ? { id: a.id, field, value: a.value, s: a.selectionStart, e: a.selectionEnd } : null;
   const M = model();
   if (S.sel.size) { const live = new Set(S.items.filter(i => i.kitId === S.openKit).map(i => i.id)); for (const id of S.sel) if (!live.has(id)) S.sel.delete(id); }
   if (!S.openKit && S.kits.length) S.openKit = [...S.kits].sort((x, y) => (x.createdAt || 0) - (y.createdAt || 0))[0].id;
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.v === S.view ? "page" : "false"));
   $("#hdr-score").innerHTML = M.overall == null ? "" : `<span class="eyebrow">Readiness</span><b>${M.overall}</b><span class="eyebrow">/ 100</span>`;
+  $(".brand-mark").innerHTML = caseMark(M.overall, 28);
+  // The tab icon shows the 75 form until the household's data has loaded, and is rewritten only when its score moves.
+  // claude.ai wraps the page's markup in <body>, where browsers ignore icon links, so the first write moves it to <head>.
+  const tab = caseScore(S.loaded && M.overall != null ? M.overall : 75);
+  if (tab !== tabIcon) {
+    tabIcon = tab; const l = $('link[rel="icon"]');
+    if (l) { if (document.head && l.parentNode !== document.head) document.head.appendChild(l); l.href = tabIconHref(tab); }
+  }
   const toBuy = shopItems().filter(x => !x.done).length;
   $("#tab-shop-n").textContent = toBuy ? ` ${toBuy}` : "";
   $("#banner").innerHTML = viewBanner();
@@ -1764,9 +2274,9 @@ function render() {
   if (keep) {
     const n = document.getElementById(keep.id);
     if (n) {
-      if (n.value !== keep.value) n.value = keep.value;
+      if (keep.field && n.value !== keep.value) n.value = keep.value;
       n.focus({ preventScroll: true });
-      try { if (keep.s != null) n.setSelectionRange(keep.s, keep.e); } catch (_) {}
+      try { if (keep.field && keep.s != null) n.setSelectionRange(keep.s, keep.e); } catch (_) {}
     }
   }
   celebrate(M);
@@ -1837,12 +2347,15 @@ function photoPrompt(kit) {
   return `These photos show the contents of an emergency kit called "${kit.name}" (${KIT_TYPES[kit.type] || "kit"}). List every distinct supply item you can see. Combine identical units into one line with a quantity. Several photos may show the same item from different angles or distances: count each physical item once. If an item is partly hidden or you are unsure what it is, still list it and say so in the note.
 
 Reply with only a JSON array. Each element:
-{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "grams": estimated total weight of the whole line in grams including packaging, "ml": estimated total packed volume of the whole line in millilitres, "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or "", "shop": an Amazon search query for this exact product, with the brand, product name and size as printed on the label (a short generic query when there is no brand), or "" for a prescription medicine or anything you can't identify}
+{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "grams": estimated total weight of the whole line in grams including packaging, "ml": estimated total packed volume of the whole line in millilitres, "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or "", "shop": an Amazon search query for this exact product, with the brand, product name and size as printed on the label (a short generic query when there is no brand), or "" for a prescription medicine or anything you can't identify, "essential": for a line in a category listed under Essential ids, the one id on that category's list that this item is, or "" when you are unsure or it is none of them; "" for every other category, "box": ${BOX_ASK}}
 
-Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"grams":12500,"ml":13500,"expires":"2027-06","note":"","shop":"Poland Spring 500 ml water bottles 24 pack"}]
+Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"grams":12500,"ml":13500,"expires":"2027-06","note":"","shop":"Poland Spring 500 ml water bottles 24 pack","essential":"","box":[1,120,340,260,610]}]
 
 Category ids:
-${catGuide()}`;
+${catGuide()}
+
+Essential ids, by category:
+${Object.entries(ESSENTIALS).map(([c, l]) => `${c}: ${l.map(e => `${e.id} (${e.label})`).join(", ")}`).join("\n")}`;
 }
 function packPrompt(items) {
   return `Estimate the weight and packed size of these emergency-kit items. Each line is: id | name | category | quantity | litres of water | food calories.
@@ -1915,10 +2428,10 @@ async function shrink(file, max = 1600) {
 }
 function cleanRows(out) {
   const arr = Array.isArray(out) ? out : Array.isArray(out?.items) ? out.items : [];
-  return arr.filter(x => x && String(x.name || "").trim()).map(x => ({
+  return arr.filter(x => x && String(x.name || "").trim()).map(x => { const category = typeof x.category === "string" && Object.hasOwn(CATS, x.category) ? x.category : "other"; return {
     key: uid(),
     name: String(x.name).trim().slice(0, 80),
-    category: CATS[x.category] ? x.category : "other",
+    category,
     qty: Math.max(1, Math.round(num(x.qty) || 1)),
     liters: Math.round(num(x.liters) * 10) / 10,
     kcal: Math.round(num(x.kcal)),
@@ -1927,7 +2440,100 @@ function cleanRows(out) {
     expires: /^\d{4}-\d{2}$/.test(x.expires || "") ? x.expires : "",
     note: String(x.note || "").slice(0, 120),
     shop: typeof x.shop === "string" ? x.shop.trim().slice(0, 120) : "",
-  }));
+    // Only an id on this category's list. "none" is the household's to say, never Claude's.
+    essential: x.essential === "none" ? "" : essentialOf({ category, essential: x.essential }),
+    box: cleanBox(x.box),
+  }; });
+}
+/* ---------- item pictures ----------
+   Claude says where each item is in the kit's photos; the page cuts that box out, keys out the surface it lies on and
+   saves a small PNG as the item's `thumb` asset. Nothing ships for this: no model, no outside service. */
+const BOX_ASK = `where the item is, as [photo number counting from 1 in the order given, left, top, right, bottom], each edge from 0 to 1000 across the photo's width or down its height, in the photo that shows it most clearly and tightly around just that item; null if you can't see it`;
+const cleanBox = b => Array.isArray(b) && b.length === 5 && b.every(v => typeof v === "number" && isFinite(v)) && b[0] >= 1 && Number.isInteger(b[0])
+  && b.slice(1).every(v => v >= 0 && v <= 1000) && b[3] - b[1] >= 5 && b[4] - b[2] >= 5 ? b : null;
+/* Clears the surface around an item in RGBA pixels {data, width, height}, in place: a flood from the edges takes every
+   pixel close in colour to the edges' median, so a plain table or floor goes and the item stays. Leaves the pixels as
+   they were and returns false when the surface isn't plain enough (under 8% cleared) or the item matched it (over 92%). */
+function keyOut({ data: d, width: w, height: h }) {
+  const n = w * h, edge = [];
+  for (let x = 0; x < w; x++) edge.push(x, n - w + x);
+  for (let y = 1; y < h - 1; y++) edge.push(y * w, y * w + w - 1);
+  const med = k => { const v = edge.map(i => d[i * 4 + k]).sort((a, b) => a - b); return v[v.length >> 1]; };
+  const ref = [med(0), med(1), med(2)], far = i => Math.hypot(d[i * 4] - ref[0], d[i * 4 + 1] - ref[1], d[i * 4 + 2] - ref[2]);
+  const spread = edge.map(far).sort((a, b) => a - b)[edge.length >> 1], tol = Math.min(70, Math.max(28, 3 * spread + 16));
+  const bg = new Uint8Array(n), todo = edge.filter(i => far(i) < tol);
+  for (const i of todo) bg[i] = 1;
+  while (todo.length) {
+    const i = todo.pop(), x = i % w;
+    for (const j of [x ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) if (j >= 0 && j < n && !bg[j] && far(j) < tol) { bg[j] = 1; todo.push(j); }
+  }
+  let off = 0; for (let i = 0; i < n; i++) off += bg[i];
+  if (off < n * 0.08 || off > n * 0.92) return false;
+  for (let i = 0; i < n; i++) if (bg[i]) d[i * 4 + 3] = 0;
+    else { const x = i % w; if ((x && bg[i - 1]) || (x < w - 1 && bg[i + 1]) || bg[i - w] || bg[i + w]) d[i * 4 + 3] = 140; }
+  return true;
+}
+const canvas = (w, h) => { const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; };
+/* Cuts `box` (cleanBox's, its photo already chosen) out of a photo blob into a PNG at most 96px on its long side, its
+   surface keyed out and trimmed to what's left. null when the browser can't (as in the tests' stand-in DOM). */
+async function cutThumb(photo, [, l, t, r, b]) {
+  try {
+    const bmp = await createImageBitmap(photo), W = bmp.width / 1000, H = bmp.height / 1000, pad = Math.max(r - l, b - t) * 0.06;
+    const x = Math.max(0, l - pad) * W, y = Math.max(0, t - pad) * H, w = (Math.min(1000, r + pad) * W) - x, h = (Math.min(1000, b + pad) * H) - y;
+    const s = Math.min(1, 200 / Math.max(w, h)), c = canvas(w * s, h * s), g = c.getContext("2d", { willReadFrequently: true });
+    g.drawImage(bmp, x, y, w, h, 0, 0, c.width, c.height);
+    const img = g.getImageData(0, 0, c.width, c.height);
+    let box = [0, 0, c.width, c.height];
+    if (keyOut(img)) {
+      g.putImageData(img, 0, 0);
+      let [x0, y0, x1, y1] = [c.width, c.height, 0, 0];
+      for (let i = 0; i < img.data.length / 4; i++) if (img.data[i * 4 + 3]) { const px = i % c.width, py = (i / c.width) | 0; x0 = Math.min(x0, px); y0 = Math.min(y0, py); x1 = Math.max(x1, px + 1); y1 = Math.max(y1, py + 1); }
+      box = [x0, y0, x1 - x0, y1 - y0];
+    }
+    const k = Math.min(1, 96 / Math.max(box[2], box[3])), out = canvas(box[2] * k, box[3] * k);
+    out.getContext("2d").drawImage(c, ...box, 0, 0, out.width, out.height);
+    return await new Promise(res => out.toBlob(res, "image/png"));
+  } catch (_) { return null; }
+}
+const upPic = async b => { try { return b && assets ? (await assets.upload(b, { type: "image/png" })).id : ""; } catch (_) { return ""; } };
+const picPrompt = items => `These photos show the contents of an emergency kit. Find each item below in them. Each line is: id | name.
+${items.map(i => `${i.id} | ${String(i.name).replace(/[|\n]/g, " ")}`).join("\n")}
+
+Reply with only a JSON array, one element per item you can see: {"id": the id exactly as given, "box": ${BOX_ASK}}`;
+/* Gives a kit's items saved without a picture one cut from the kit's saved photos. Writes only `thumb`, onto each
+   item as it is when its picture is ready, so an edit made meanwhile stays. */
+async function findPics() {
+  const kit = S.kits.find(k => k.id === S.openKit), want = S.items.filter(i => i.kitId === kit?.id && !i.thumb);
+  if (!kit?.photos?.length || !want.length || !sample || !assets || S.scan?.state === "working") return;
+  const lim = await sample.limits().catch(() => null);
+  if (!lim?.images) { toast("This view can't send photos to Claude."); return; }
+  const ctl = new AbortController(), box = {};
+  S.scan = { kitId: kit.id, state: "working", msg: "Loading the kit's photos…", ctl };
+  render();
+  try {
+    const photos = (await Promise.all(kit.photos.map(id => fetch("/_blob/" + encodeURIComponent(id)).then(r => r.ok ? r.blob() : null, () => null)))).filter(Boolean);
+    const max = lim.images.maxCount || 5;
+    for (let i = 0; i < photos.length; i += max) {
+      const left = want.filter(it => !box[it.id]), n = Math.min(max, photos.length - i);
+      if (!left.length) break;
+      S.scan.msg = `Claude is finding ${pl(left.length, "item")} in the photos…`; render();
+      const out = await sample.json(picPrompt(left), { images: photos.slice(i, i + max), signal: ctl.signal });
+      for (const x of Array.isArray(out) ? out : []) { const b = cleanBox(x?.box); if (b && b[0] <= n && left.some(it => it.id === x.id)) box[x.id] = [b[0] + i, ...b.slice(1)]; }
+    }
+    S.scan.msg = "Cutting out item pictures…"; render();
+    let done = 0;
+    for (const it of want) {
+      const thumb = box[it.id] && await upPic(await cutThumb(photos[box[it.id][0] - 1], box[it.id])), now = S.items.find(x => x.id === it.id);
+      if (thumb && now) { await setDoc("items", it.id, { ...strip(now), thumb }); done++; }
+    }
+    S.scan = null;
+    toast(done ? `Added pictures for ${pl(done, "item")}` : "Claude couldn't find these items in the photos.");
+  } catch (e) { S.scan = e?.code === "cancelled" ? null : { kitId: kit.id, state: "error", msg: sampleErr(e) }; }
+  render();
+}
+/* Gives each row with a box a `pic` blob cut from photos[box[0] - 1]. */
+async function addPics(rows, photos) {
+  for (const r of rows) if (r.box && photos[r.box[0] - 1]) r.pic = await cutThumb(photos[r.box[0] - 1], r.box);
 }
 /* Photos wait in a tray until you read them, so a kit can be shot one photo at a time (a phone
    camera takes one per pick) and Claude still sees them all together. The tray lives in memory only. */
@@ -1975,8 +2581,12 @@ async function scanPhotos(files) {
     for (let i = 0; i < blobs.length; i += max) {
       S.scan.msg = blobs.length > max ? `Claude is reading photos ${i + 1}–${Math.min(blobs.length, i + max)} of ${blobs.length}…` : "Claude is reading your photos. This can take a minute…";
       render();
-      rows = rows.concat(cleanRows(await sample.json(photoPrompt(kit), { images: blobs.slice(i, i + max), signal: ctl.signal })));
+      const got = cleanRows(await sample.json(photoPrompt(kit), { images: blobs.slice(i, i + max), signal: ctl.signal }));
+      for (const r of got) if (r.box) r.box = r.box[0] > Math.min(max, blobs.length - i) ? null : [r.box[0] + i, ...r.box.slice(1)];
+      rows = rows.concat(got);
     }
+    S.scan.msg = "Cutting out item pictures…"; render();
+    await addPics(rows, blobs);
     // Photos read while you're still checking an earlier list add to that list.
     const prev = S.draft?.kitId === kit.id ? S.draft : null;
     S.draft = { kitId: kit.id, rows: [...(prev?.rows || []), ...rows], photoIds: [...(prev?.photoIds || []), ...photoIds] };
@@ -1994,7 +2604,7 @@ async function saveDraft() {
   const now = Date.now();
   const rows = d.rows.filter(r => String(r.name).trim());
   try {
-    await Promise.all(rows.map(r => setDoc("items", uid(), { kitId: kit.id, name: r.name.trim(), category: r.category, qty: Math.max(1, Math.round(num(r.qty) || 1)), liters: num(r.liters), kcal: num(r.kcal), grams: gOfLb(r.lb), ml: Math.round(num(r.L) * 1000), expires: r.expires || "", note: r.note || "", ...(r.shop ? { shopQuery: r.shop } : {}), source: "photo", addedAt: now })));
+    await Promise.all(rows.map(async r => ({ r, thumb: await upPic(r.pic) }))).then(xs => Promise.all(xs.map(({ r, thumb }) => setDoc("items", uid(), { kitId: kit.id, name: r.name.trim(), category: r.category, qty: Math.max(1, Math.round(num(r.qty) || 1)), liters: num(r.liters), kcal: num(r.kcal), grams: gOfLb(r.lb), ml: Math.round(num(r.L) * 1000), expires: r.expires || "", note: r.note || "", ...(r.shop ? { shopQuery: r.shop } : {}), ...(essentialOf(r) ? { essential: essentialOf(r) } : {}), ...(thumb ? { thumb } : {}), source: "photo", addedAt: now }))));
     if (d.photoIds.length) await setDoc("kits", kit.id, { ...strip(kit), photos: [...(kit.photos || []), ...d.photoIds], updatedAt: now });
     S.draft = null;
     toast(`Added ${rows.length} item${rows.length === 1 ? "" : "s"} to ${kit.name}`);
@@ -2058,20 +2668,21 @@ function setPath(o, path, val) {
 
 /* ---------- events ---------- */
 const ACT = {
-  refile: async () => {
-    const rf = refileable();
-    try { await Promise.all(rf.map(({ it, to }) => setDoc("items", it.id, { ...strip(it), category: to }))); } catch (_) { return; }
-    toast(rf.length === 1 ? `Moved ${rf[0].it.name}` : `Moved ${rf.length} items`);
-    render();
-  },
   tab: b => { S.view = b.dataset.v; try { history.replaceState(null, "", "#" + S.view); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   addKit: () => { S.addKit = true; render(); $("#nk-name")?.focus(); },
   cancelKit: () => { S.addKit = false; render(); $(".add-kit")?.focus(); },
-  openKit: b => { if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.confirm = null; render(); },
-  gotoKit: b => { S.view = "kits"; if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; try { history.replaceState(null, "", "#kits"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
+  openKit: b => { if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.confirm = null; S.listKit = S.flOpen = S.bagM = S.ctr = null; render(); },
+  gotoKit: b => { S.view = "kits"; if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.listKit = S.flOpen = S.bagM = S.ctr = null; try { history.replaceState(null, "", "#kits"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   removeSel: () => removeItems([...S.sel]),
   clearSel: () => { S.sel.clear(); render(); },
   sortItems: b => { S.itemSort = b.dataset.k; render(); },
+  bagM: b => { S.bagM = { id: b.dataset.id, m: b.dataset.m }; render(); },
+  ctrOpen: b => { S.ctr = { id: b.dataset.id }; render(); $("#ctr-" + b.dataset.f)?.focus(); },
+  ctrKind: b => { if (S.ctr) S.ctr.kind = b.dataset.k; render(); },
+  ctrCancel: () => { S.ctr = null; render(); },
+  kitView: b => { S.listKit = b.dataset.v === "list" ? S.openKit : null; render(); },
+  flEdit: b => { S.flOpen = S.flOpen === b.dataset.id ? null : b.dataset.id; render(); document.getElementById(b.id)?.focus(); },
+  flAdd: () => { S.listKit = S.openKit; render(); $("#add-name")?.focus(); },
   planMedAdd: () => {
     const meds = Array.isArray(S.plan?.meds) ? S.plan.meds : [];
     const who = household().members.map((m, i) => [m, personName(m, i)]).find(([m, n]) => onDailyMeds(m) && !meds.some(x => x.who === n));
@@ -2084,6 +2695,7 @@ const ACT = {
   cancelConfirm: () => { S.confirm = null; render(); },
   pickPhotos: () => { const i = $("#photo-input"); i.value = ""; i.click(); },
   stopScan: () => S.scan?.ctl?.abort(),
+  findPics,
   readTray: () => S.tray?.photos.length ? scanPhotos(S.tray.photos.map(p => p.file)) : undefined,
   trayDrop: b => {
     const p = S.tray?.photos.find(x => x.key === b.dataset.k);
@@ -2116,8 +2728,12 @@ const ACT = {
   addItem: async () => {
     const name = $("#add-name").value.trim();
     if (!name) { $("#add-name").focus(); return; }
-    const row = { kitId: S.openKit, name, category: $("#add-cat").value, qty: Math.max(1, Math.round(num($("#add-qty").value) || 1)), liters: num($("#add-l").value), kcal: num($("#add-k").value), grams: gOfLb($("#add-g").value), ml: Math.round(num($("#add-ml").value) * 1000), expires: $("#add-exp").value || "", note: "", source: "manual", addedAt: Date.now() };
-    $("#add-name").value = "";
+    const category = $("#add-cat").value, essential = $("#add-ess")?.value;
+    const row = { kitId: S.openKit, name, category, qty: Math.max(1, Math.round(num($("#add-qty").value) || 1)), liters: num($("#add-l").value), kcal: num($("#add-k").value), grams: gOfLb($("#add-g").value), ml: Math.round(num($("#add-ml").value) * 1000), expires: $("#add-exp").value || "", note: "", source: "manual", addedAt: Date.now(), ...essentialOk(category, essential) ? { essential } : {} };
+    // The row keeps its category and asks for the next item's essential; focus leaves the selects first, so
+    // render() doesn't put the old pick back.
+    S.add = { cat: Object.hasOwn(CATS, category) ? category : "water", ess: "" };
+    $("#add-name").value = ""; $("#add-name").focus();
     await setDoc("items", uid(), row).catch(() => {});
     $("#add-name")?.focus();
   },
@@ -2127,7 +2743,7 @@ const ACT = {
     const items = S.items.filter(i => i.kitId === id);
     try {
       await Promise.all(items.map(i => delDoc("items", i.id)));
-      for (const p of kit?.photos || []) assets?.delete(p).catch(() => {});
+      for (const p of [...kit?.photos || [], ...items.map(i => i.thumb).filter(Boolean)]) assets?.delete(p).catch(() => {});
       await delDoc("kits", id);
       S.openKit = null; toast(`Deleted ${kit?.name || "kit"}`);
     } catch (_) {}
@@ -2135,6 +2751,11 @@ const ACT = {
   },
   hhAdd: b => { const k = b.dataset.k; S.hhDraft[k] = [...(S.hhDraft[k] || []), k === "members" ? { label: "", age: "adult", needs: "" } : { kind: "", count: 1 }]; S.hhDirty = true; render(); },
   hhDel: b => { const k = b.dataset.k; S.hhDraft[k].splice(+b.dataset.i, 1); S.hhDirty = true; render(); },
+  condAdd: b => {
+    const m = S.hhDraft.members?.[+b.dataset.i]; if (!m || !CONDITIONS[b.dataset.k]) return;
+    m.conditions = [...new Set([...(Array.isArray(m.conditions) ? m.conditions : []), b.dataset.k])];
+    S.hhDirty = true; render();
+  },
   condToggle: b => {
     const k = b.dataset.k, ms = S.hhDraft.members || [];
     const has = ms.filter(m => (m.conditions || []).includes(k));
@@ -2147,21 +2768,35 @@ const ACT = {
   wizBack: () => { S.wiz = Math.max(0, S.wiz - 1); render(); },
   wizClose: () => { S.wiz = null; render(); },
   wizNext: () => wizStep(),
+  // A gap's button carries its category and, for a named essential, the essential; a counted category needs only the first.
   shopAdd: b => {
-    const M = model(), g = M.gaps.find(x => x.cat === b.dataset.cat); if (!g) return;
+    const M = model(), key = gapKey({ cat: b.dataset.cat, essential: b.dataset.essential });
+    const g = [...splitListed(M.gaps).off, ...M.gaps].find(x => gapKey(x) === key); if (!g) return;
     saveShop([...shopItems(), shopFromGap(g, M.h)]);
-    toast(`Added ${catLabel(g.cat).toLowerCase()} to your shopping list`);
+    toast(`Added ${gapName(g)} to your shopping list`);
+  },
+  // A kit's checklist block's button: its missing essentials that are household gaps not on the list yet
+  shopAddBlock: b => {
+    const M = model(), { cat, at = "" } = b.dataset, i = at.indexOf(":"), kind = at.slice(0, i), id = at.slice(i + 1);
+    const row = (kind === "kit" && Object.hasOwn(M.kitRes, id) ? M.kitRes[id] : null)?.rows.find(x => x.cat === cat && x.ess);
+    const off = new Set(splitListed(M.gaps).off);
+    shopGaps(M, [...new Set(row ? row.ess.filter(e => !e.have).map(e => essGap(M, cat, e)).filter(g => g && off.has(g)) : [])]);
+  },
+  // An opened emergency's button: every household gap it is short of that isn't on the list yet
+  shopAddHz: b => {
+    const M = model(), r = M.results.find(x => x.hz.id === b.dataset.id), off = new Set(splitListed(M.gaps).off);
+    shopGaps(M, r ? hzGaps(M, r).filter(g => off.has(g)) : []);
   },
   shopAddAll: () => {
-    const M = model(), have = new Set(shopItems().filter(x => !x.done).map(x => x.cat));
-    const add = M.gaps.filter(g => !have.has(g.cat)).map(g => shopFromGap(g, M.h));
+    const M = model();
+    const add = splitListed(M.gaps).off.map(g => shopFromGap(g, M.h));
     if (!add.length) { toast("Every gap is already on your list"); return; }
     saveShop([...shopItems(), ...add]);
     toast(`Added ${add.length} item${add.length === 1 ? "" : "s"} to your shopping list`);
   },
   shopAddTop: () => {
-    const M = model(), have = new Set(shopItems().filter(x => !x.done).map(x => x.cat));
-    const add = M.gaps.filter(g => !have.has(g.cat)).map(g => ({ g, gain: M.overall == null ? 0 : scoreIfFilled(M, [g]) - M.overall }))
+    const M = model();
+    const add = splitListed(M.gaps).off.map(g => ({ g, gain: M.overall == null ? 0 : scoreIfFilled(M, [g]) - M.overall }))
       .sort((a, b) => b.gain - a.gain || b.g.imp - a.g.imp).slice(0, 5).map(x => shopFromGap(x.g, M.h));
     if (!add.length) return;
     saveShop([...shopItems(), ...add]);
@@ -2191,12 +2826,17 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-act]
 document.addEventListener("input", e => {
   const t = e.target;
   if (t.dataset.input === "draft") {
-    const r = S.draft?.rows[+t.dataset.i]; if (r) r[t.dataset.f] = t.value;
+    const r = S.draft?.rows[+t.dataset.i]; if (!r) return;
+    r[t.dataset.f] = t.value;
+    // A new category has its own essentials, so the old pick goes and the row redraws with the right picker.
+    if (t.dataset.f === "category") { r.essential = ""; render(); }
   } else if (t.dataset.input === "hh") {
     setPath(S.hhDraft, t.dataset.p, t.type === "number" ? (t.value === "" && t.dataset.blank ? "" : num(t.value)) : t.value);
     if (t.dataset.blank) { S.hhDirty = true; render(); return; }
+    const note = /^members\.(\d+)\.needs$/.exec(t.dataset.p || ""), box = note && $(`#hh-m${note[1]}-hints`);
+    if (box) { const html = hintButtons(S.hhDraft.members[+note[1]], +note[1]); box.innerHTML = html; box.hidden = !html; }
     if (!S.hhDirty) { S.hhDirty = true; const btn = $('form[data-submit="saveHH"] button[type=submit]'); if (btn) btn.disabled = false; }
-  }
+  } else if (t.dataset.input === "ctr" && S.ctr) S.ctr[t.dataset.f] = t.value;
 });
 document.addEventListener("toggle", e => { const id = e.target.dataset?.how; if (id) e.target.open ? S.how.add(id) : S.how.delete(id); }, true);
 document.addEventListener("change", async e => {
@@ -2206,11 +2846,17 @@ document.addEventListener("change", async e => {
     const f = t.dataset.f;
     let v = t.value;
     if (f === "qty") v = Math.max(1, Math.round(num(v) || 1)); else if (f === "liters" || f === "kcal") v = num(v); else if (f === "grams") v = gOfLb(v); else if (f === "ml") v = Math.round(num(v) * 1000); else if (f === "name") { v = v.trim(); if (!v) { t.value = it.name; return; } }
+    else if (f === "essential" && !essentialOk(it.category, v)) { t.value = essentialOf(it); return; }
     if (it[f] === v) return;
     await setDoc("items", it.id, { ...strip(it), [f]: v }).catch(() => {});
+  } else if (t.dataset.change === "addCat") {
+    S.add = { cat: Object.hasOwn(CATS, t.value) ? t.value : "water", ess: "" };
+    const cell = $("#add-ess-td"); if (cell) cell.innerHTML = essPicker("add-ess", S.add.cat, "", `data-change="addEss"`);
+  } else if (t.dataset.change === "addEss") {
+    S.add.ess = essentialOk(S.add.cat, t.value) ? t.value : "";
   } else if (t.dataset.change === "packLim") {
     const kit = S.kits.find(k => k.id === t.dataset.id); if (!kit) return;
-    const f = t.dataset.f, v = f === "carryKg" ? kgOfLb(t.value) : Math.round(num(t.value) * 2) / 2;
+    const f = t.dataset.f, v = f === "carryKg" ? kgOfLb(t.value) : Math.round(num(t.value) * 100) / 100;
     if (v === num(kit[f]) || f === "carryKg" && Math.round(v * KG_LB) === Math.round(num(kit[f]) * KG_LB)) return;
     const { [f]: _, ...rest } = strip(kit);
     await setDoc("kits", kit.id, v ? { ...rest, [f]: v } : rest).catch(() => {});
@@ -2296,6 +2942,16 @@ document.addEventListener("submit", async e => {
     $("#shop-new").value = "";
     await saveShop([...shopItems(), { id: uid(), cat: "", text: text.slice(0, 80), done: false, at: Date.now() }]);
     $("#shop-new")?.focus();
+  } else if (f.dataset.submit === "ctr") {
+    // Blank fields are left out; bagL changes only when Capacity did
+    const d = S.ctr, kit = S.kits.find(k => k.id === d?.id);
+    if (!kit || !PACK_L[kit.type] || !S.canWrite) return;
+    const v = ctrVals(kit), g = d.lb == null ? containerOf(kit)?.emptyG : gOfLb(d.lb), container = { kind: Object.hasOwn(CONTAINER_KINDS, v.kind) ? v.kind : "other" };
+    for (const k in CTR_MAX) { const t = cutText(String(v[k]), CTR_MAX[k]); if (t) container[k] = t; }
+    if (g) container.emptyG = g;
+    const { bagL, ...rest } = strip(kit), L = Math.round(num(d.L) * 100) / 100;
+    try { await setDoc("kits", kit.id, { ...(d.L == null || num(d.L) === num(bagL) ? strip(kit) : L ? { ...rest, bagL: L } : rest), container }); } catch (_) { return; }
+    S.ctr = null; render();
   }
 });
 async function saveHousehold() {
