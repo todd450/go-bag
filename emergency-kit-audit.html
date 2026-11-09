@@ -171,20 +171,59 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .grp-h { display: grid; gap: 2px; }
 
 .hz { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--rule); }
-.hz-row { display: grid; grid-template-columns: minmax(0, 1fr) 104px 56px 36px 24px; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
+/* The emergencies: two columns of rows, each its name, likelihood, score and needs; an opened one's panel spans both,
+   and dense packing pulls the row beside it back up beside it. The name's button covers the whole row. */
+.hz-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; column-gap: 40px; border-top: 1px solid var(--rule); }
+.hz-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; align-content: start; padding: 9px 0 10px; border-bottom: 1px solid var(--rule); font-size: .9rem; }
 .hz-row.off { opacity: .5; }
-.hz-name, .kit-name { display: flex; gap: 8px; align-items: baseline; background: none; border: 0; padding: 2px 0; text-align: left; cursor: pointer; }
-.hz-name b, .kit-name b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
-.hz-name .mode, .kit-name .mode { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.hz-name:hover b, .kit-name:hover b { text-decoration: underline; text-underline-offset: 2px; }
+.kit-name { display: flex; gap: 8px; align-items: baseline; background: none; border: 0; padding: 2px 0; text-align: left; cursor: pointer; }
+.kit-name b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.kit-name .mode { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.kit-name:hover b, .hz-row:hover .hz-tg, .hz-row.open .hz-tg { text-decoration: underline; text-underline-offset: 2px; }
+.hz-nm { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+.hz-nm .mode, .hz-tg { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hz-nm .mode { flex: 1 1 0; }
+.hz-tg { flex: 0 1 auto; font-weight: 600; background: none; border: 0; padding: 2px 0; text-align: left; cursor: pointer; }
+.hz-tg::after { content: ""; position: absolute; inset: 0; border-radius: 6px; }
+.hz-tg:focus-visible { outline: 0; }
+.hz-tg:focus-visible::after { outline: 2px solid var(--brand); }
+.hz-sc { display: inline-flex; gap: 10px; align-items: center; }
+.hz-sc .pct { min-width: 38px; }
+.hz-sc .pri { color: var(--brand); }
+/* Positioned so it clips its hidden words on a phone; clicks pass through it to the row's button. */
+.hz-needs { grid-column: 1 / -1; position: relative; pointer-events: none; display: flex; flex-wrap: wrap; gap: 3px 12px; font-size: .78rem; }
+/* Likelihood as three bars, and a need as its icon and name: missing in ink, some in amber with the amount, have in green with a check. */
+.lik { display: inline-flex; gap: 2px; align-items: flex-end; height: 11px; flex: none; }
+.lik i { width: 3px; height: 5px; border-radius: 1px; background: var(--rule-2); }
+.lik i + i { height: 8px; } .lik i + i + i { height: 11px; }
+.lik i.on { background: var(--ink); }
+.legend { display: flex; gap: 4px 14px; flex-wrap: wrap; align-items: center; font-size: .78rem; color: var(--ink-2); }
+.legend > span { display: inline-flex; gap: 5px; align-items: center; }
+.need { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+.need .ic { width: 14px; height: 14px; color: var(--ink-2); }
+.need.miss { color: var(--ink); }
+.need.part, .need.part .ic { color: var(--warn); }
+.need.have, .need.have .ic { color: var(--good); }
+.need .amt, .need.more { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.hz-panel { grid-column: 1 / -1; display: grid; gap: 10px; margin: 10px 0 14px; padding: 16px 20px; }
+.hzp-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.hzp-pct { font-family: var(--f-display); font-weight: 700; font-size: 1.6rem; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.hzp-rate { display: flex; gap: 6px 20px; flex-wrap: wrap; }
+.hzp-needs { border-top: 1px solid var(--rule); }
+.hzp-need { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: .85rem; }
+.hzp-need .ic { align-self: start; margin-top: 2px; width: 16px; height: 16px; color: var(--ink-2); }
+.hzp-need b { font-weight: 500; }
+.hzp-need.part .ic, .hzp-need.part .amt { color: var(--warn); }
+.hzp-need.have, .hzp-need.have .ic { color: var(--good); }
+.hzp-need .amt { font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; font-size: .8rem; text-align: right; }
+.hzp-note { display: block; font-size: .8rem; }
+@media (max-width: 760px) { .hz-grid { grid-template-columns: minmax(0, 1fr); } }
 .mode { font-size: .8rem; color: var(--ink-2); }
 .bar { height: 6px; background: var(--rule); border-radius: 999px; overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--c); border-radius: 999px; }
 .band { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
 .band i { width: 9px; height: 9px; border-radius: 2px; }
 .pct { font-size: .85rem; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
-.hz-row .x { padding: 2px 6px; font-size: 1rem; }
-.hz-detail { grid-column: 1 / -1; display: grid; gap: 8px; padding: 4px 0 12px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; border: 1px solid transparent; background: var(--paper); color: var(--ink); border-radius: 999px; padding: 4px 11px 4px 9px; font-variant-numeric: tabular-nums; }
 .chip .ic { color: var(--ink-2); }
@@ -204,13 +243,13 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .ess-f { display: flex; gap: 6px 10px; align-items: center; flex-wrap: wrap; }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .lvl { font-size: .8rem; padding: 4px 6px; }
-.hz-lvl.alarm { color: var(--bad); font-weight: 600; }
-.hz-lvl .pri { color: var(--brand); }
 .hz-like { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--ink-2); }
 @media (max-width: 560px) {
-  .hz-row { grid-template-columns: minmax(0, 1fr) 100px 36px 24px; }
-  .hz-row > .bar, .hz-name .mode { display: none; }
-  .hz-name, .hz-name b { white-space: normal; }
+  .hz-row { padding: 8px 0; gap: 2px 12px; }
+  .hz-nm .mode, .hz-needs .more { display: none; }
+  .hz-needs { flex-wrap: nowrap; overflow: hidden; -webkit-mask-image: linear-gradient(to right, #000 82%, transparent); mask-image: linear-gradient(to right, #000 82%, transparent); }
+  .hzp-pct { font-size: 1.3rem; }
+  .hz-panel { padding: 14px 16px; }
 }
 .kit-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px 40px; gap: 2px 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
 .kit-row .kit-miss { grid-column: 1 / -1; margin-top: -2px; }
@@ -1211,6 +1250,12 @@ function shopInfo(e, M) {
 const money = p => p === undefined ? "" : p === null ? "Prescription" : p === 0 ? "From home" : `$${p}`;
 const shopItems = () => Array.isArray(S.shopping?.items) ? S.shopping.items : [];
 const saveShop = items => setDoc("household", "shopping", { items, updatedAt: Date.now() }).catch(() => {});
+/* Adds these household gaps to the shopping list, a line each, and says so. */
+function shopGaps(M, add) {
+  if (!add.length) { toast("Already on your shopping list"); return; }
+  saveShop([...shopItems(), ...add.map(g => shopFromGap(g, M.h))]);
+  toast(add.length === 1 ? `Added ${gapName(add[0])} to your shopping list` : `Added ${add.length} items to your shopping list`);
+}
 /* Gaps and list lines match on category plus essential. Each line still to buy covers one gap, so two
    prescriptions lines cover two people's, and an old line with no essential covers none of the five's. */
 const gapKey = x => `${x.cat}|${typeof x.essential === "string" ? x.essential : ""}`;
@@ -1221,7 +1266,8 @@ function splitListed(gaps, lines = shopItems().filter(x => !x.done)) {
   for (const g of gaps) { const k = gapKey(g), left = n.get(k) || 0; if (left) { n.set(k, left - 1); on.push(g); } else off.push(g); }
   return { on, off };
 }
-const gapName = g => g.essential ? g.label : catLabel(g.cat).toLowerCase();
+// A gap inside a sentence: an essential as named, a category lower-cased unless it starts with an acronym ("CPR & airway")
+const gapName = g => g.essential ? g.label : catLabel(g.cat).replace(/^[A-Z](?=[a-z])/, c => c.toLowerCase());
 function shopFromGap(g, h) {
   const p = gapPlan(g, h);
   return { id: uid(), cat: g.cat, ...(g.essential ? { essential: g.essential } : {}), qty: p.qty, unit: p.unit, name: p.name, text: p.text, note: p.hint, kits: p.kits, kitId: "", done: false, at: Date.now() };
@@ -1453,14 +1499,18 @@ function gapGain(M, g) {
   return c.get(g);
 }
 const itemNames = its => { const n = its.map(i => String(i.name || "Unnamed item")); return n.length > 3 ? `${n.slice(0, 3).join(", ")} and ${n.length - 3} more` : orList(n, "and"); };
-/* One of the five categories as a block: the essentials in (each once, however many items fill it), the ones missing
-   with the points adding each is worth, the most first, an Add button for those not on the list yet, and the items
-   still to tag and the expired ones that don't count. `items` are those in the kits the row counts, and `at` says
-   which emergency ("hz:<id>") or kit ("kit:<id>") the block is in. */
+/* A category of named essentials' notes, as escaped text: its items still to tag, and its expired ones, which don't count. */
+function essNotes(cat, items) {
+  const mine = items.filter(it => it.category === cat), old = mine.filter(it => expState(it) === "expired");
+  const untagged = mine.filter(it => expState(it) !== "expired" && !essentialOf(it));
+  return [untagged.length && `${pl(untagged.length, "item")} still to tag: ${esc(itemNames(untagged))}`,
+    old.length && `${esc(itemNames(old))} expired${old.length === 1 ? " " + esc(old[0].expires) : ""}, so ${old.length === 1 ? "it doesn't" : "they don't"} count`].filter(Boolean);
+}
+/* One of the five categories as a block in a kit's panel: the essentials in (each once, however many items fill it),
+   the ones missing with the points adding each is worth, the most first, an Add button for those not on the list yet,
+   and its notes (essNotes). `items` are the kit's, and `at` says which kit ("kit:<id>") the block is in. */
 function essBlock(M, row, items, at) {
-  const mine = items.filter(it => it.category === row.cat);
-  const live = mine.filter(it => expState(it) !== "expired"), old = mine.filter(it => expState(it) === "expired");
-  const untagged = live.filter(it => !essentialOf(it));
+  const live = items.filter(it => it.category === row.cat && expState(it) !== "expired");
   const off = new Set(splitListed(M.gaps).off);
   const miss = row.ess.filter(e => !e.have).map(e => { const g = essGap(M, row.cat, e); return { e, g, gain: gapGain(M, g) }; }).sort((a, b) => b.gain - a.gain);
   const add = new Set(miss.filter(x => x.g && off.has(x.g)).map(x => x.g)).size;
@@ -1473,8 +1523,7 @@ function essBlock(M, row, items, at) {
   const foot = [
     add ? `<button class="btn ghost sm" data-act="shopAddBlock" data-cat="${esc(row.cat)}" data-at="${esc(at)}" ${D()}>Add ${add} to list</button>`
       : miss.some(x => x.g) ? `<span class="small muted">On your shopping list</span>` : "",
-    untagged.length ? `<span class="small muted">${pl(untagged.length, "item")} still to tag: ${esc(itemNames(untagged))}</span>` : "",
-    old.length ? `<span class="small muted">${esc(itemNames(old))} expired${old.length === 1 ? " " + esc(old[0].expires) : ""}, so ${old.length === 1 ? "it doesn't" : "they don't"} count</span>` : "",
+    ...essNotes(row.cat, items).map(n => `<span class="small muted">${n}</span>`),
   ].filter(Boolean);
   const pct = Math.round(row.cov * 100);
   return `<section class="ess-blk">
@@ -1483,7 +1532,7 @@ function essBlock(M, row, items, at) {
     ${foot.length ? `<div class="ess-f">${foot.join("")}</div>` : ""}
   </section>`;
 }
-/* An emergency's or a kit's checklist: a block for each category of named essentials, then the counted ones as chips. */
+/* A kit's checklist: a block for each category of named essentials, then the counted ones as chips. */
 function checklist(M, rows, h, days, items, at) {
   const counted = chipsFor(rows, h, days);
   return rows.filter(r => r.ess).map(r => essBlock(M, r, items, at)).join("")
@@ -1520,7 +1569,7 @@ function viewOverview(M) {
   const offCount = results.filter(r => !applies(r)).length;
   const group = (label, rows, note) => { rows = S.showOff ? rows : rows.filter(applies); return rows.length ? `<div class="grp">
     <div class="grp-h"><span class="eyebrow">${label}</span>${note ? `<span class="small muted">${note}</span>` : ""}</div>
-    <div class="hz">${rows.map(r => hzRow(r, h, M)).join("")}</div></div>` : ""; };
+    <div class="hz-grid">${rows.map(r => hzRow(r, h, M)).join("")}</div></div>` : ""; };
   return `
   <div class="panel sum">
     <div class="sum-score">
@@ -1545,7 +1594,7 @@ function viewOverview(M) {
   </div>
 
   <div class="stack">
-    <div class="sec-h"><h2>Emergencies</h2><span class="small muted">Open one to see what it needs, or to change how likely it is</span></div>
+    <div class="sec-h"><h2>Emergencies</h2><div class="legend"><span class="need miss">${icon("water")}Missing</span><span class="need part">${icon("water")}Some</span><span class="need have">${icon("yes")}Have</span><span>${lik("moderate")}Likelihood</span></div></div>
     ${group("Disasters and outages", sorted.filter(r => !r.hz.group))}
     ${group("Health emergencies", sorted.filter(r => r.hz.group === "health"), "Set from who lives here and their health on the Household tab. A first-aid course matters more than any kit.")}
     ${group("Everyday", sorted.filter(r => r.hz.group === "everyday"), "Small things that go wrong often. A kit that handles them is one you'll open, and so keep stocked.")}
@@ -1670,31 +1719,48 @@ function packPanel(kit, ready) {
     ${P.fits && !P.takeOut.length && !P.swaps.length ? `<p class="small">Fits, and every item earns its place.</p>` : ""}
   </div>`;
 }
-const RISK = { high: "High risk", moderate: "Moderate risk", low: "Low risk", none: "Doesn't apply" };
+/* Likelihood as three bars, and a need's state: 0 missing, 1 some, 2 have. */
+const lik = rel => `<span class="lik" role="img" aria-label="${LEVELS[rel][0]} likelihood" title="${LEVELS[rel][0]} likelihood">${[1, 2, 3].map(i => `<i${i <= LEVELS[rel][1] ? ` class="on"` : ""}></i>`).join("")}</span>`;
+const NEED = ["miss", "part", "have"];
+const needRank = x => x.cov >= 1 ? 2 : x.cov > 0 ? 1 : 0;
+const NEED_WORD = ["Missing", "Some", "Have"];
+/* The household gaps an emergency is short of: each counted category's one gap and each missing essential's (essGap). */
+const hzGaps = (M, r) => [...new Set(r.rows.flatMap(x => x.cov >= 1 ? [] : x.ess ? x.ess.filter(e => !e.have).map(e => essGap(M, x.cat, e)) : M.gaps.filter(g => g.cat === x.cat && !g.essential)).filter(Boolean))];
+/* An emergency as a row: its name and when, a star when it matters more, its likelihood and score, then its needs,
+   missing first, six at most. The name's button opens it, and covers the whole row. */
 function hzRow(r, h, M = model()) {
-  const open = S.openHz.has(r.hz.id);
-  const off = LEVELS[r.rel][1] === 0;
-  const c = statusColor(r.score);
-  const why = r.hz.group ? householdWhy(r.hz, h) : S.hazards?.reasons?.[r.hz.id];
+  const id = r.hz.id, open = S.openHz.has(id), off = LEVELS[r.rel][1] === 0;
   const lockedOff = r.hz.vehicle && h.vehicles === 0;
   const alarm = r.hz.group === "health" && r.rel === "high" && r.score < 50;
-  const pri = importanceOf(r.hz.id);
-  return `<div class="hz-row ${off ? "off" : ""}">
-    <button class="hz-name ell" data-act="toggleHz" data-id="${r.hz.id}" aria-expanded="${open}" title="${esc(r.hz.name)} · ${esc(modeLine(r.hz))}"><b>${esc(r.hz.name)}</b><span class="mode">${esc(modeLine(r.hz))}</span></button>
-    <div class="hz-lvl small ${alarm ? "alarm" : "muted"}">${pri > 1 && !off && !lockedOff ? `<span class="pri" title="${esc(IMPORTANCE[S.hazards.importance[r.hz.id]][0])}: counts ${pri}× in your score">★</span> ` : ""}${lockedOff ? "No vehicle" : alarm ? "Needs attention" : RISK[r.rel] || ""}</div>
-    <div class="bar" style="--c:${c}"><span style="width:${r.score}%"></span></div>
-    <div class="pct" ${alarm ? `style="color:var(--bad)"` : ""}>${r.score}%</div>
-    <button class="x" data-act="toggleHz" data-id="${r.hz.id}" aria-expanded="${open}" aria-label="Details for ${esc(r.hz.name)}">${open ? "−" : "+"}</button>
-    ${open ? `<div class="hz-detail">
-      <p class="small"><b>${SEVERITY[r.hz.severity][0]} if you're unprepared:</b> ${SEVERITY[r.hz.severity][2]}.${severityOf(r.hz) > 1 ? ` Counts ${severityOf(r.hz)}× in your score.` : ""}</p>
-      ${why ? `<p class="small">${esc(why)}</p>` : ""}
-      ${lockedOff ? "" : `<label class="hz-like small">How likely is this for you?
-        <select class="lvl" data-change="level" data-id="${r.hz.id}" aria-label="Likelihood of ${esc(r.hz.name)}" ${D()}>${Object.entries(LEVELS).map(([k, v]) => `<option value="${k}" ${k === r.rel ? "selected" : ""}>${v[0]}</option>`).join("")}</select></label>
-      <label class="hz-like small">How much does it matter to you?
-        <select class="lvl" data-change="importance" data-id="${r.hz.id}" aria-label="Importance of ${esc(r.hz.name)}" ${D()}>${Object.entries(IMPORTANCE).map(([k, v]) => `<option value="${k}" ${v[1] === pri ? "selected" : ""}>${v[0]}</option>`).join("")}</select></label>`}
-      <p class="small muted">Counts ${kitsFor(r.hz).map(k => KIT_TYPES[k].toLowerCase().replace(/y$/, "ie") + "s").join(", ").replace(/, ([^,]*)$/, " and $1")}. ${r.hz.group ? (r.hz.days > 1 ? `Needs sized for ${r.hz.days} days.` : "") : `Needs sized for ${h.people} ${h.people === 1 ? "person" : "people"}${h.pets ? ` and ${h.pets} pet${h.pets > 1 ? "s" : ""}` : ""} over ${r.hz.days === 1 ? "24 hours" : r.hz.days + " days"}.`}</p>
-      <div>${checklist(M, r.rows, h, undefined, itemsIn(kitsFor(r.hz)), "hz:" + r.hz.id)}</div>
-    </div>` : ""}
+  const ink = alarm ? "var(--bad)" : statusInk(r.score), pri = importanceOf(id);
+  const rows = [...r.rows].sort((a, b) => needRank(a) - needRank(b)), more = rows.length - 6;
+  return `<div class="hz-row${off ? " off" : ""}${open ? " open" : ""}">
+    <span class="hz-nm"><button class="hz-tg" data-act="toggleHz" data-id="${id}" aria-expanded="${open}"${open ? ` aria-controls="hzp-${id}"` : ""} title="${esc(r.hz.name)} · ${esc(modeLine(r.hz))}">${esc(r.hz.name)}</button><span class="mode">${esc(modeLine(r.hz))}</span></span>
+    <span class="hz-sc">${pri > 1 && !off && !lockedOff ? `<span class="pri" title="${esc(IMPORTANCE[S.hazards.importance[id]][0])}: counts ${pri}× in your score">★</span>` : ""}${lockedOff || off ? `<span class="small muted">${lockedOff ? "No vehicle" : "Doesn't apply"}</span>` : lik(r.rel)}<span class="pct" style="color:${ink}">${r.score}%${alarm ? `<span class="vh">, needs attention</span>` : ""}</span></span>
+    <span class="hz-needs">${rows.slice(0, 6).map(x => { const s = needRank(x); return `<span class="need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span class="vh">${NEED_WORD[s]} </span>${esc(catLabel(x.cat))}${s === 1 ? ` <span class="amt">${amount(x, h, "days").replace(/ <span[\s\S]*/, "")}</span>` : ""}</span>`; }).join("")}${more > 0 ? `<span class="need more">+${more} more</span>` : ""}</span>
+  </div>${open ? hzPanel(r, h, M, rows, lockedOff, ink) : ""}`;
+}
+/* What an opened emergency involves: where you'd be and with what, how bad and how likely it is, each need on a line
+   with the essentials still missing and its notes, and a button adding the household gaps it is short of to the list. */
+function hzPanel(r, h, M, rows, lockedOff, ink) {
+  const hz = r.hz, [sev, mult, what] = SEVERITY[hz.severity], pri = importanceOf(hz.id);
+  const why = hz.group ? householdWhy(hz, h) : S.hazards?.reasons?.[hz.id];
+  const who = `${pl(h.people, "person", "people")}${h.pets ? ` and ${pl(h.pets, "pet")}` : ""}`, d = hz.days === 1 ? "a day" : hz.days + " days";
+  const where = hz.group ? `${hz.when}.` : hz.mode === "evacuate" ? `You leave home with ${d} of supplies for ${who}.`
+    : hz.mode === "shelter" ? `You stay home for ${d} on what you have stored, for ${who}.` : "You're stuck in the car for up to a day.";
+  const items = itemsIn(kitsFor(hz)), gs = hzGaps(M, r), off = new Set(splitListed(M.gaps).off), add = gs.filter(g => off.has(g));
+  return `<div class="panel hz-panel" id="hzp-${hz.id}">
+    <div class="hzp-h"><div><p class="eyebrow">${sev} if you're unprepared</p><h3>${esc(hz.name)}</h3></div><span class="hzp-pct" style="color:${ink}">${r.score}%</span></div>
+    <p class="small">${esc(where)} Counts ${kitsFor(hz).map(k => KIT_TYPES[k].toLowerCase().replace(/y$/, "ie") + "s").join(", ").replace(/, ([^,]*)$/, " and $1")}.</p>
+    <p class="small muted">${what[0].toUpperCase() + what.slice(1)}${mult > 1 ? `, so it counts ${mult}× in your score` : ""}.${why ? ` ${esc(why)}` : ""}</p>
+    ${lockedOff ? "" : `<div class="hzp-rate"><label class="hz-like small">How likely is this for you?
+      <select class="lvl" data-change="level" data-id="${hz.id}" aria-label="Likelihood of ${esc(hz.name)}" ${D()}>${Object.entries(LEVELS).map(([k, v]) => `<option value="${k}" ${k === r.rel ? "selected" : ""}>${v[0]}</option>`).join("")}</select></label>
+    <label class="hz-like small">How much does it matter to you?
+      <select class="lvl" data-change="importance" data-id="${hz.id}" aria-label="Importance of ${esc(hz.name)}" ${D()}>${Object.entries(IMPORTANCE).map(([k, v]) => `<option value="${k}" ${v[1] === pri ? "selected" : ""}>${v[0]}</option>`).join("")}</select></label></div>`}
+    <div class="hzp-needs">${rows.map(x => { const s = needRank(x), miss = x.ess ? x.ess.filter(e => !e.have).map(e => essWord(x.cat, e.label)) : [];
+      return `<div class="hzp-need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span><span class="vh">${NEED_WORD[s]}: </span><b>${esc(catLabel(x.cat))}</b>${miss.length ? `<span class="muted"> · missing ${esc(orList(miss, "and"))}</span>` : ""}${x.ess ? essNotes(x.cat, items).map(n => `<span class="hzp-note muted">${n}</span>`).join("") : ""}</span><span class="amt">${amount(x, h)}</span></div>`; }).join("")}</div>
+    ${add.length ? `<div><button class="btn sm" data-act="shopAddHz" data-id="${hz.id}" ${D()}>${add.length === 1 ? `Add ${esc(gapName(add[0]))} to your shopping list` : `Add the ${add.length} missing to your shopping list`}</button></div>`
+      : gs.length ? `<p class="small muted">All of it is on your shopping list.</p>` : ""}
   </div>`;
 }
 
@@ -2694,16 +2760,17 @@ const ACT = {
     saveShop([...shopItems(), shopFromGap(g, M.h)]);
     toast(`Added ${gapName(g)} to your shopping list`);
   },
-  // A checklist block's button: its missing essentials that are household gaps not on the list yet, in the emergency or kit it's in
+  // A kit's checklist block's button: its missing essentials that are household gaps not on the list yet
   shopAddBlock: b => {
     const M = model(), { cat, at = "" } = b.dataset, i = at.indexOf(":"), kind = at.slice(0, i), id = at.slice(i + 1);
-    const r = kind === "kit" ? (Object.hasOwn(M.kitRes, id) ? M.kitRes[id] : null) : kind === "hz" ? M.results.find(x => x.hz.id === id) : null;
-    const row = r?.rows.find(x => x.cat === cat && x.ess);
+    const row = (kind === "kit" && Object.hasOwn(M.kitRes, id) ? M.kitRes[id] : null)?.rows.find(x => x.cat === cat && x.ess);
     const off = new Set(splitListed(M.gaps).off);
-    const add = [...new Set(row ? row.ess.filter(e => !e.have).map(e => essGap(M, cat, e)).filter(g => g && off.has(g)) : [])];
-    if (!add.length) { toast("Already on your shopping list"); return; }
-    saveShop([...shopItems(), ...add.map(g => shopFromGap(g, M.h))]);
-    toast(add.length === 1 ? `Added ${gapName(add[0])} to your shopping list` : `Added ${add.length} items to your shopping list`);
+    shopGaps(M, [...new Set(row ? row.ess.filter(e => !e.have).map(e => essGap(M, cat, e)).filter(g => g && off.has(g)) : [])]);
+  },
+  // An opened emergency's button: every household gap it is short of that isn't on the list yet
+  shopAddHz: b => {
+    const M = model(), r = M.results.find(x => x.hz.id === b.dataset.id), off = new Set(splitListed(M.gaps).off);
+    shopGaps(M, r ? hzGaps(M, r).filter(g => off.has(g)) : []);
   },
   shopAddAll: () => {
     const M = model();
