@@ -391,16 +391,20 @@ test("a double-click or double tap on Plan, Plan the top N, a tick or × does wh
         await page.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
         await page.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
       } else {
-        await page.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount });
-        await page.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount });
+        // "quick": two single clicks, as a browser that doesn't count taps sends a double tap (Linux Chrome, in CI)
+        const n = how === "quick" ? 1 : clickCount;
+        await page.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: n });
+        await page.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: n });
       }
       await sleep(90);
     }
-    await sleep(150); // a save redraws in the click's own task, so this is plenty
+    // A save redraws in the click's own task. The wait is so the next press is a separate action, past the page's
+    // 350 ms double-tap time, as a person's next click would be.
+    await sleep(400);
   };
   const state = async () => JSON.parse(await ev("JSON.stringify({ open: shopItems().filter(x => !x.done).map(x => x.id), done: shopItems().filter(x => x.done).map(x => x.id), items: S.items.length, score: model().overall })"));
   try {
-    for (const [how, width] of [["mouse", 390], ["mouse", 1200], ["touch", 390]]) {
+    for (const [how, width] of [["mouse", 390], ["mouse", 1200], ["touch", 390], ["quick", 390]]) {
       const was = `${how} at ${width}px`;
       await page.send("Emulation.setDeviceMetricsOverride", { width, height: 844, deviceScaleFactor: 1, mobile: width < 600 });
       await page.send("Emulation.setTouchEmulationEnabled", { enabled: how === "touch" });

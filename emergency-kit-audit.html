@@ -2355,10 +2355,14 @@ for (const t of ["pointerup", "pointercancel", "mouseup", "dragend", "contextmen
 document.addEventListener("click", () => { hold.press = hold.blur = 0; }, true);
 document.addEventListener("change", () => { if (document.activeElement === document.body) { hold.blur = 1; unhold("blur"); } }, true);
 /* A double-click or double tap's second click lands where the first one was. When the first redrew the page, something
-   else may be there now (a Plan puts its new lines above its own button, a ticked row moves away), so it does nothing. */
-const drew = { n: 0, atClick: 0 };
+   else may be there now (a Plan puts its new lines above its own button, a ticked row moves away), so it does nothing.
+   Some browsers count a double tap as two single clicks, so a pointer click within 350 ms (a phone's double-tap time)
+   and a few pixels of the last one counts too. Keyboard clicks have detail 0 and never do. */
+const drew = { n: 0, atClick: 0, t: -1e9, x: 0, y: 0 };
 document.addEventListener("click", e => {
-  if (e.detail > 1 && drew.n !== drew.atClick) { e.preventDefault(); e.stopImmediatePropagation(); } else drew.atClick = drew.n;
+  const again = e.detail > 1 || e.detail > 0 && e.timeStamp - drew.t < 350 && Math.hypot(e.clientX - drew.x, e.clientY - drew.y) < 24;
+  if (again && drew.n !== drew.atClick) { e.preventDefault(); e.stopImmediatePropagation(); }
+  else Object.assign(drew, { atClick: drew.n, t: e.timeStamp, x: e.clientX, y: e.clientY });
 }, true);
 function render() {
   if (hold.press || hold.blur) { hold.owed = 1; return; }
