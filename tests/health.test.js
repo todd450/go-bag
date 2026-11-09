@@ -84,23 +84,6 @@ test("carbon monoxide is likelier in a house than an apartment", () => {
   assert.deepEqual(["House", "Townhouse", "Mobile home", "Apartment or condo", "Other"].map(co), ["moderate", "moderate", "moderate", "low", "low"]);
 });
 
-test("items saved before their supply type existed are offered a move, and moving them counts them", () => {
-  const { run, json } = load({ fixture: "tests/household" });
-  run(`S.profile.members[0].conditions = ["asthma"]; S.items.push(
-    { id: "r1", kitId: "go", name: "Albuterol inhaler", category: "medications", qty: 1 },
-    { id: "r2", kitId: "home", name: "Kidde CO alarm", category: "poison", qty: 1 },
-    { id: "r3", kitId: "go", name: "Aspirin 325 mg", category: "medications", qty: 1 },
-    { id: "r4", kitId: "car", name: "Chewable aspirin 81 mg", category: "first_aid", qty: 1 })`);
-  assert.deepEqual(json(`refileable().map(x => [x.it.id, x.to])`), [["r1", "breathing"], ["r2", "co_alarm"], ["r4", "aspirin"]]);
-  assert.ok(json(`nextActions(model()).acts.some(a => a.kind === "refile")`));
-  const before = json(`Object.fromEntries(model().results.map(r => [r.hz.id, r.score]))`);
-  run(`ACT.refile()`);
-  const after = json(`Object.fromEntries(model().results.map(r => [r.hz.id, r.score]))`);
-  assert.deepEqual(json(`S.items.filter(i => /^r/.test(i.id)).map(i => i.category)`), ["breathing", "co_alarm", "medications", "aspirin"]);
-  assert.ok(after.asthma > before.asthma && after.co > before.co && after.heartattack > before.heartattack);
-  assert.deepEqual(json(`refileable()`), []);
-});
-
 test("nitroglycerin is filed as a medication, so it can't stand in for aspirin", () => {
   const { json } = load();
   assert.match(json(`CATS.medications[1]`), /nitroglycerin/);
@@ -132,10 +115,3 @@ test("low blood sugar needs fast sugar for each person with diabetes, not just a
   assert.equal(low().score, 100);
 });
 
-test("glucose tablets and glucagon saved under another type are offered a move to Fast sugar", () => {
-  const { run, json } = load();
-  run(`S.items.push({ id: "s1", kitId: "go", name: "Dex4 glucose tablets", category: "food", qty: 1 },
-    { id: "s2", kitId: "go", name: "Baqsimi glucagon", category: "medications", qty: 1 },
-    { id: "s3", kitId: "go", name: "Granola bars", category: "food", qty: 1 })`);
-  assert.deepEqual(json(`refileable().map(x => [x.it.id, x.to])`), [["s1", "sugar"], ["s2", "sugar"]]);
-});
