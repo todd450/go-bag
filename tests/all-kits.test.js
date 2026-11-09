@@ -383,18 +383,22 @@ test("a double-click or double tap on Plan, Plan the top N, a tick or × does wh
   };
   const group = name => `[...document.querySelectorAll(".shop-g")].find(g => g.querySelector("h3").textContent === ${JSON.stringify(name)})`;
   const at = sel => ev(`(() => { const e = ${sel}; e.scrollIntoView({ block: "center" }); const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
-  // Two presses at one spot, 90 ms apart, which the browser counts as one double-click (or double tap)
+  // Two presses at one spot, 90 ms apart, which the browser counts as one double-click (or double tap). Each press
+  // carries its own event time, as a real finger's does: Chrome only sends the second once the first is handled, and
+  // on a slow machine (CI) that redraw would otherwise push the second press's time past the double-tap window.
   const twice = async (sel, how) => {
     const [x, y] = await at(sel);
+    const t0 = Date.now() / 1000;
     for (const clickCount of [1, 2]) {
+      const timestamp = t0 + (clickCount - 1) * 0.09;
       if (how === "touch") {
-        await page.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
-        await page.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        await page.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }], timestamp });
+        await page.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [], timestamp: timestamp + 0.01 });
       } else {
         // "quick": two single clicks, as a browser that doesn't count taps sends a double tap (Linux Chrome, in CI)
         const n = how === "quick" ? 1 : clickCount;
-        await page.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: n });
-        await page.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: n });
+        await page.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: n, timestamp });
+        await page.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: n, timestamp: timestamp + 0.01 });
       }
       await sleep(90);
     }
