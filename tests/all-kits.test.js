@@ -192,6 +192,8 @@ test("'Plan the top 3' in the Trunk bag's group saves its three gaps, each with 
 });
 
 test("'Plan the top N' plans the first N gap rows its kit shows, and only a kit's group has one", () => {
+  const tops = households.map(name => groups(load({ fixture: name }).run("viewShop(model())")).filter(g => g.top).length);
+  assert.ok(tops.reduce((a, b) => a + b) >= 10, `kits offer Plan the top N (${tops})`);
   for (const name of households) {
     const kits = groups(load({ fixture: name }).run("viewShop(model())"));
     for (const [i, g] of kits.entries()) {
