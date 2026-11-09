@@ -135,7 +135,7 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 
 /* Overview */
 .ell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sum { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 16px 32px; align-items: center; }
+.sum { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 16px 32px; }
 .sum .sum-score { border-right: 1px solid var(--rule); padding-right: 28px; }
 .sum-score { display: grid; gap: 8px; align-content: start; }
 @media (max-width: 760px) { .sum { grid-template-columns: 1fr; } .sum .sum-score { border-right: 0; padding-right: 0; border-bottom: 1px solid var(--rule); padding-bottom: 16px; } }
@@ -165,8 +165,6 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .gaps .amt { font-variant-numeric: tabular-nums; font-size: .8rem; white-space: nowrap; }
 .gaps .why { font-size: .8rem; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
 
-.ov-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 32px; align-items: start; }
-@media (max-width: 900px) { .ov-cols { grid-template-columns: 1fr; } }
 .sec-h { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
 .grp { display: grid; gap: 4px; }
 .grp + .grp { margin-top: 14px; }
@@ -1532,15 +1530,10 @@ function viewOverview(M) {
         <div class="score"><span class="num" style="color:${overall == null ? "var(--ink)" : statusInk(sc)}">${overall ?? "–"}</span><span class="of">of 100</span></div>
       </div>
       ${overall == null ? "" : bandTag(sc)}
-    </div>
-    <div class="stack sum-meta">
       <p class="mono small muted">${pl(h.people, "person", "people")} · ${pl(h.pets, "pet")} · ${pl(S.kits.length, "kit")} · ${pl(S.items.length, "item")}${exp.length ? ` · <span style="color:var(--warn)">${exp.length} expiring</span>` : ""}</p>
       <p class="small muted">${hzNote}</p>
       ${how("score", "Your score is averaged across the emergencies that apply to you, weighted by how likely each one is, how bad it is to face unprepared and how much it matters to you.")}
     </div>
-  </div>
-
-  <div class="ov-cols">
     <div class="stack">
       <div class="sec-h"><h2>Kits</h2><span class="small muted">Each against a standard kit of its type</span></div>
       ${S.kits.length ? `<div class="hz">${[...S.kits].sort((a, b) => M.kitRes[a.id].score - M.kitRes[b.id].score).map(k => kitRow(k, M.kitRes[k.id])).join("")}</div>`
@@ -1549,13 +1542,14 @@ function viewOverview(M) {
       ${exp.length ? `<div class="hz">${exp.map(x => `<div class="exp-row"><span class="ell"><b>${esc(x.it.name)}</b> <span class="muted">· ${esc(x.kit)}</span></span><span class="mono flag ${x.st}">${x.st === "expired" ? "Expired" : "Expires"} ${esc(x.it.expires)}</span></div>`).join("")}</div>`
         : `<p class="small muted">Nothing expires in the next 90 days${S.items.some(i => i.expires) ? "" : ". Add expiry dates to food, water, batteries and medications so they show up here"}.</p>`}
     </div>
-    <div class="stack">
-      <div class="sec-h"><h2>Emergencies</h2><span class="small muted">Open one to see what it needs, or to change how likely it is</span></div>
-      ${group("Disasters and outages", sorted.filter(r => !r.hz.group))}
-      ${group("Health emergencies", sorted.filter(r => r.hz.group === "health"), "Set from who lives here and their health on the Household tab. A first-aid course matters more than any kit.")}
-      ${group("Everyday", sorted.filter(r => r.hz.group === "everyday"), "Small things that go wrong often. A kit that handles them is one you'll open, and so keep stocked.")}
-      ${offCount ? `<div><button class="btn ghost sm" data-act="toggleOff" aria-expanded="${!!S.showOff}">${S.showOff ? "Hide" : "Show"} ${offCount} that ${offCount === 1 ? "doesn't" : "don't"} apply to you</button></div>` : ""}
-    </div>
+  </div>
+
+  <div class="stack">
+    <div class="sec-h"><h2>Emergencies</h2><span class="small muted">Open one to see what it needs, or to change how likely it is</span></div>
+    ${group("Disasters and outages", sorted.filter(r => !r.hz.group))}
+    ${group("Health emergencies", sorted.filter(r => r.hz.group === "health"), "Set from who lives here and their health on the Household tab. A first-aid course matters more than any kit.")}
+    ${group("Everyday", sorted.filter(r => r.hz.group === "everyday"), "Small things that go wrong often. A kit that handles them is one you'll open, and so keep stocked.")}
+    ${offCount ? `<div><button class="btn ghost sm" data-act="toggleOff" aria-expanded="${!!S.showOff}">${S.showOff ? "Hide" : "Show"} ${offCount} that ${offCount === 1 ? "doesn't" : "don't"} apply to you</button></div>` : ""}
   </div>`;
 }
 function kitRow(k, r) {
