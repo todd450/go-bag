@@ -2354,9 +2354,15 @@ for (const t of ["pointerdown", "mousedown"]) document.addEventListener(t, () =>
 for (const t of ["pointerup", "pointercancel", "mouseup", "dragend", "contextmenu"]) document.addEventListener(t, () => unhold("press"), true);
 document.addEventListener("click", () => { hold.press = hold.blur = 0; }, true);
 document.addEventListener("change", () => { if (document.activeElement === document.body) { hold.blur = 1; unhold("blur"); } }, true);
+/* A double-click or double tap's second click lands where the first one was. When the first redrew the page, something
+   else may be there now (a Plan puts its new lines above its own button, a ticked row moves away), so it does nothing. */
+const drew = { n: 0, atClick: 0 };
+document.addEventListener("click", e => {
+  if (e.detail > 1 && drew.n !== drew.atClick) { e.preventDefault(); e.stopImmediatePropagation(); } else drew.atClick = drew.n;
+}, true);
 function render() {
   if (hold.press || hold.blur) { hold.owed = 1; return; }
-  hold.owed = 0;
+  hold.owed = 0; drew.n++;
   const a = document.activeElement, field = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
   const keep = a?.id ? { id: a.id, field, value: a.value, s: a.selectionStart, e: a.selectionEnd } : null;
   const M = model();

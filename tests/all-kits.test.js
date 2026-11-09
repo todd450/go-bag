@@ -5,9 +5,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const { load, ROOT } = require("./load");
 const { chrome, atPhoneWidth } = require("./phone");
+const { openChrome } = require("../tools/screenshots");
+const { wrap } = require("../tools/page");
 
 const households = ["tests/household", ...fs.readdirSync(path.join(ROOT, "fixtures"), { recursive: true })
   .filter(f => f.endsWith(".json")).map(f => path.join("fixtures", f.slice(0, -5)))];
@@ -363,3 +366,84 @@ function measure(fixtures) {
     return { none, all: look() };
   });
 }
+
+/* Real input, in Chrome: a Plan puts its new lines above its own button, so what sits under the pointer changes. A
+   double-click or a double tap must do what one click does: its second click never ticks, removes or plans the row that
+   moved there. The same holds for a tick and a ×, whose rows move away from under the pointer. */
+test("a double-click or double tap on Plan, Plan the top N, a tick or × does what one click does", { skip: !chrome && "no Chrome found (set CHROME)" }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-dblclick-"));
+  const file = path.join(dir, "index.html");
+  fs.writeFileSync(file, wrap(undefined, "tests/household"));
+  const page = await openChrome(chrome);
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const ev = async e => {
+    const r = await page.send("Runtime.evaluate", { expression: e, returnByValue: true });
+    if (r.exceptionDetails) throw new Error(`${e}: ${r.exceptionDetails.exception?.description}`);
+    return r.result.value;
+  };
+  const group = name => `[...document.querySelectorAll(".shop-g")].find(g => g.querySelector("h3").textContent === ${JSON.stringify(name)})`;
+  const at = sel => ev(`(() => { const e = ${sel}; e.scrollIntoView({ block: "center" }); const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
+  // Two presses at one spot, 90 ms apart, which the browser counts as one double-click (or double tap)
+  const twice = async (sel, how) => {
+    const [x, y] = await at(sel);
+    for (const clickCount of [1, 2]) {
+      if (how === "touch") {
+        await page.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+        await page.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      } else {
+        await page.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount });
+        await page.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount });
+      }
+      await sleep(90);
+    }
+    await sleep(150); // a save redraws in the click's own task, so this is plenty
+  };
+  const state = async () => JSON.parse(await ev("JSON.stringify({ open: shopItems().filter(x => !x.done).map(x => x.id), done: shopItems().filter(x => x.done).map(x => x.id), items: S.items.length, score: model().overall })"));
+  try {
+    for (const [how, width] of [["mouse", 390], ["mouse", 1200], ["touch", 390]]) {
+      const was = `${how} at ${width}px`;
+      await page.send("Emulation.setDeviceMetricsOverride", { width, height: 844, deviceScaleFactor: 1, mobile: width < 600 });
+      await page.send("Emulation.setTouchEmulationEnabled", { enabled: how === "touch" });
+      const loaded = page.once("Page.loadEventFired");
+      await page.send("Page.navigate", { url: `file://${file}?${how}-${width}#shop` });
+      await loaded;
+      for (let i = 0; i < 50 && !await ev("S.loaded"); i++) await sleep(50);
+      await sleep(200);
+      const start = await state();
+
+      // Plan the top N, twice over: each double-click plans that kit's top N once, and ticks nothing
+      for (const round of [1, 2]) {
+        const before = await state(), n = await ev(`Math.min(5, ${group("Hall closet go-bag")}.querySelectorAll(".shop-gap").length)`);
+        await twice(`${group("Hall closet go-bag")}.querySelector('[data-act="shopAddTop"]')`, how);
+        const after = await state();
+        assert.equal(after.open.length, before.open.length + n, `${was}, Plan the top N round ${round}: plans its top ${n} once`);
+        assert.deepEqual(after.done, [], `${was}, Plan the top N round ${round}: ticks nothing`);
+        assert.equal(after.items, start.items, `${was}, Plan the top N round ${round}: puts nothing in a kit`);
+        assert.equal(after.score, start.score, `${was}, Plan the top N round ${round}: readiness doesn't move`);
+      }
+      // A single Plan, three times over: each double-click plans one line, and removes none
+      for (const round of [1, 2, 3]) {
+        const before = await state();
+        await twice(`${group("Trunk bag")}.querySelector('[data-act="shopAdd"]')`, how);
+        const after = await state();
+        assert.equal(after.open.length, before.open.length + 1, `${was}, Trunk bag's Plan round ${round}: plans one line`);
+        assert.deepEqual(before.open.filter(id => !after.open.includes(id)), [], `${was}, Trunk bag's Plan round ${round}: removes no line`);
+        assert.deepEqual(after.done, [], `${was}, Trunk bag's Plan round ${round}: ticks nothing`);
+      }
+      // A tick and a ×: the row below moves up under the pointer, and stays as it was
+      let before = await state();
+      await twice(`${group("Hall closet go-bag")}.querySelector(".shop-row .shop-chk")`, how);
+      let after = await state();
+      assert.equal(after.done.length, 1, `${was}: a double-click on a tick ticks one line`);
+      assert.equal(after.open.length, before.open.length - 1, `${was}: and leaves the rest open`);
+      before = after;
+      await twice(`${group("Hall closet go-bag")}.querySelector('.shop-row [data-act="shopDel"]')`, how);
+      after = await state();
+      assert.equal(after.open.length, before.open.length - 1, `${was}: a double-click on × removes one line`);
+      assert.deepEqual(after.done, before.done, `${was}: and ticks nothing`);
+    }
+  } finally {
+    await page.close();
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
+  }
+});
