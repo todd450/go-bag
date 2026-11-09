@@ -10,13 +10,12 @@ test("every tab renders for a brand-new household and for a full one", () => {
   }
 });
 
-test("the Readiness tab groups emergencies, with a star on raised ones", () => {
+test("the Readiness tab groups emergencies, with filled stars on raised ones", () => {
   const { run } = load({ fixture: "tests/household" });
   run(`S.hazards.importance = { burns: "most" }; S.openHz = new Set(["burns"]);`);
   const html = run("viewOverview(model())");
   for (const label of ["Disasters and outages", "Health emergencies", "Everyday"]) assert.ok(html.includes(label), label);
-  assert.equal((html.match(/class="pri"/g) || []).length, 1);
-  assert.match(html, /data-change="importance"/);
+  assert.deepEqual(html.match(/<span class="imp up"[^>]*>[^<]*</g), ['<span class="imp up" aria-hidden="true">★★<']);
 });
 
 test("names people type are escaped", () => {
@@ -183,24 +182,55 @@ test("an emergency row names what it needs, missing first, then some, then what 
   }
 });
 
-test("an emergency that doesn't apply says so where its likelihood goes", () => {
+// An emergency's pickers, as its row shows them: each one's id, the word on its skin, and the option chosen.
+const picks = html => [...html.matchAll(/<span class="pick( ro)?"[^>]*><span[^>]*>([\s\S]*?)<\/span><select id="([^"]+)"([^>]*)>([\s\S]*?)<\/select>/g)]
+  .map(([, ro, skin, id, attrs, options]) => ({ id, skin: plain(skin.replace(/<span class="lik"[\s\S]*?<\/span>/, `${(skin.match(/<i class="on">/g) || []).length} bars `)),
+    chosen: (options.match(/<option value="([^"]+)" selected>/) || [])[1], ro: !!ro, disabled: /\bdisabled\b/.test(attrs), label: (attrs.match(/aria-label="([^"]*)"/) || [])[1] }));
+
+test("an emergency's likelihood and importance change right on its row, without opening it", async () => {
+  const { run, json, fire } = load({ fixture: "tests/household" });
+  run(`S.canWrite = true`);
+  let html = hzHtml(run, "housefire");
+  assert.doesNotMatch(html, /hz-panel/, "closed");
+  assert.deepEqual(picks(html), [
+    { id: "lv-housefire", skin: "2 bars Moderate", chosen: "moderate", ro: false, disabled: false, label: "How likely House fire is for you" },
+    { id: "im-housefire", skin: "☆", chosen: "normal", ro: false, disabled: false, label: "How much House fire matters to you" }]);
+  await fire("change", { dataset: { change: "level", id: "housefire" }, value: "high" });
+  await fire("change", { dataset: { change: "importance", id: "housefire" }, value: "most" });
+  assert.equal(json("S.hazards.levels.housefire"), "high");
+  assert.equal(json("S.hazards.importance.housefire"), "most");
+  html = hzHtml(run, "housefire");
+  assert.deepEqual(picks(html).map(p => [p.skin, p.chosen]), [["3 bars High", "high"], ["★★", "most"]]);
+  assert.match(html, /<span class="imp up"/);
+  // Back to "As much as the others" drops the saved importance instead of storing the default.
+  await fire("change", { dataset: { change: "importance", id: "housefire" }, value: "normal" });
+  assert.equal(json("Object.hasOwn(S.hazards.importance, 'housefire')"), false);
+  // Opened, its panel has no pickers of its own: they stay on the row.
+  run(`S.openHz = new Set(["housefire"])`);
+  html = hzHtml(run, "housefire");
+  assert.equal((html.match(/<select/g) || []).length, 2);
+  assert.doesNotMatch(html.slice(html.indexOf("hz-panel")), /<select/);
+  // Someone who can only view sees the same values, with the pickers shown flat and turned off.
+  run(`S.canWrite = false`);
+  assert.deepEqual(picks(hzHtml(run, "housefire")).map(p => [p.ro, p.disabled]), [[true, true], [true, true]]);
+});
+
+test("an emergency that doesn't apply keeps its likelihood picker, at Not relevant, so it can be turned back on", () => {
   const { run } = load({ fixture: "tests/household" });
   const quake = hzHtml(run, "earthquake");
   assert.match(quake, /^<div class="hz-row off">/);
-  assert.match(quake, /Doesn't apply/);
-  assert.doesNotMatch(quake, /class="lik"/);
+  assert.deepEqual(picks(quake).map(p => [p.id, p.skin, p.chosen]), [["lv-earthquake", "0 bars Not relevant", "none"]], "and no importance picker");
   run(`S.profile.vehicles = 0`);
-  assert.match(hzHtml(run, "stranded"), /No vehicle/);
+  const stranded = hzHtml(run, "stranded");
+  assert.match(stranded, /No vehicle/);
+  assert.doesNotMatch(stranded, /<select/);
 });
 
 test("an opened emergency says what's involved: the situation, how bad and how likely, and each need with what's missing", () => {
   const { run } = screenshotCase();
   const html = houseFire(run), text = plain(html);
   assert.match(text, /You leave home with a day of supplies for 5 people and 1 pet\. Counts go-bags and vehicle kits\./);
-  assert.match(text, /Life-threatening if you're unprepared/);
-  assert.match(text, /Minutes matter, so it counts 4× in your score\./);
-  assert.match(html, /data-change="level"/);
-  assert.match(html, /data-change="importance"/);
+  assert.match(text, /Life-threatening if you're unprepared: minutes matter, so it counts 4× in your score\./);
   assert.deepEqual(needs(html).map(n => [n.state, n.text, n.amount]), [
     ["miss", "Fire safety · missing fire extinguisher, fire blanket and escape ladder", "0 of 3"],
     ["miss", "Clothing", "0 of 5"],
@@ -354,12 +384,15 @@ test("an opened emergency and a kit block name the items still to tag and the ex
 // Layout at phone width, in a real browser (tests/phone.js). Skipped when there's no Chrome.
 const { chrome, atPhoneWidth } = require("./phone");
 
-test("at 390px each emergency's needs stay on one line, kit blocks show their bars, and nothing scrolls sideways", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
+test("at 390px each emergency keeps its name, pickers and score on one line and its needs on the next, kit blocks show their bars, and nothing scrolls sideways", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
   const fixtures = ["tests/household", "fixtures/phone-width/long-essentials", "fixtures/empty-and-one/big-household"];
   const seen = atPhoneWidth(fixtures, () => {
     const look = where => ({ where, width: innerWidth, scroll: document.documentElement.scrollWidth,
       bars: [...document.querySelectorAll(`#v-${S.view} .ess-blk .bar`)].map(b => b.getBoundingClientRect().width),
       needs: [...document.querySelectorAll(`#v-${S.view} .hz-needs`)].map(n => n.getBoundingClientRect().height),
+      // Each row's first line: how wide its name still is, and how far its pickers and score sit from the name's line.
+      lines: [...document.querySelectorAll(`#v-${S.view} .hz-row`)].map(r => { const b = r.querySelector(".hz-tg"), n = b.getBoundingClientRect(), c = r.querySelector(".hz-sc").getBoundingClientRect();
+        return { name: b.textContent, width: Math.round(n.width), cut: b.scrollWidth > b.clientWidth, dy: Math.round(Math.abs(n.top + n.bottom - c.top - c.bottom) / 2) }; }),
       panels: document.querySelectorAll(`#v-${S.view} .hz-panel`).length });
     S.view = "overview"; S.showOff = true; S.openHz = new Set(); render();
     const views = [look("emergencies")];
@@ -371,6 +404,10 @@ test("at 390px each emergency's needs stay on one line, kit blocks show their ba
     const [closed, opened, ...kits] = seen.get(f) || [];
     assert.ok(closed && closed.needs.length > 0, `${f}: no emergency rows`);
     assert.ok(closed.needs.every(h => h > 0 && h < 26), `${f}: an emergency's needs wrap past one line (heights ${closed.needs.join(", ")})`);
+    for (const l of closed.lines) {
+      assert.ok(!l.cut || l.width >= 80, `${f}: ${l.name}'s name is cut to ${l.width}px by its pickers`);
+      assert.ok(l.dy <= 4, `${f}: ${l.name}'s pickers sit ${l.dy}px off its name's line`);
+    }
     assert.equal(opened.panels, opened.needs.length, `${f}: every opened emergency shows its panel`);
     assert.ok(kits.some(v => v.bars.length > 0), `${f}: no kit block shows a bar`);
     for (const v of [closed, opened, ...kits]) {
