@@ -535,6 +535,9 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 <div class="toast" id="toast" role="status" hidden><span id="toast-msg"></span><button id="toast-act" type="button" hidden></button></div>
 
 <script>
+/* ---------- core begins ----------
+   Data tables, the household model, scoring, shopping and packing. The core reads the saved household from HOUSEHOLD,
+   never the page or the screen's state S, has no markup and saves nothing: check.sh holds it to that (issue #112). */
 /* ---------- reference data ---------- */
 const CATS = {
   water: ["Water", "bottled water, water pouches or jugs (filters and purification tablets go here too but don't add litres)"],
@@ -615,74 +618,6 @@ function essentialsFor(cat, h) {
     : onMeds.length === 1 ? [{ id, label: `${personName(...onMeds[0])}'s prescriptions` }]
     : onMeds.map((_, n) => ({ id, label: `${label} (${n + 1} of ${onMeds.length})` })));
 }
-/* Line icons, one per category plus a few for setup steps. 24×24, drawn with the current text colour. */
-const ICONS = {
-  water: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
-  food: '<ellipse cx="12" cy="6" rx="6" ry="2.2"/><path d="M6 6v12c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V6M6 11c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2"/>',
-  first_aid: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5h6v2M12 10.5v6M9 13.5h6"/>',
-  trauma: '<rect x="3" y="9" width="18" height="6" rx="1.5"/><path d="M9 9V6.5h6V9M9 15v2.5h6V15"/>',
-  burns: '<path d="M12 21a6 6 0 0 0 6-6c0-4-3-5.5-3.5-9-2 1.5-3 3.5-3 5.5-1-.5-1.8-1.5-2-2.8C7.8 10.2 6 12.5 6 15a6 6 0 0 0 6 6z"/>',
-  splint: '<rect x="9" y="3" width="6" height="18" rx="1.5"/><path d="M7 8h10M7 16h10"/>',
-  cpr: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/><path d="M7 12h2.5l1.2-2 2 4 1.3-2H17"/>',
-  allergy: '<path d="M14 4l6 6M17 7l-9 9-2.5-.5L5 13l9-9M8 16l-4 4"/>',
-  diagnostics: '<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/>',
-  medications: '<rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/>',
-  light: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>',
-  power: '<rect x="3" y="7" width="16" height="10" rx="2"/><path d="M21 10.5v3M12 9l-2.5 3.5h3L10 15.5"/>',
-  communication: '<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/>',
-  documents: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',
-  shelter: '<path d="M12 4L3 20h18zM12 13l-3.5 7M12 13l3.5 7"/>',
-  clothing: '<path d="M8 4L3 7l2 4 2-1v10h10V10l2 1 2-4-5-3a4 4 0 0 1-8 0z"/>',
-  hygiene: '<rect x="4" y="11" width="13" height="9" rx="3"/><circle cx="17" cy="6" r="2"/><circle cx="12" cy="6.5" r="1.3"/><circle cx="20.2" cy="10" r="1.2"/>',
-  sanitation: '<path d="M4 8h16l-1.8 12H5.8zM5 8a7 5 0 0 1 14 0"/>',
-  tools: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/>',
-  masks: '<path d="M4 9c3-1 5-2 8-2s5 1 8 2v3c0 4-4 7-8 7s-8-3-8-7zM8 12h8M9 15h6"/>',
-  fire_safety: '<rect x="8" y="8" width="8" height="13" rx="2"/><path d="M12 8V5H8M12 5l4-1.5"/>',
-  car: '<path d="M4 16v-4l2.5-5h11l2.5 5v4zM4 12h16"/><circle cx="8" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/>',
-  pets: '<circle cx="6.5" cy="10" r="1.8"/><circle cx="10" cy="6" r="1.8"/><circle cx="14" cy="6" r="1.8"/><circle cx="17.5" cy="10" r="1.8"/><path d="M12 12c-3 0-5 3.5-5 5.5 0 1.5 1.5 2.5 3 2l2-.6 2 .6c1.5.5 3-.5 3-2 0-2-2-5.5-5-5.5z"/>',
-  baby: '<path d="M9 8h6v11a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2zM10 8V6.5a2 2 0 0 1 4 0V8M9 12h2.5M9 15h2.5"/>',
-  kids: '<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>',
-  breathing: '<path d="M12 4v7M12 11l-2.5 2M12 11l2.5 2"/><path d="M9.5 8C6.5 8 4 12 4 17c0 2 1 3 3 3s2.5-1.2 2.5-3zM14.5 8c3 0 5.5 4 5.5 9 0 2-1 3-3 3s-2.5-1.2-2.5-3z"/>',
-  aspirin: '<circle cx="12" cy="12" r="8"/><path d="M8 12h8"/>',
-  naloxone: '<path d="M11 2.5h2V6h-2zM9 6h6l1 3v12H8V9z"/><path d="M8 13h8"/>',
-  sugar: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>',
-  seizure: '<path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/>',
-  co_alarm: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/>',
-  wound: '<rect x="2.5" y="8.5" width="19" height="7" rx="3.5" transform="rotate(-45 12 12)"/><path d="M10.6 10.6h.01M13.4 13.4h.01M10.6 13.4h.01M13.4 10.6h.01"/>',
-  bites: '<ellipse cx="12" cy="14" rx="4" ry="5.5"/><path d="M12 8.5V20M8.3 12h7.4M8.3 16h7.4M10 8.8 8 5M14 8.8 16 5"/>',
-  poison: '<path d="M9 3h6M10 3v4.5L5.5 17a2.5 2.5 0 0 0 2.3 3.5h8.4a2.5 2.5 0 0 0 2.3-3.5L14 7.5V3"/><path d="M10 14l4 3M14 14l-4 3"/>',
-  comfort: '<path d="M4 10h13v4a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6zM17 11h1.5a2.5 2.5 0 0 1 0 5H17M8 3c-1 1.5 1 2.5 0 4M12 3c-1 1.5 1 2.5 0 4"/>',
-  other: '<circle cx="12" cy="12" r="8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/>',
-  home: '<path d="M4 11l8-7 8 7M6 9.5V20h12V9.5M10 20v-5h4v5"/>',
-  person: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
-  flag: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
-  bag: '<path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/>',
-  duffel: '<rect x="3" y="8" width="18" height="11" rx="3"/><path d="M9 8V6h6v2M3 13h18"/>',
-  box: '<path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4"/>',
-  gauge: '<path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/>',
-  cart: '<path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/>',
-  list: '<path d="M10 6h10M10 12h10M10 18h10"/><path d="m3.5 6 1.5 1.5 2.5-2.5M3.5 12l1.5 1.5 2.5-2.5M3.5 18l1.5 1.5 2.5-2.5"/>',
-  yes: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
-  no: '<circle cx="12" cy="12" r="7.5"/>',
-};
-const icon = (k, cls = "ic") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${Object.hasOwn(ICONS, k) ? ICONS[k] : ICONS.other}</svg>`;
-/* The brand mark (#49): a supply case whose outline is the gauge. Two halves run from the bottom centre up
-   each side and meet under the handle, filled to the score; handle, seam, latches and cross stay solid. */
-const caseScore = s => Math.round(Math.min(100, Math.max(0, Number(s) || 0)));
-function caseParts(score, size) {
-  const s = caseScore(score), halves = ["M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32", "M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"];
-  const fill = !s ? "" : halves.map(d => `<path class="cf" d="${d}" pathLength="100"${s < 100 ? ` style="stroke-dasharray:${s} 100"` : ""}/>`).join("");
-  return `<g fill="none" stroke-width="${size <= 32 ? 6.5 : 5}" stroke-linecap="round" stroke-linejoin="round">`
-    + `<path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/>${halves.map(d => `<path class="ct" d="${d}"/>`).join("")}${fill}`
-    + `<path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/>`
-    + `<path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/>`;
-}
-const caseMark = (score, size) => `<svg class="case" viewBox="0 0 64 64" width="${size}" height="${size}" aria-hidden="true">${caseParts(score, size)}</svg>`;
-// The browser tab icon: the case in white on a rounded Cobalt tile, with the small-size strokes.
-const tabIconHref = score => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -5.5 80 80">`
-  + `<style>.ct{stroke:#fff;stroke-opacity:.4}.cf{stroke:#fff}.cs{fill:#fff}</style><rect x="-8" y="-5.5" width="80" height="80" rx="18" fill="#2B59D9"/>${caseParts(score, 16)}</svg>`);
-const KIT_ICON = { go: "bag", home: "home", car: "car" };
-const TAB_ICON = { overview: "gauge", kits: "bag", shop: "cart", household: "person", plan: "flag" };
 const AGE = { adult: ["Adult", 2000], teen: ["Teen (13–17)", 2200], child: ["Child (3–12)", 1600], infant: ["Under 3", 1000], senior: ["Senior (65+)", 1800] };
 /* An exact age, when given, decides the group and the calories (roughly the USDA estimates for a
    moderately active person); without one the saved group is used. */
@@ -744,7 +679,7 @@ const MODES = {
 const LEVELS = { high: ["High", 3], moderate: ["Moderate", 2], low: ["Low", 1], none: ["Not relevant", 0] };
 /* How much an emergency matters to this household, on top of how likely it is: multiplies its weight in the score. */
 const IMPORTANCE = { normal: ["As much as the others", 1], more: ["More than most", 2], most: ["One of our top priorities", 3] };
-const importanceOf = id => (IMPORTANCE[S.hazards?.importance?.[id]] || IMPORTANCE.normal)[1];
+const importanceOf = id => (IMPORTANCE[HOUSEHOLD.hazards?.importance?.[id]] || IMPORTANCE.normal)[1];
 /* How bad it is to face an emergency unprepared. Fixed per emergency, never re-rated: multiplies its weight in the score.
    Doubling per step keeps a life-threatening gap ahead of a minor one, however much likelier the minor one is. */
 const SEVERITY = {
@@ -793,43 +728,26 @@ const HAZARDS = [
 ];
 const kitsFor = hz => hz.kits || MODES[hz.mode].kits;
 const HZ = Object.fromEntries(HAZARDS.map(h => [h.id, h]));
-const VIEWS = ["overview", "kits", "shop", "household", "plan"];
 
-/* ---------- state ---------- */
-const S = {
-  view: VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : location.hash === "#review" ? "plan" : "overview",
-  profile: null, hazards: null, review: null, shopping: null, plan: null, kits: [], items: [],
-  live: false, loaded: false, slow: false, canWrite: true,
-  openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
-  listKit: null, // the kit whose Contents panel shows List; any other kit shows Flat-lay. Memory only: never saved
-  flOpen: null, // the item whose flat-lay tile shows its fields, cleared when a kit is opened. Memory only
-  ctr: null, // the open container editor: { id, ...typed }
-  hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
-  scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, bagM: null,
-  add: { cat: "water", ess: "" }, // the add-by-hand row's Category and Essential, so every redraw shows the two together
-};
-let db = null, assets = null, sample = null;
+/* ---------- the saved household ---------- */
+// The single docs under household/, each kept in HOUSEHOLD under its own name. Boot subscribes to each of these and to
+// every collection in COLS, and the page counts as loaded once all of them have answered.
+const HOUSEHOLD_DOCS = ["profile", "hazards", "review", "shopping", "plan"];
+// The saved household, and the core's only state. S's fields of the same names read and write it.
+const HOUSEHOLD = { profile: null, hazards: null, review: null, shopping: null, plan: null, kits: [], items: [] };
 
 /* ---------- helpers ---------- */
-const $ = (s, r = document) => r.querySelector(s);
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const num = x => { const n = +x; return Number.isFinite(n) && n > 0 ? n : 0; };
 const uid = () => (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : Math.random().toString(36).slice(2) + Date.now().toString(36)).slice(0, 20);
 const f1 = n => (Math.round(n * 10) / 10).toLocaleString();
 const clone = o => JSON.parse(JSON.stringify(o ?? null));
 const strip = ({ id, ...rest }) => rest;
 // An example kit stops being an example once it holds anything you added yourself.
-const isExampleKit = k => !!k.example && !S.items.some(i => i.kitId === k.id && !i.example);
-/* Bars are neutral until a score is in good shape; red is kept for real problems (expired, overdue, a likely health emergency you can't handle). */
-// Readiness bands, so 4% and 67% don't look alike: a colour for bars and big numbers, and a word so it never rests on colour alone
-const BANDS = [[75, "Ready", "var(--good)"], [40, "Partway", "var(--meter)"], [0, "Low", "var(--warn)"]];
+const isExampleKit = k => !!k.example && !HOUSEHOLD.items.some(i => i.kitId === k.id && !i.example);
+// Readiness bands, so 4% and 67% don't look alike: each has a word, and the views give it a colour (statusColor)
+const BANDS = [[75, "Ready"], [40, "Partway"], [0, "Low"]];
 const band = s => BANDS.find(b => s >= b[0]);
-const statusColor = s => band(s)[2];
-const statusInk = s => s >= 40 && s < 75 ? "var(--ink)" : band(s)[2];
-const bandTag = s => `<span class="band"><i style="background:${statusColor(s)}"></i>${band(s)[1]}</span>`;
 const catLabel = c => (Object.hasOwn(CATS, c) ? CATS[c] : CATS.other)[0];
-const D = () => S.canWrite ? "" : "disabled";
-const when = t => t ? new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
 /* Where to buy an item on Amazon: a saved product page when one was found (only a plain amazon.com/dp/ link counts),
    else the search Claude wrote while reading the photo. Nothing searches from the page: Amazon refuses AI agents. */
 function amazonLink(it) {
@@ -838,31 +756,6 @@ function amazonLink(it) {
   const q = typeof it?.shopQuery === "string" ? it.shopQuery.trim() : "";
   return q ? { href: "https://www.amazon.com/s?k=" + encodeURIComponent(q.slice(0, 120)), exact: false } : null;
 }
-const amazonA = it => { const l = amazonLink(it); return l ? `<a class="buy small" href="${esc(l.href)}" target="_blank" rel="noopener noreferrer" title="${l.exact ? "This product on Amazon" : "Search Amazon for this item"}">${l.exact ? "On Amazon ↗" : "Find on Amazon ↗"}</a>` : ""; };
-
-let toastTimer, toastAction = null;
-function toast(msg, action) {
-  const t = $("#toast"), b = $("#toast-act");
-  $("#toast-msg").textContent = msg;
-  toastAction = action || null;
-  b.hidden = !action; if (action) b.textContent = action.label;
-  t.hidden = false;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; toastAction = null; }, action ? 9000 : 4200);
-}
-$("#toast-act").addEventListener("click", () => { const a = toastAction; toastAction = null; $("#toast").hidden = true; a?.run(); });
-function sampleErr(e) {
-  switch (e?.code) {
-    case "not_granted": case "sampling_disabled": case "not_declared": case "capability_disabled": case "capability_removed":
-      return "Claude isn't available to this page. Allow it from the artifact's permissions, or add items by hand.";
-    case "images_unavailable": return "This view can't send photos to Claude. Add items by hand instead.";
-    case "image_rejected": return "Claude couldn't open one of those photos. Use JPEG or PNG under 20 MB.";
-    case "rate_limited": return "You've hit a usage limit. Try again in a little while.";
-    case "session_expired": return "Your session expired. Reload the page and sign in again.";
-    case "invalid_json": return "Claude's answer came back in the wrong shape. Try again.";
-    case "refused": return "Claude declined that request. Try different photos.";
-    default: return "Couldn't reach Claude. Try again.";
-  }
-}
 function expState(it) {
   if (!/^\d{4}-\d{2}$/.test(it.expires || "")) return null;
   const [y, m] = it.expires.split("-").map(Number);
@@ -870,29 +763,9 @@ function expState(it) {
   return days < 0 ? "expired" : days < 90 ? "soon" : null;
 }
 
-/* ---------- storage (db when available, memory otherwise) ---------- */
-const COLS = { kits: "kits", items: "items" };
-// The single docs under household/, each kept in S under its own name. Boot subscribes to each of these and to
-// every collection in COLS, and the page counts as loaded once all of them have answered.
-const HOUSEHOLD_DOCS = ["profile", "hazards", "review", "shopping", "plan"];
-async function setDoc(col, id, data) {
-  if (db) {
-    try { await db.doc(col + "/" + id).set(data); }
-    catch (e) { toast(e?.code === "invalid_argument" ? "You can view this audit but not change it." : "Couldn't save. Check your connection and try again."); throw e; }
-  } else {
-    if (col === "household") S[id] = data;
-    else { const arr = S[col]; const i = arr.findIndex(x => x.id === id); const row = { id, ...data }; if (i >= 0) arr[i] = row; else arr.push(row); }
-    render();
-  }
-}
-async function delDoc(col, id) {
-  if (db) { try { await db.doc(col + "/" + id).delete(); } catch (e) { toast("Couldn't delete. Try again."); throw e; } }
-  else { if (col === "household") S[id] = null; else S[col] = S[col].filter(x => x.id !== id); render(); }
-}
-
 /* ---------- the readiness model ---------- */
 function household() {
-  const p = S.profile || {};
+  const p = HOUSEHOLD.profile || {};
   const members = Array.isArray(p.members) && p.members.length ? p.members : [{ age: "adult" }];
   const has = (...cs) => members.filter(m => Array.isArray(m.conditions) && cs.some(c => m.conditions.includes(c))).length;
   return {
@@ -911,7 +784,7 @@ function household() {
   };
 }
 function relevance(hz, h) {
-  const lv = S.hazards?.levels?.[hz.id];
+  const lv = HOUSEHOLD.hazards?.levels?.[hz.id];
   if (hz.vehicle && h.vehicles === 0) return "none";
   if (LEVELS[lv]) return lv;
   return (typeof hz.base === "function" ? hz.base(h) : hz.base) || "none";
@@ -930,7 +803,7 @@ function householdWhy(hz, h) {
   const facts = FACTS.filter(k => h[k] && rank({ ...bare, [k]: h[k] }) > floor).map(k => factText(k, h[k]));
   const home = h.home && rank({ ...bare, home: h.home }) > floor;
   if (hz.vehicle && !h.vehicles) return "There's no vehicle in your household.";
-  const own = S.hazards?.levels?.[hz.id], lv = at(h), out = [];
+  const own = HOUSEHOLD.hazards?.levels?.[hz.id], lv = at(h), out = [];
   if (LEVELS[own] && own !== lv) out.push(`You ${own === "none" ? "marked this as not relevant" : "rated this " + LEVELS[own][0].toLowerCase()} (${LEVELS[lv][0].toLowerCase()} from who lives here).`);
   if (facts.length) out.push(`Your household includes ${orList(facts, "and")}.`);
   if (home) out.push(`You live in a ${h.home.toLowerCase()}.`);
@@ -939,8 +812,8 @@ function householdWhy(hz, h) {
 }
 /* The items in every kit of these types. */
 function itemsIn(types) {
-  const kitIds = new Set(S.kits.filter(k => types.includes(k.type)).map(k => k.id));
-  return S.items.filter(it => kitIds.has(it.kitId));
+  const kitIds = new Set(HOUSEHOLD.kits.filter(k => types.includes(k.type)).map(k => k.id));
+  return HOUSEHOLD.items.filter(it => kitIds.has(it.kitId));
 }
 const stock = types => stockItems(itemsIn(types));
 /* What a set of items holds: units per category, litres, calories, and in the five checklist categories
@@ -1013,10 +886,10 @@ function model() {
     }
   }
   const gaps = Object.values(g).sort((a, b) => b.imp - a.imp);
-  const kitName = Object.fromEntries(S.kits.map(k => [k.id, k.name]));
-  const exp = S.items.map(it => ({ it, st: expState(it), kit: kitName[it.kitId] })).filter(x => x.st && x.kit)
+  const kitName = Object.fromEntries(HOUSEHOLD.kits.map(k => [k.id, k.name]));
+  const exp = HOUSEHOLD.items.map(it => ({ it, st: expState(it), kit: kitName[it.kitId] })).filter(x => x.st && x.kit)
     .sort((a, b) => String(a.it.expires).localeCompare(String(b.it.expires)));
-  const kitRes = Object.fromEntries(S.kits.map(k => [k.id, kitReadiness(k, h, active)]));
+  const kitRes = Object.fromEntries(HOUSEHOLD.kits.map(k => [k.id, kitReadiness(k, h, active)]));
   return { h, stocks, results, active, overall, gaps, exp, kitRes };
 }
 const haveOf = (cat, st) => cat === "water" ? st.liters : cat === "food" ? st.kcal : (st.count[cat] || 0);
@@ -1085,8 +958,6 @@ const scoreIfFilled = (M, gaps) => scoreIfShopped(M, gaps.map(g => shopFromGap(g
 /* ---------- shopping list ---------- */
 /* What to put in the cart for a gap: store-sized packs, a ballpark US price for comparing and budgeting
    (null means prescription only, 0 means you likely have it at home), and a tip for the aisle. */
-// One line up front and the full explanation a tap away; the ones you open stay open when the page re-renders
-const how = (id, body) => `<details class="how" data-how="${id}" ${S.how.has(id) ? "open" : ""}><summary>How this works</summary><p>${body}</p></details>`;
 const pl = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
 const whoIs = (h, f) => h.members.map((m, i) => [m, personName(m, i)]).filter(([m]) => f(m)).map(([, n]) => n);
 const hasCond = c => m => (m.conditions || []).includes(c);
@@ -1230,7 +1101,7 @@ function buyGuide(cat, qty, unit, kt, h, ess) {
       tip: "It's the bag you'll actually open: a spilled drink, a long wait, a dead phone, sudden rain. Swap the snacks every few months so they're ones people want." };
     case "car": return { line: "Jumper cables, a tire inflator and an ice scraper", price: 70, tip: "A plug-in tire inflator is easier than a spare tire on the side of the road." };
     case "pets": {
-      const kinds = (S.profile?.pets || []).map(p => String(p.kind || "").toLowerCase()).filter(Boolean);
+      const kinds = (HOUSEHOLD.profile?.pets || []).map(p => String(p.kind || "").toLowerCase()).filter(Boolean);
       return { line: `A week of food for the ${kinds.length ? orList(kinds, "and") : "pets"}, a spare leash and a collapsible bowl`, price: 35 * Math.max(1, h.pets), tip: "Add a copy of vaccination records and a recent photo, in case you get separated." };
     }
     case "baby": return { line: `Diapers, wipes and a week of formula or toddler food${little.length ? ` for ${orList(little, "and")}` : ""}`, price: 45, tip: "Check the size before you buy: kids outgrow diapers between restocks." };
@@ -1245,26 +1116,18 @@ const itemFromShop = (e, kitId) => ({ kitId, name: e.name || catLabel(e.cat), ca
 function scoreIfBought(list) {
   const add = list.filter(e => CATS[e.cat] && shopKit(e)).map(e => ({ id: "_sim", ...itemFromShop(e, shopKit(e)) }));
   if (!add.length) return model().overall;
-  S.items.push(...add);
-  try { return model().overall; } finally { S.items.splice(S.items.length - add.length); }
+  HOUSEHOLD.items.push(...add);
+  try { return model().overall; } finally { HOUSEHOLD.items.splice(HOUSEHOLD.items.length - add.length); }
 }
 /* A list entry with everything the row shows, worked out from the household as it is now. */
 function shopInfo(e, M) {
   if (!CATS[e.cat]) return { line: e.text, sub: "", tip: "", gain: 0 };
-  const kt = S.kits.find(k => k.id === (e.done ? e.inKit : shopKit(e)))?.type || (Array.isArray(e.kits) && e.kits[0]) || "home";
+  const kt = HOUSEHOLD.kits.find(k => k.id === (e.done ? e.inKit : shopKit(e)))?.type || (Array.isArray(e.kits) && e.kits[0]) || "home";
   const b = buyGuide(e.cat, e.qty, e.unit, kt, M.h, e.essential);
   // The bold line says what to buy; below it, water and food say how much and everything else its category
   return { ...b, sub: e.unit ? e.text : catLabel(e.cat), gain: e.done || e.kitId === "none" || M.overall == null ? 0 : Math.max(0, scoreIfShopped(M, [e]) - M.overall) };
 }
-const money = p => p === undefined ? "" : p === null ? "Prescription" : p === 0 ? "From home" : `$${p}`;
-const shopItems = () => Array.isArray(S.shopping?.items) ? S.shopping.items : [];
-const saveShop = items => setDoc("household", "shopping", { items, updatedAt: Date.now() }).catch(() => {});
-/* Adds these household gaps to the shopping list, a line each, and says so. */
-function shopGaps(M, add) {
-  if (!add.length) { toast("Already on your shopping list"); return; }
-  saveShop([...shopItems(), ...add.map(g => shopFromGap(g, M.h))]);
-  toast(add.length === 1 ? `Added ${gapName(add[0])} to your shopping list` : `Added ${add.length} items to your shopping list`);
-}
+const shopItems = () => Array.isArray(HOUSEHOLD.shopping?.items) ? HOUSEHOLD.shopping.items : [];
 /* Gaps and list lines match on category plus essential. Each line still to buy covers one gap, so two
    prescriptions lines cover two people's, and an old line with no essential covers none of the five's. */
 const gapKey = x => `${x.cat}|${typeof x.essential === "string" ? x.essential : ""}`;
@@ -1284,9 +1147,9 @@ function shopFromGap(g, h) {
 /* The kit a bought item goes into: the one picked on the row, else the first kit of a type that covers the gap. */
 function shopKit(e) {
   if (e.kitId === "none") return "";
-  if (e.kitId && S.kits.some(k => k.id === e.kitId)) return e.kitId;
+  if (e.kitId && HOUSEHOLD.kits.some(k => k.id === e.kitId)) return e.kitId;
   const types = Array.isArray(e.kits) ? e.kits : [];
-  const k = S.kits.filter(k => types.includes(k.type)).sort((a, b) => types.indexOf(a.type) - types.indexOf(b.type) || (a.createdAt || 0) - (b.createdAt || 0))[0];
+  const k = HOUSEHOLD.kits.filter(k => types.includes(k.type)).sort((a, b) => types.indexOf(a.type) - types.indexOf(b.type) || (a.createdAt || 0) - (b.createdAt || 0))[0];
   return k ? k.id : "";
 }
 /* Each kit type has its own standard; relevant hazards of the matching mode add their needs to it. */
@@ -1295,7 +1158,7 @@ const KIT_STD = {
   home: { label: "2-week home supply", mode: "shelter", days: 14, needs: ["water", "food", "first_aid", "medications", "light", "power", "communication", "hygiene", "sanitation", "tools", "shelter", "fire_safety"] },
   car: { label: "24-hour car kit", mode: "vehicle", days: 1, needs: ["water", "food", "shelter", "light", "car", "first_aid", "communication", "tools", "comfort"] },
 };
-function kitReadiness(kit, h, active, items = S.items.filter(i => i.kitId === kit.id)) {
+function kitReadiness(kit, h, active, items = HOUSEHOLD.items.filter(i => i.kitId === kit.id)) {
   const std = KIT_STD[kit.type] || KIT_STD.go;
   const serves = Math.min(50, Math.round(num(kit.serves))) || h.people;
   const whole = serves >= h.people;
@@ -1376,7 +1239,7 @@ function kitLimits(kit, h) {
    chosen items, so they are the points the kit would really score. The bag's own weight comes off the
    carry limit, so it changes what fits but never what an item scores; g and every weight here are items only. */
 function packPlan(kit, ready, lim) {
-  const lines = S.items.filter(i => i.kitId === kit.id).map(it => ({ it, ...itemLoad(it) }));
+  const lines = HOUSEHOLD.items.filter(i => i.kitId === kit.id).map(it => ({ it, ...itemLoad(it) }));
   const limG = lim.kg ? Math.max(0, lim.kg * 1000 - (lim.emptyG || 0)) : Infinity, limMl = lim.L * 1000;
   const pick = keep => lines.flatMap((l, i) => keep[i] ? [{ ...l.it, qty: keep[i], liters: num(l.it.liters) * keep[i] / l.q, kcal: num(l.it.kcal) * keep[i] / l.q }] : []);
   const raw = keep => { const st = stockItems(pick(keep)); return rawScore(ready.rows.map(r => fillRow(r, st))); };
@@ -1457,7 +1320,7 @@ function packPlan(kit, ready, lim) {
 function itemValues(kit, r) {
   const W = r.rows.reduce((a, x) => a + x.w, 0) || 1;
   const byRow = Object.fromEntries(r.rows.map(x => [x.cat, x]));
-  const out = {}, items = S.items.filter(i => i.kitId === kit.id), st = stockItems(items);
+  const out = {}, items = HOUSEHOLD.items.filter(i => i.kitId === kit.id), st = stockItems(items);
   for (const it of items) {
     const c = CATS[it.category] ? it.category : "other";
     if (expState(it) === "expired") { out[it.id] = { pts: 0, note: "Expired, so it doesn't count" }; continue; }
@@ -1487,15 +1350,7 @@ function itemValues(kit, r) {
   }
   return out;
 }
-const ptsLabel = p => p >= 1 ? String(Math.round(p)) : p > 0 ? "<1" : "0";
 const servesLine = r => `${r.serves} ${r.serves === 1 ? "person" : "people"}${r.kh.pets && r.std.mode !== "vehicle" ?` and ${r.kh.pets} pet${r.kh.pets > 1 ? "s" : ""}` : ""}`;
-function amount(row, h, days = "household-days") {
-  if (row.unit === "L") return `${f1(row.have)} of ${row.need} L <span class="muted">(${f1(row.have / 3.785)} of ${f1(row.need / 3.785)} gal)</span>`;
-  if (row.unit === "kcal") return `${f1(row.have / h.kcalDay)} of ${f1(row.need / h.kcalDay)} ${days}`;
-  return `${row.have} of ${row.need}`;
-}
-// The counted categories, one chip each; the five of named essentials are blocks (essBlock)
-const chipsFor = (rows, h, days) => rows.filter(row => !row.ess).map(row => `<span class="chip ${row.cov >= 1 ? "full" : ""}">${icon(row.cat, "ic ic-s")}${esc(catLabel(row.cat))} · ${amount(row, h, days).replace(/<[^>]+>/g, "")}</span>`).join("");
 /* The household gap a row's missing essential is: the same essential with the same label. There is none when every
    emergency that counts has it (another kit covers it, or the emergency doesn't apply), so adding it moves no score. */
 const essGap = (M, cat, e) => M.gaps.find(g => g.cat === cat && g.essential === e.id && g.label === e.label);
@@ -1507,6 +1362,243 @@ function gapGain(M, g) {
   if (!c.has(g)) c.set(g, Math.max(0, scoreIfShopped(M, [shopFromGap(g, M.h)]) - M.overall));
   return c.get(g);
 }
+/* A missing essential's name inside a sentence: "insurance cards", but "ID copies" and "Sam's prescriptions" as they are. */
+const essWord = (cat, label) => essentialList(cat).some(x => label === x.label || x.perMed && label.startsWith(x.label + " (")) && !/^.[A-Z]/.test(label) ? label[0].toLowerCase() + label.slice(1) : label;
+const modeLine = hz => hz.when || `${MODES[hz.mode].label} · ${hz.days === 1 ? "24 h" : hz.days === 3 ? "72 h" : hz.days + " days"}`;
+const personName = (m, i) => m.label || `Person ${i + 1}`;
+/* Days the stock would keep everyone going: the lower of water (3.8 L a person, about 1 L a pet) and food. */
+const daysCovered = (st, h) => !st || !h.people ? 0 : Math.min(st.liters / (h.people * 3.8 + h.pets), h.kcalDay ? st.kcal / h.kcalDay : 0);
+const MILESTONES = { home: [1, 3, 7, 14], go: [1, 3] };
+/* ---------- core ends ---------- */
+
+/* ---------- prompts ----------
+   What the page asks Claude, and how it reads the answers. */
+function planText() {
+  const p = S.plan || {};
+  const lines = PLAN.flatMap(([, fs]) => fs).filter(([k]) => String(p[k] || "").trim()).map(([k, label]) => `${label}: ${p[k]}`);
+  for (const x of Array.isArray(p.meds) ? p.meds : []) if (x.name) lines.push(`Medication: ${x.who ? x.who + " — " : ""}${x.name}${x.refill ? `, next refill ${x.refill}` : ""}`);
+  return lines.join("\n") || "nothing filled in yet";
+}
+function catGuide() { return Object.entries(CATS).map(([k, v]) => `${k}: ${v[1]}`).join("\n"); }
+function profileText() {
+  const p = S.profile || {}, h = household();
+  return [
+    `Location: ${p.location || "not given"}`,
+    `Home: ${p.home || "not given"}; vehicles: ${h.vehicles}`,
+    `People: ${h.members.map(m => {
+      const notes = [...(m.conditions || []).filter(c => CONDITIONS[c]).map(c => CONDITIONS[c].toLowerCase()), m.needs].filter(Boolean);
+      return `${m.label ? m.label + " — " : ""}${ageText(m)}${notes.length ? " (" + notes.join("; ") + ")" : ""}`;
+    }).join("; ")}`,
+    `Pets: ${(p.pets || []).filter(x => num(x.count)).map(x => `${num(x.count)} ${x.kind || "pet"}`).join(", ") || "none"}`,
+    `Notes: ${p.notes || "none"}`,
+  ].join("\n");
+}
+function photoPrompt(kit) {
+  return `These photos show the contents of an emergency kit called "${kit.name}" (${KIT_TYPES[kit.type] || "kit"}). List every distinct supply item you can see. Combine identical units into one line with a quantity. Several photos may show the same item from different angles or distances: count each physical item once. If an item is partly hidden or you are unsure what it is, still list it and say so in the note.
+
+Reply with only a JSON array. Each element:
+{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "grams": estimated total weight of the whole line in grams including packaging, "ml": estimated total packed volume of the whole line in millilitres, "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or "", "shop": an Amazon search query for this exact product, with the brand, product name and size as printed on the label (a short generic query when there is no brand), or "" for a prescription medicine or anything you can't identify, "essential": for a line in a category listed under Essential ids, the one id on that category's list that this item is, or "" when you are unsure or it is none of them; "" for every other category, "box": ${BOX_ASK}}
+
+Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"grams":12500,"ml":13500,"expires":"2027-06","note":"","shop":"Poland Spring 500 ml water bottles 24 pack","essential":"","box":[1,120,340,260,610]}]
+
+Category ids:
+${catGuide()}
+
+Essential ids, by category:
+${Object.entries(ESSENTIALS).map(([c, l]) => `${c}: ${l.map(e => `${e.id} (${e.label})`).join(", ")}`).join("\n")}`;
+}
+function packPrompt(items) {
+  return `Estimate the weight and packed size of these emergency-kit items. Each line is: id | name | category | quantity | litres of water | food calories.
+${items.map(i => [i.id, String(i.name).replace(/[|\n]/g, " "), catLabel(i.category), Math.max(1, num(i.qty)), num(i.liters), num(i.kcal)].join(" | ")).join("\n")}
+
+Reply with only a JSON array, one element per line: {"id": the id exactly as given, "grams": total weight of the whole line in grams including packaging, "ml": total packed volume of the whole line in millilitres}. When a name is vague, assume a typical retail product.`;
+}
+function hazardPrompt() {
+  return `Rate how likely each emergency below is for this household over roughly the next ten years, using what you know about the climate, geology, infrastructure and history of where they live, plus their circumstances.
+
+${profileText()}
+
+Emergencies (id — name):
+${HAZARDS.filter(h => !h.group).map(h => `${h.id} — ${h.name}`).join("\n")}
+
+Levels: "high" = a known, recurring risk there; "moderate" = plausible; "low" = rare but possible; "none" = essentially doesn't apply.
+
+Reply with only JSON in this shape, rating every id exactly once:
+{"hazards":[{"id":"earthquake","level":"high","why":"one sentence specific to their location"}],"notes":"one or two sentences on any important local risk not in the list, or empty"}`;
+}
+function reviewPrompt(M) {
+  const { h } = M;
+  const kitName = Object.fromEntries(S.kits.map(k => [k.id, `${k.name} (${KIT_TYPES[k.type] || "kit"}${k.where ? ", " + k.where : ""})`]));
+  const byKit = {};
+  for (const it of S.items) (byKit[it.kitId] ||= []).push(`${it.name} ×${Math.max(1, num(it.qty))}${num(it.liters) ? `, ${num(it.liters)} L` : ""}${num(it.kcal) ? `, ${num(it.kcal)} kcal` : ""}${it.expires ? `, exp ${it.expires}${expState(it) === "expired" ? " (EXPIRED)" : ""}` : ""}`);
+  let inv = S.kits.map(k => `${kitName[k.id]}:\n${(byKit[k.id] || ["(empty)"]).map(x => "  - " + x).join("\n")}`).join("\n");
+  if (inv.length > 12000) inv = inv.slice(0, 12000) + "\n(…inventory truncated)";
+  const scores = M.active.map(r => `${r.hz.name} — likelihood ${LEVELS[r.rel][0]}, ${SEVERITY[r.hz.severity][0].toLowerCase()} if unprepared${importanceOf(r.hz.id) > 1 ? `, the household rates it "${IMPORTANCE[S.hazards.importance[r.hz.id]][0].toLowerCase()}"` : ""}, ${modeLine(r.hz)}, readiness ${r.score}%. Short: ${r.rows.filter(x => x.cov < 1).map(x => `${catLabel(x.cat)} ${x.unit === "L" ? f1(x.have) + "/" + x.need + " L" : x.unit === "kcal" ? f1(x.have / h.kcalDay) + "/" + f1(x.need / h.kcalDay) + " household-days" : x.have + "/" + x.need}`).join(", ") || "nothing"}`).join("\n");
+  return `You are reviewing a household's emergency preparedness. Today is ${new Date().toISOString().slice(0, 10)}.
+
+HOUSEHOLD
+${profileText()}
+
+HAZARD NOTES
+${S.hazards?.notes || "none"}
+
+FAMILY PLAN (what they've written down so far)
+${planText()}
+
+READINESS BY KIT (each kit against the standard for its type)
+${S.kits.map(k => { const r = M.kitRes[k.id]; return `${k.name}: ${r.score}% as a ${r.std.label} for ${servesLine(r)}. Short: ${r.rows.filter(x => x.cov < 1).map(x => catLabel(x.cat)).join(", ") || "nothing"}`; }).join("\n") || "no kits"}
+
+READINESS BY EMERGENCY (computed by the app: water 3.8 L per person per day, food by age, go-bags and car kits count for evacuation, home supplies and go-bags for sheltering, car kits for being stranded; health emergencies are rated from the household's health conditions and count whichever kits would be within reach)
+${scores || "none rated"}
+
+INVENTORY
+${inv}
+
+Write a practical review in plain language, at most 400 words, using exactly these sections as "## " headings:
+## Biggest risks for you
+## Buy or add next
+(a numbered list, most important first, with specific quantities sized to this household, and which kit each item belongs in)
+## Check and rotate
+(expired or soon-expiring items, things that need testing such as batteries and radios)
+## Plans a kit can't cover
+(build on the family plan above: name what's missing from it, such as meeting places, an out-of-area contact, utility shut-offs, documents or medication refills, and tailor it to the people listed; don't repeat what they've already filled in)
+Use "- " bullets inside sections. No preamble and no closing remarks.`;
+}
+const BOX_ASK = `where the item is, as [photo number counting from 1 in the order given, left, top, right, bottom], each edge from 0 to 1000 across the photo's width or down its height, in the photo that shows it most clearly and tightly around just that item; null if you can't see it`;
+const cleanBox = b => Array.isArray(b) && b.length === 5 && b.every(v => typeof v === "number" && isFinite(v)) && b[0] >= 1 && Number.isInteger(b[0])
+  && b.slice(1).every(v => v >= 0 && v <= 1000) && b[3] - b[1] >= 5 && b[4] - b[2] >= 5 ? b : null;
+const picPrompt = items => `These photos show the contents of an emergency kit. Find each item below in them. Each line is: id | name.
+${items.map(i => `${i.id} | ${String(i.name).replace(/[|\n]/g, " ")}`).join("\n")}
+
+Reply with only a JSON array, one element per item you can see: {"id": the id exactly as given, "box": ${BOX_ASK}}`;
+function cleanRows(out) {
+  const arr = Array.isArray(out) ? out : Array.isArray(out?.items) ? out.items : [];
+  return arr.filter(x => x && String(x.name || "").trim()).map(x => { const category = typeof x.category === "string" && Object.hasOwn(CATS, x.category) ? x.category : "other"; return {
+    key: uid(),
+    name: String(x.name).trim().slice(0, 80),
+    category,
+    qty: Math.max(1, Math.round(num(x.qty) || 1)),
+    liters: Math.round(num(x.liters) * 10) / 10,
+    kcal: Math.round(num(x.kcal)),
+    lb: lb1(num(x.grams)),
+    L: Math.round(num(x.ml) / 100) / 10,
+    expires: /^\d{4}-\d{2}$/.test(x.expires || "") ? x.expires : "",
+    note: String(x.note || "").slice(0, 120),
+    shop: typeof x.shop === "string" ? x.shop.trim().slice(0, 120) : "",
+    // Only an id on this category's list. "none" is the household's to say, never Claude's.
+    essential: x.essential === "none" ? "" : essentialOf({ category, essential: x.essential }),
+    box: cleanBox(x.box),
+  }; });
+}
+
+/* ---------- views ----------
+   The screen's state, and the markup each tab draws from what the core works out. */
+/* ---------- state ---------- */
+const VIEWS = ["overview", "kits", "shop", "household", "plan"];
+const S = {
+  view: VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : location.hash === "#review" ? "plan" : "overview",
+  live: false, loaded: false, slow: false, canWrite: true,
+  openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
+  listKit: null, // the kit whose Contents panel shows List; any other kit shows Flat-lay. Memory only: never saved
+  flOpen: null, // the item whose flat-lay tile shows its fields, cleared when a kit is opened. Memory only
+  ctr: null, // the open container editor: { id, ...typed }
+  hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
+  scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, bagM: null,
+  add: { cat: "water", ess: "" }, // the add-by-hand row's Category and Essential, so every redraw shows the two together
+};
+// The saved household has one owner, the core: S.profile, S.kits and the rest read and write HOUSEHOLD's.
+for (const k of Object.keys(HOUSEHOLD)) Object.defineProperty(S, k, { get: () => HOUSEHOLD[k], set: v => { HOUSEHOLD[k] = v; }, enumerable: true });
+
+/* ---------- markup helpers ---------- */
+const esc =s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+/* Bars are neutral until a score is in good shape; red is kept for real problems (expired, overdue, a likely health emergency you can't handle). */
+// Each readiness band's colour, for bars and big numbers, in BANDS' order
+const BAND_COLORS = ["var(--good)", "var(--meter)", "var(--warn)"];
+const statusColor = s => BAND_COLORS[BANDS.indexOf(band(s))];
+const statusInk = s => s >= 40 && s < 75 ? "var(--ink)" : statusColor(s);
+const bandTag = s => `<span class="band"><i style="background:${statusColor(s)}"></i>${band(s)[1]}</span>`;
+const D = () => S.canWrite ? "" : "disabled";
+const when = t => t ? new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+const amazonA = it => { const l = amazonLink(it); return l ? `<a class="buy small" href="${esc(l.href)}" target="_blank" rel="noopener noreferrer" title="${l.exact ? "This product on Amazon" : "Search Amazon for this item"}">${l.exact ? "On Amazon ↗" : "Find on Amazon ↗"}</a>` : ""; };
+/* Line icons, one per category plus a few for setup steps. 24×24, drawn with the current text colour. */
+const ICONS = {
+  water: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
+  food: '<ellipse cx="12" cy="6" rx="6" ry="2.2"/><path d="M6 6v12c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V6M6 11c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2"/>',
+  first_aid: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5h6v2M12 10.5v6M9 13.5h6"/>',
+  trauma: '<rect x="3" y="9" width="18" height="6" rx="1.5"/><path d="M9 9V6.5h6V9M9 15v2.5h6V15"/>',
+  burns: '<path d="M12 21a6 6 0 0 0 6-6c0-4-3-5.5-3.5-9-2 1.5-3 3.5-3 5.5-1-.5-1.8-1.5-2-2.8C7.8 10.2 6 12.5 6 15a6 6 0 0 0 6 6z"/>',
+  splint: '<rect x="9" y="3" width="6" height="18" rx="1.5"/><path d="M7 8h10M7 16h10"/>',
+  cpr: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/><path d="M7 12h2.5l1.2-2 2 4 1.3-2H17"/>',
+  allergy: '<path d="M14 4l6 6M17 7l-9 9-2.5-.5L5 13l9-9M8 16l-4 4"/>',
+  diagnostics: '<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/>',
+  medications: '<rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/>',
+  light: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>',
+  power: '<rect x="3" y="7" width="16" height="10" rx="2"/><path d="M21 10.5v3M12 9l-2.5 3.5h3L10 15.5"/>',
+  communication: '<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/>',
+  documents: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',
+  shelter: '<path d="M12 4L3 20h18zM12 13l-3.5 7M12 13l3.5 7"/>',
+  clothing: '<path d="M8 4L3 7l2 4 2-1v10h10V10l2 1 2-4-5-3a4 4 0 0 1-8 0z"/>',
+  hygiene: '<rect x="4" y="11" width="13" height="9" rx="3"/><circle cx="17" cy="6" r="2"/><circle cx="12" cy="6.5" r="1.3"/><circle cx="20.2" cy="10" r="1.2"/>',
+  sanitation: '<path d="M4 8h16l-1.8 12H5.8zM5 8a7 5 0 0 1 14 0"/>',
+  tools: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/>',
+  masks: '<path d="M4 9c3-1 5-2 8-2s5 1 8 2v3c0 4-4 7-8 7s-8-3-8-7zM8 12h8M9 15h6"/>',
+  fire_safety: '<rect x="8" y="8" width="8" height="13" rx="2"/><path d="M12 8V5H8M12 5l4-1.5"/>',
+  car: '<path d="M4 16v-4l2.5-5h11l2.5 5v4zM4 12h16"/><circle cx="8" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/>',
+  pets: '<circle cx="6.5" cy="10" r="1.8"/><circle cx="10" cy="6" r="1.8"/><circle cx="14" cy="6" r="1.8"/><circle cx="17.5" cy="10" r="1.8"/><path d="M12 12c-3 0-5 3.5-5 5.5 0 1.5 1.5 2.5 3 2l2-.6 2 .6c1.5.5 3-.5 3-2 0-2-2-5.5-5-5.5z"/>',
+  baby: '<path d="M9 8h6v11a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2zM10 8V6.5a2 2 0 0 1 4 0V8M9 12h2.5M9 15h2.5"/>',
+  kids: '<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>',
+  breathing: '<path d="M12 4v7M12 11l-2.5 2M12 11l2.5 2"/><path d="M9.5 8C6.5 8 4 12 4 17c0 2 1 3 3 3s2.5-1.2 2.5-3zM14.5 8c3 0 5.5 4 5.5 9 0 2-1 3-3 3s-2.5-1.2-2.5-3z"/>',
+  aspirin: '<circle cx="12" cy="12" r="8"/><path d="M8 12h8"/>',
+  naloxone: '<path d="M11 2.5h2V6h-2zM9 6h6l1 3v12H8V9z"/><path d="M8 13h8"/>',
+  sugar: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>',
+  seizure: '<path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/>',
+  co_alarm: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/>',
+  wound: '<rect x="2.5" y="8.5" width="19" height="7" rx="3.5" transform="rotate(-45 12 12)"/><path d="M10.6 10.6h.01M13.4 13.4h.01M10.6 13.4h.01M13.4 10.6h.01"/>',
+  bites: '<ellipse cx="12" cy="14" rx="4" ry="5.5"/><path d="M12 8.5V20M8.3 12h7.4M8.3 16h7.4M10 8.8 8 5M14 8.8 16 5"/>',
+  poison: '<path d="M9 3h6M10 3v4.5L5.5 17a2.5 2.5 0 0 0 2.3 3.5h8.4a2.5 2.5 0 0 0 2.3-3.5L14 7.5V3"/><path d="M10 14l4 3M14 14l-4 3"/>',
+  comfort: '<path d="M4 10h13v4a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6zM17 11h1.5a2.5 2.5 0 0 1 0 5H17M8 3c-1 1.5 1 2.5 0 4M12 3c-1 1.5 1 2.5 0 4"/>',
+  other: '<circle cx="12" cy="12" r="8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/>',
+  home: '<path d="M4 11l8-7 8 7M6 9.5V20h12V9.5M10 20v-5h4v5"/>',
+  person: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  flag: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
+  bag: '<path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2zM10 4.5V4a2 2 0 0 1 4 0v.5M9.5 14h5v3h-5z"/>',
+  duffel: '<rect x="3" y="8" width="18" height="11" rx="3"/><path d="M9 8V6h6v2M3 13h18"/>',
+  box: '<path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4"/>',
+  gauge: '<path d="M4.5 17a8.5 8.5 0 1 1 15 0M12 13l3.5-4"/><circle cx="12" cy="13" r="1.2"/>',
+  cart: '<path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/>',
+  list: '<path d="M10 6h10M10 12h10M10 18h10"/><path d="m3.5 6 1.5 1.5 2.5-2.5M3.5 12l1.5 1.5 2.5-2.5M3.5 18l1.5 1.5 2.5-2.5"/>',
+  yes: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  no: '<circle cx="12" cy="12" r="7.5"/>',
+};
+const icon = (k, cls = "ic") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${Object.hasOwn(ICONS, k) ? ICONS[k] : ICONS.other}</svg>`;
+/* The brand mark (#49): a supply case whose outline is the gauge. Two halves run from the bottom centre up
+   each side and meet under the handle, filled to the score; handle, seam, latches and cross stay solid. */
+const caseScore = s => Math.round(Math.min(100, Math.max(0, Number(s) || 0)));
+function caseParts(score, size) {
+  const s = caseScore(score), halves = ["M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32", "M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"];
+  const fill = !s ? "" : halves.map(d => `<path class="cf" d="${d}" pathLength="100"${s < 100 ? ` style="stroke-dasharray:${s} 100"` : ""}/>`).join("");
+  return `<g fill="none" stroke-width="${size <= 32 ? 6.5 : 5}" stroke-linecap="round" stroke-linejoin="round">`
+    + `<path class="cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/>${halves.map(d => `<path class="ct" d="${d}"/>`).join("")}${fill}`
+    + `<path class="cf" d="M10.5 29H53.5"/></g><rect class="cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="cs" x="43" y="25.5" width="6" height="7" rx="1.5"/>`
+    + `<path class="cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/>`;
+}
+const caseMark = (score, size) => `<svg class="case" viewBox="0 0 64 64" width="${size}" height="${size}" aria-hidden="true">${caseParts(score, size)}</svg>`;
+// The browser tab icon: the case in white on a rounded Cobalt tile, with the small-size strokes.
+const tabIconHref = score => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -5.5 80 80">`
+  + `<style>.ct{stroke:#fff;stroke-opacity:.4}.cf{stroke:#fff}.cs{fill:#fff}</style><rect x="-8" y="-5.5" width="80" height="80" rx="18" fill="#2B59D9"/>${caseParts(score, 16)}</svg>`);
+const KIT_ICON = { go: "bag", home: "home", car: "car" };
+const TAB_ICON = { overview: "gauge", kits: "bag", shop: "cart", household: "person", plan: "flag" };
+// One line up front and the full explanation a tap away; the ones you open stay open when the page re-renders
+const how = (id, body) => `<details class="how" data-how="${id}" ${S.how.has(id) ? "open" : ""}><summary>How this works</summary><p>${body}</p></details>`;
+const money = p => p === undefined ? "" : p === null ? "Prescription" : p === 0 ? "From home" : `$${p}`;
+const ptsLabel = p => p >= 1 ? String(Math.round(p)) : p > 0 ? "<1" : "0";
+function amount(row, h, days = "household-days") {
+  if (row.unit === "L") return `${f1(row.have)} of ${row.need} L <span class="muted">(${f1(row.have / 3.785)} of ${f1(row.need / 3.785)} gal)</span>`;
+  if (row.unit === "kcal") return `${f1(row.have / h.kcalDay)} of ${f1(row.need / h.kcalDay)} ${days}`;
+  return `${row.have} of ${row.need}`;
+}
+// The counted categories, one chip each; the five of named essentials are blocks (essBlock)
+const chipsFor = (rows, h, days) => rows.filter(row => !row.ess).map(row => `<span class="chip ${row.cov >= 1 ? "full" : ""}">${icon(row.cat, "ic ic-s")}${esc(catLabel(row.cat))} · ${amount(row, h, days).replace(/<[^>]+>/g, "")}</span>`).join("");
 const itemNames = its => { const n = its.map(i => String(i.name || "Unnamed item")); return n.length > 3 ? `${n.slice(0, 3).join(", ")} and ${n.length - 3} more` : orList(n, "and"); };
 /* A category of named essentials' notes, as escaped text: its items still to tag, and its expired ones, which don't count. */
 function essNotes(cat, items) {
@@ -1547,11 +1639,8 @@ function checklist(M, rows, h, days, items, at) {
   return rows.filter(r => r.ess).map(r => essBlock(M, r, items, at)).join("")
     + (counted ? `<p class="eyebrow">Counted by amount</p><div class="chips">${counted}</div>` : "");
 }
-/* A missing essential's name inside a sentence: "insurance cards", but "ID copies" and "Sam's prescriptions" as they are. */
-const essWord = (cat, label) => essentialList(cat).some(x => label === x.label || x.perMed && label.startsWith(x.label + " (")) && !/^.[A-Z]/.test(label) ? label[0].toLowerCase() + label.slice(1) : label;
-const modeLine = hz => hz.when || `${MODES[hz.mode].label} · ${hz.days === 1 ? "24 h" : hz.days === 3 ? "72 h" : hz.days + " days"}`;
 
-/* ---------- views ---------- */
+/* ---------- tabs ---------- */
 function viewBanner() {
   const ex = S.profile?.example || S.kits.some(isExampleKit);
   const parts = [];
@@ -1964,7 +2053,6 @@ function draftTable(d) {
   </div>`;
 }
 
-const personName = (m, i) => m.label || `Person ${i + 1}`;
 function hhWhere(d) {
   return `<div class="hh-grid">
     <label class="f">Location<input type="text" id="hh-location" value="${esc(d.location || "")}" data-input="hh" data-p="location" placeholder="Town, region, country" ${D()}></label>
@@ -2156,7 +2244,6 @@ const PLAN = [
     ["shutPower", "Electrical panel", "", "Garage, behind the door"],
   ]],
 ];
-const savePlan = data => setDoc("household", "plan", { ...data, updatedAt: Date.now() }).catch(() => {});
 function refillState(x) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(x.refill || "")) return { cls: "muted", text: "Add the next refill date", days: null };
   const [y, m, d] = x.refill.split("-").map(Number), due = new Date(y, m - 1, d);
@@ -2164,12 +2251,6 @@ function refillState(x) {
   return days < 0 ? { cls: "bad", text: `Refill overdue by ${-days} day${days === -1 ? "" : "s"}`, days }
     : days <= 7 ? { cls: "warn", text: days === 0 ? "Refill due today" : `Refill due in ${days} day${days === 1 ? "" : "s"}`, days }
     : { cls: "muted", text: `Next refill ${when(due)}`, days };
-}
-function planText() {
-  const p = S.plan || {};
-  const lines = PLAN.flatMap(([, fs]) => fs).filter(([k]) => String(p[k] || "").trim()).map(([k, label]) => `${label}: ${p[k]}`);
-  for (const x of Array.isArray(p.meds) ? p.meds : []) if (x.name) lines.push(`Medication: ${x.who ? x.who + " — " : ""}${x.name}${x.refill ? `, next refill ${x.refill}` : ""}`);
-  return lines.join("\n") || "nothing filled in yet";
 }
 function viewPlan(M) {
   const p = S.plan || {};
@@ -2283,9 +2364,6 @@ function render() {
 }
 
 /* ---------- progress feedback ---------- */
-/* Days the stock would keep everyone going: the lower of water (3.8 L a person, about 1 L a pet) and food. */
-const daysCovered = (st, h) => !st || !h.people ? 0 : Math.min(st.liters / (h.people * 3.8 + h.pets), h.kcalDay ? st.kcal / h.kcalDay : 0);
-const MILESTONES = { home: [1, 3, 7, 14], go: [1, 3] };
 const calm = () => typeof requestAnimationFrame !== "function" || !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 function celebrate(M) {
   if (!S.loaded) return;
@@ -2328,94 +2406,59 @@ function countUp(from, to) {
   cancelAnimationFrame(S.upRaf); S.upRaf = requestAnimationFrame(step);
 }
 
-/* ---------- prompts ---------- */
-function catGuide() { return Object.entries(CATS).map(([k, v]) => `${k}: ${v[1]}`).join("\n"); }
-function profileText() {
-  const p = S.profile || {}, h = household();
-  return [
-    `Location: ${p.location || "not given"}`,
-    `Home: ${p.home || "not given"}; vehicles: ${h.vehicles}`,
-    `People: ${h.members.map(m => {
-      const notes = [...(m.conditions || []).filter(c => CONDITIONS[c]).map(c => CONDITIONS[c].toLowerCase()), m.needs].filter(Boolean);
-      return `${m.label ? m.label + " — " : ""}${ageText(m)}${notes.length ? " (" + notes.join("; ") + ")" : ""}`;
-    }).join("; ")}`,
-    `Pets: ${(p.pets || []).filter(x => num(x.count)).map(x => `${num(x.count)} ${x.kind || "pet"}`).join(", ") || "none"}`,
-    `Notes: ${p.notes || "none"}`,
-  ].join("\n");
+/* ---------- actions ----------
+   What the page does: storage, Claude, photos, and the handlers for every tap, field and form. */
+let db = null, assets = null, sample = null;
+const $ = (s, r = document) => r.querySelector(s);
+let toastTimer, toastAction = null;
+function toast(msg, action) {
+  const t = $("#toast"), b = $("#toast-act");
+  $("#toast-msg").textContent = msg;
+  toastAction = action || null;
+  b.hidden = !action; if (action) b.textContent = action.label;
+  t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; toastAction = null; }, action ? 9000 : 4200);
 }
-function photoPrompt(kit) {
-  return `These photos show the contents of an emergency kit called "${kit.name}" (${KIT_TYPES[kit.type] || "kit"}). List every distinct supply item you can see. Combine identical units into one line with a quantity. Several photos may show the same item from different angles or distances: count each physical item once. If an item is partly hidden or you are unsure what it is, still list it and say so in the note.
-
-Reply with only a JSON array. Each element:
-{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "grams": estimated total weight of the whole line in grams including packaging, "ml": estimated total packed volume of the whole line in millilitres, "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or "", "shop": an Amazon search query for this exact product, with the brand, product name and size as printed on the label (a short generic query when there is no brand), or "" for a prescription medicine or anything you can't identify, "essential": for a line in a category listed under Essential ids, the one id on that category's list that this item is, or "" when you are unsure or it is none of them; "" for every other category, "box": ${BOX_ASK}}
-
-Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"grams":12500,"ml":13500,"expires":"2027-06","note":"","shop":"Poland Spring 500 ml water bottles 24 pack","essential":"","box":[1,120,340,260,610]}]
-
-Category ids:
-${catGuide()}
-
-Essential ids, by category:
-${Object.entries(ESSENTIALS).map(([c, l]) => `${c}: ${l.map(e => `${e.id} (${e.label})`).join(", ")}`).join("\n")}`;
-}
-function packPrompt(items) {
-  return `Estimate the weight and packed size of these emergency-kit items. Each line is: id | name | category | quantity | litres of water | food calories.
-${items.map(i => [i.id, String(i.name).replace(/[|\n]/g, " "), catLabel(i.category), Math.max(1, num(i.qty)), num(i.liters), num(i.kcal)].join(" | ")).join("\n")}
-
-Reply with only a JSON array, one element per line: {"id": the id exactly as given, "grams": total weight of the whole line in grams including packaging, "ml": total packed volume of the whole line in millilitres}. When a name is vague, assume a typical retail product.`;
-}
-function hazardPrompt() {
-  return `Rate how likely each emergency below is for this household over roughly the next ten years, using what you know about the climate, geology, infrastructure and history of where they live, plus their circumstances.
-
-${profileText()}
-
-Emergencies (id — name):
-${HAZARDS.filter(h => !h.group).map(h => `${h.id} — ${h.name}`).join("\n")}
-
-Levels: "high" = a known, recurring risk there; "moderate" = plausible; "low" = rare but possible; "none" = essentially doesn't apply.
-
-Reply with only JSON in this shape, rating every id exactly once:
-{"hazards":[{"id":"earthquake","level":"high","why":"one sentence specific to their location"}],"notes":"one or two sentences on any important local risk not in the list, or empty"}`;
-}
-function reviewPrompt(M) {
-  const { h } = M;
-  const kitName = Object.fromEntries(S.kits.map(k => [k.id, `${k.name} (${KIT_TYPES[k.type] || "kit"}${k.where ? ", " + k.where : ""})`]));
-  const byKit = {};
-  for (const it of S.items) (byKit[it.kitId] ||= []).push(`${it.name} ×${Math.max(1, num(it.qty))}${num(it.liters) ? `, ${num(it.liters)} L` : ""}${num(it.kcal) ? `, ${num(it.kcal)} kcal` : ""}${it.expires ? `, exp ${it.expires}${expState(it) === "expired" ? " (EXPIRED)" : ""}` : ""}`);
-  let inv = S.kits.map(k => `${kitName[k.id]}:\n${(byKit[k.id] || ["(empty)"]).map(x => "  - " + x).join("\n")}`).join("\n");
-  if (inv.length > 12000) inv = inv.slice(0, 12000) + "\n(…inventory truncated)";
-  const scores = M.active.map(r => `${r.hz.name} — likelihood ${LEVELS[r.rel][0]}, ${SEVERITY[r.hz.severity][0].toLowerCase()} if unprepared${importanceOf(r.hz.id) > 1 ? `, the household rates it "${IMPORTANCE[S.hazards.importance[r.hz.id]][0].toLowerCase()}"` : ""}, ${modeLine(r.hz)}, readiness ${r.score}%. Short: ${r.rows.filter(x => x.cov < 1).map(x => `${catLabel(x.cat)} ${x.unit === "L" ? f1(x.have) + "/" + x.need + " L" : x.unit === "kcal" ? f1(x.have / h.kcalDay) + "/" + f1(x.need / h.kcalDay) + " household-days" : x.have + "/" + x.need}`).join(", ") || "nothing"}`).join("\n");
-  return `You are reviewing a household's emergency preparedness. Today is ${new Date().toISOString().slice(0, 10)}.
-
-HOUSEHOLD
-${profileText()}
-
-HAZARD NOTES
-${S.hazards?.notes || "none"}
-
-FAMILY PLAN (what they've written down so far)
-${planText()}
-
-READINESS BY KIT (each kit against the standard for its type)
-${S.kits.map(k => { const r = M.kitRes[k.id]; return `${k.name}: ${r.score}% as a ${r.std.label} for ${servesLine(r)}. Short: ${r.rows.filter(x => x.cov < 1).map(x => catLabel(x.cat)).join(", ") || "nothing"}`; }).join("\n") || "no kits"}
-
-READINESS BY EMERGENCY (computed by the app: water 3.8 L per person per day, food by age, go-bags and car kits count for evacuation, home supplies and go-bags for sheltering, car kits for being stranded; health emergencies are rated from the household's health conditions and count whichever kits would be within reach)
-${scores || "none rated"}
-
-INVENTORY
-${inv}
-
-Write a practical review in plain language, at most 400 words, using exactly these sections as "## " headings:
-## Biggest risks for you
-## Buy or add next
-(a numbered list, most important first, with specific quantities sized to this household, and which kit each item belongs in)
-## Check and rotate
-(expired or soon-expiring items, things that need testing such as batteries and radios)
-## Plans a kit can't cover
-(build on the family plan above: name what's missing from it, such as meeting places, an out-of-area contact, utility shut-offs, documents or medication refills, and tailor it to the people listed; don't repeat what they've already filled in)
-Use "- " bullets inside sections. No preamble and no closing remarks.`;
+$("#toast-act").addEventListener("click", () => { const a = toastAction; toastAction = null; $("#toast").hidden = true; a?.run(); });
+function sampleErr(e) {
+  switch (e?.code) {
+    case "not_granted": case "sampling_disabled": case "not_declared": case "capability_disabled": case "capability_removed":
+      return "Claude isn't available to this page. Allow it from the artifact's permissions, or add items by hand.";
+    case "images_unavailable": return "This view can't send photos to Claude. Add items by hand instead.";
+    case "image_rejected": return "Claude couldn't open one of those photos. Use JPEG or PNG under 20 MB.";
+    case "rate_limited": return "You've hit a usage limit. Try again in a little while.";
+    case "session_expired": return "Your session expired. Reload the page and sign in again.";
+    case "invalid_json": return "Claude's answer came back in the wrong shape. Try again.";
+    case "refused": return "Claude declined that request. Try different photos.";
+    default: return "Couldn't reach Claude. Try again.";
+  }
 }
 
-/* ---------- actions ---------- */
+/* ---------- storage (db when available, memory otherwise) ---------- */
+const COLS = { kits: "kits", items: "items" };
+async function setDoc(col, id, data) {
+  if (db) {
+    try { await db.doc(col + "/" + id).set(data); }
+    catch (e) { toast(e?.code === "invalid_argument" ? "You can view this audit but not change it." : "Couldn't save. Check your connection and try again."); throw e; }
+  } else {
+    if (col === "household") S[id] = data;
+    else { const arr = S[col]; const i = arr.findIndex(x => x.id === id); const row = { id, ...data }; if (i >= 0) arr[i] = row; else arr.push(row); }
+    render();
+  }
+}
+async function delDoc(col, id) {
+  if (db) { try { await db.doc(col + "/" + id).delete(); } catch (e) { toast("Couldn't delete. Try again."); throw e; } }
+  else { if (col === "household") S[id] = null; else S[col] = S[col].filter(x => x.id !== id); render(); }
+}
+const saveShop = items => setDoc("household", "shopping", { items, updatedAt: Date.now() }).catch(() => {});
+/* Adds these household gaps to the shopping list, a line each, and says so. */
+function shopGaps(M, add) {
+  if (!add.length) { toast("Already on your shopping list"); return; }
+  saveShop([...shopItems(), ...add.map(g => shopFromGap(g, M.h))]);
+  toast(add.length === 1 ? `Added ${gapName(add[0])} to your shopping list` : `Added ${add.length} items to your shopping list`);
+}
+const savePlan = data => setDoc("household", "plan", { ...data, updatedAt: Date.now() }).catch(() => {});
+
 async function shrink(file, max = 1600) {
   try {
     const bmp = await createImageBitmap(file);
@@ -2426,31 +2469,9 @@ async function shrink(file, max = 1600) {
     return await new Promise(r => c.toBlob(b => r(b || file), "image/jpeg", 0.85));
   } catch (_) { return file; }
 }
-function cleanRows(out) {
-  const arr = Array.isArray(out) ? out : Array.isArray(out?.items) ? out.items : [];
-  return arr.filter(x => x && String(x.name || "").trim()).map(x => { const category = typeof x.category === "string" && Object.hasOwn(CATS, x.category) ? x.category : "other"; return {
-    key: uid(),
-    name: String(x.name).trim().slice(0, 80),
-    category,
-    qty: Math.max(1, Math.round(num(x.qty) || 1)),
-    liters: Math.round(num(x.liters) * 10) / 10,
-    kcal: Math.round(num(x.kcal)),
-    lb: lb1(num(x.grams)),
-    L: Math.round(num(x.ml) / 100) / 10,
-    expires: /^\d{4}-\d{2}$/.test(x.expires || "") ? x.expires : "",
-    note: String(x.note || "").slice(0, 120),
-    shop: typeof x.shop === "string" ? x.shop.trim().slice(0, 120) : "",
-    // Only an id on this category's list. "none" is the household's to say, never Claude's.
-    essential: x.essential === "none" ? "" : essentialOf({ category, essential: x.essential }),
-    box: cleanBox(x.box),
-  }; });
-}
 /* ---------- item pictures ----------
    Claude says where each item is in the kit's photos; the page cuts that box out, keys out the surface it lies on and
    saves a small PNG as the item's `thumb` asset. Nothing ships for this: no model, no outside service. */
-const BOX_ASK = `where the item is, as [photo number counting from 1 in the order given, left, top, right, bottom], each edge from 0 to 1000 across the photo's width or down its height, in the photo that shows it most clearly and tightly around just that item; null if you can't see it`;
-const cleanBox = b => Array.isArray(b) && b.length === 5 && b.every(v => typeof v === "number" && isFinite(v)) && b[0] >= 1 && Number.isInteger(b[0])
-  && b.slice(1).every(v => v >= 0 && v <= 1000) && b[3] - b[1] >= 5 && b[4] - b[2] >= 5 ? b : null;
 /* Clears the surface around an item in RGBA pixels {data, width, height}, in place: a flood from the edges takes every
    pixel close in colour to the edges' median, so a plain table or floor goes and the item stays. Leaves the pixels as
    they were and returns false when the surface isn't plain enough (under 8% cleared) or the item matched it (over 92%). */
@@ -2496,10 +2517,6 @@ async function cutThumb(photo, [, l, t, r, b]) {
   } catch (_) { return null; }
 }
 const upPic = async b => { try { return b && assets ? (await assets.upload(b, { type: "image/png" })).id : ""; } catch (_) { return ""; } };
-const picPrompt = items => `These photos show the contents of an emergency kit. Find each item below in them. Each line is: id | name.
-${items.map(i => `${i.id} | ${String(i.name).replace(/[|\n]/g, " ")}`).join("\n")}
-
-Reply with only a JSON array, one element per item you can see: {"id": the id exactly as given, "box": ${BOX_ASK}}`;
 /* Gives a kit's items saved without a picture one cut from the kit's saved photos. Writes only `thumb`, onto each
    item as it is when its picture is ready, so an edit made meanwhile stays. */
 async function findPics() {
