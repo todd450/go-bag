@@ -1140,10 +1140,13 @@ function splitListed(gaps, lines = shopItems().filter(x => !x.done)) {
 }
 // A gap inside a sentence: an essential as named, a category lower-cased unless it starts with an acronym ("CPR & airway")
 const gapName = g => g.essential ? g.label : catLabel(g.cat).replace(/^[A-Z](?=[a-z])/, c => c.toLowerCase());
-function shopFromGap(g, h) {
+// A gap's shopping line. Planned from a kit (#116), the line keeps that kit's id, so ticking it puts the item there.
+function shopFromGap(g, h, kitId) {
   const p = gapPlan(g, h);
-  return { id: uid(), cat: g.cat, ...(g.essential ? { essential: g.essential } : {}), qty: p.qty, unit: p.unit, name: p.name, text: p.text, note: p.hint, kits: p.kits, kitId: "", done: false, at: Date.now() };
+  return { id: uid(), cat: g.cat, ...(g.essential ? { essential: g.essential } : {}), qty: p.qty, unit: p.unit, name: p.name, text: p.text, note: p.hint, kits: p.kits, kitId: ownKit(kitId), done: false, at: Date.now() };
 }
+// The id of one of the household's kits, else "": "none" and anything else name no kit
+const ownKit = id => id !== "none" && HOUSEHOLD.kits.some(k => k.id === id) ? id : "";
 /* The kit a bought item goes into: the one picked on the row, else the first kit of a type that covers the gap. */
 function shopKit(e) {
   if (e.kitId === "none") return "";
@@ -1152,6 +1155,8 @@ function shopKit(e) {
   const k = HOUSEHOLD.kits.filter(k => types.includes(k.type)).sort((a, b) => types.indexOf(a.type) - types.indexOf(b.type) || (a.createdAt || 0) - (b.createdAt || 0))[0];
   return k ? k.id : "";
 }
+/* A kit's share of the household gaps: those whose line shopKit sends there, in M.gaps order. "" is the gaps no kit takes. */
+const kitGaps = (M, kitId) => M.gaps.filter(g => shopKit(shopFromGap(g, M.h)) === kitId);
 /* Each kit type has its own standard; relevant hazards of the matching mode add their needs to it. */
 const KIT_STD = {
   go: { label: "72-hour go-bag", mode: "evacuate", days: 3, needs: ["water", "food", "first_aid", "medications", "documents", "light", "power", "communication", "clothing", "hygiene", "shelter", "tools"] },
@@ -2789,7 +2794,7 @@ const ACT = {
   shopAdd: b => {
     const M = model(), key = gapKey({ cat: b.dataset.cat, essential: b.dataset.essential });
     const g = [...splitListed(M.gaps).off, ...M.gaps].find(x => gapKey(x) === key); if (!g) return;
-    saveShop([...shopItems(), shopFromGap(g, M.h)]);
+    saveShop([...shopItems(), shopFromGap(g, M.h, b.dataset.kit)]);
     toast(`Added ${gapName(g)} to your shopping list`);
   },
   // A kit's checklist block's button: its missing essentials that are household gaps not on the list yet
@@ -2811,10 +2816,11 @@ const ACT = {
     saveShop([...shopItems(), ...add]);
     toast(`Added ${add.length} item${add.length === 1 ? "" : "s"} to your shopping list`);
   },
-  shopAddTop: () => {
-    const M = model();
-    const add = splitListed(M.gaps).off.map(g => ({ g, gain: M.overall == null ? 0 : scoreIfFilled(M, [g]) - M.overall }))
-      .sort((a, b) => b.gain - a.gain || b.g.imp - a.g.imp).slice(0, 5).map(x => shopFromGap(x.g, M.h));
+  // With a kit's data-kit, only that kit's gaps not on the list yet, each planned into that kit
+  shopAddTop: b => {
+    const M = model(), { on, off } = splitListed(M.gaps), kit = ownKit(b?.dataset.kit);
+    const add = (kit ? kitGaps(M, kit).filter(g => !on.includes(g)) : off).map(g => ({ g, gain: M.overall == null ? 0 : scoreIfFilled(M, [g]) - M.overall }))
+      .sort((a, b) => b.gain - a.gain || b.g.imp - a.g.imp).slice(0, 5).map(x => shopFromGap(x.g, M.h, kit));
     if (!add.length) return;
     saveShop([...shopItems(), ...add]);
     toast(`Added the top ${add.length} to your shopping list`);
