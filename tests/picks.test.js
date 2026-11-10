@@ -188,9 +188,9 @@ test("at 390px the pick line sits under the tip and its link is at least 40px ta
   const seen = atPhoneWidth(["tests/household"], () => {
     const M = model();
     S.shopping = { items: M.gaps.map(g => shopFromGap(g, M.h)) };
-    S.view = "shop"; render();
+    S.view = "kits"; render(); ACT.allKits();
     return { width: innerWidth, scroll: document.documentElement.scrollWidth,
-      rows: [...document.querySelectorAll("#v-shop .shop-row")].filter(r => r.querySelector(".shop-chk a.buy")).map(r => {
+      rows: [...document.querySelectorAll(".shop-row")].filter(r => r.querySelector(".shop-chk a.buy")).map(r => {
         const a = r.querySelector(".shop-chk a.buy").getBoundingClientRect(), tip = r.querySelector(".shop-tip")?.getBoundingClientRect();
         return { link: a.height, under: !tip || a.top >= tip.bottom - 1, inside: a.right <= innerWidth };
       }) };

@@ -187,7 +187,7 @@ test("an untagged item in the five categories says to pick its essential", () =>
 test("an old shopping line with no essential shows its true points, makes an untagged item, and leaves the essentials to add", async () => {
   const { run, json } = screenshotCase();
   run(`S.shopping = { items: [{ id: "old", cat: "documents", qty: 1, unit: "", name: "Documents & cash", text: "Documents & cash × 1", kits: ["go", "car"], kitId: "", done: false, at: 1 }] }`);
-  run(`S.view = "shop"; render()`);
+  run(`S.view = "kits"; render(); ACT.allKits()`);
   assert.doesNotThrow(() => run("viewShop(model())"));
   assert.equal(run(`shopInfo(shopItems()[0], model()).gain`), 0);
   const docs = json(`splitListed(model().gaps).off.filter(g => g.cat === "documents").map(g => g.essential).sort()`);

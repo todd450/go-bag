@@ -329,18 +329,17 @@ test("read-only viewers get no Plan, Plan the top N, ×, Clear these or add form
   }
 });
 
-test("the Shopping tab keeps its heading in a wrapper around All kits", () => {
+// The Shopping tab and its wrapper are gone (#119): All kits sits under the Kits tab's heading
+test("All kits has no heading of its own", () => {
   const app = load({ fixture: "tests/household" });
-  const tab = app.run("viewShopTab(model())"), all = app.run("viewShop(model())");
-  assert.match(tab, /^\s*<h2[^>]*>[^<]+<\/h2>/);
-  assert.equal(tab.replace(/^\s*<h2[^>]*>[^<]+<\/h2>/, "").trim(), all.trim());
+  const all = app.run("viewShop(model())");
   assert.doesNotMatch(all, /<h2/);
   assert.equal(app.run("typeof ACT.shopAddAll"), "function", "Add all stays as an action");
 });
 
 // Every household the phone check covers: the standard one, and each phone-width and empty-and-one fixture
 const PHONE = ["tests/household", ...households.filter(h => /^fixtures\/(phone-width|empty-and-one)\//.test(h))];
-test("at 390px the Shopping tab never scrolls sideways, with no lines and with every gap planned", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
+test("at 390px All kits never scrolls sideways, with no lines and with every gap planned", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
   // Two households a run: Chrome prints each page whole, and more would overflow what execFileSync reads back
   const seen = new Map();
   for (let i = 0; i < PHONE.length; i += 2) for (const [f, r] of measure(PHONE.slice(i, i + 2))) seen.set(f, r);
@@ -356,11 +355,11 @@ function measure(fixtures) {
   return atPhoneWidth(fixtures, () => {
     const look = () => {
       render();
-      const w = innerWidth, view = document.querySelector("#v-shop");
+      const w = innerWidth, view = document.querySelector("#v-kits");
       return { width: w, scroll: document.documentElement.scrollWidth, groups: view.querySelectorAll(".shop-g").length,
         out: [...view.querySelectorAll("*")].filter(e => { const r = e.getBoundingClientRect(); return r.width && (r.left < -0.5 || r.right > w + 0.5); }).map(e => e.tagName + "." + e.getAttribute("class")) };
     };
-    S.view = "shop"; S.shopping = null;
+    S.view = "kits"; S.shopping = null; render(); ACT.allKits();
     const none = look(), M = model();
     S.shopping = { items: M.gaps.map(g => shopFromGap(g, M.h)) };
     return { none, all: look() };

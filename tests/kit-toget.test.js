@@ -407,24 +407,25 @@ function measure(fixtures) {
   });
 }
 
-// All kits puts the Shopping tab's list on the Kits tab too, so its fields' ids could be on the page twice
-test("after All kits and the Shopping tab, every id on the page is unique, and the Shopping tab's add field is the one read", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
+// All kits puts the list's fields on the Kits tab, so a hidden tab that kept its markup could put their ids on the page twice
+test("after All kits and every other tab, every id on the page is unique, and All kits' add field is the one read", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
   const seen = atPhoneWidth(["tests/household", "fixtures/empty-and-one/new-household"], () => {
     const dup = () => { const ids = [...document.querySelectorAll("[id]")].map(e => e.id); return ids.filter((x, i) => ids.indexOf(x) !== i); };
     const tab = v => document.querySelector(`#tabs button[data-v="${v}"]`).click(), steps = [];
     const step = at => steps.push({ at, dup: dup(), fields: document.querySelectorAll("#shop-new").length });
     tab("kits");
     if (S.kits.length) { [...document.querySelectorAll("#v-kits button")].find(b => b.textContent.startsWith("To get")).click(); document.querySelector('#v-kits [data-act="allKits"]').click(); }
-    step("All kits");
-    for (const v of ["shop", "kits", "shop"]) { tab(v); step(v); }
-    // Typing a line on the Shopping tab: the field it reads is the one on screen, which it then clears
-    const f = document.querySelector("#v-shop #shop-new");
+    step("kits");
+    for (const v of ["overview", "kits", "household", "kits", "plan", "kits"]) { tab(v); step(v); }
+    // Typing a line on All kits: the field it reads is the one on screen, which it then clears
+    const f = document.querySelector("#v-kits #shop-new");
     f.value = "Spare reading glasses";
     f.form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
     return { steps, left: f.value };
   });
   for (const [f, r] of seen) {
-    for (const s of r.steps) assert.deepEqual([s.dup, s.fields], [[], 1], `${f}, ${s.at}`);
-    assert.equal(r.left, "", `${f}: the Shopping tab's field was read`);
+    // All kits stays open on Kits, the one tab with the field
+    for (const s of r.steps) assert.deepEqual([s.dup, s.fields], [[], s.at === "kits" ? 1 : 0], `${f}, ${s.at}`);
+    assert.equal(r.left, "", `${f}: All kits' field was read`);
   }
 });
