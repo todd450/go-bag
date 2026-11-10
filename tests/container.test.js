@@ -50,14 +50,15 @@ test("home supplies get no card, and a read-only viewer of a kit with no contain
   for (const id of ["go", "car"]) assert.equal(card(app, id), "", `${id}: a read-only viewer sees no card`);
 });
 
-test("the card sits between the kit's header and its readiness panel", () => {
+test("the card sits beside the readiness panel, in one row above Contents", () => {
   const app = load({ fixture: HH });
   for (const id of ["go", "car"]) {
     const detail = app.run(`(k => kitDetail(k, model().kitRes[k.id]))(S.kits.find(k => k.id === ${q(id)}))`);
-    const c = card(app, id), at = detail.indexOf(c);
+    const c = card(app, id), at = detail.indexOf(c), top = detail.indexOf(`<div class="kit-top">`);
     assert.ok(c && at > 0, `${id}: the card is in the kit`);
-    assert.ok(detail.indexOf("</h2>") < at, `${id}: after the header`);
-    assert.ok(at + c.length <= detail.indexOf("Kit readiness"), `${id}: before the readiness panel`);
+    assert.ok(detail.indexOf("</h2>") < top && top < detail.indexOf("Kit readiness"), `${id}: the row starts after the header, with readiness first`);
+    assert.ok(detail.indexOf("Kit readiness") < at, `${id}: after the readiness panel`);
+    assert.ok(at + c.length < detail.indexOf("Contents"), `${id}: before Contents`);
   }
 });
 

@@ -72,7 +72,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .eyebrow { font-size: .8rem; font-weight: 500; color: var(--ink-2); }
 
 .top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--card); border-bottom: 1px solid var(--rule); }
-.top-in, .wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.top-in, .wrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .top-in { display: flex; align-items: center; justify-content: space-between; gap: 4px 24px; flex-wrap: wrap; padding-block: 12px 0; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand-mark { width: 28px; height: 28px; flex: none; }
@@ -271,6 +271,25 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 /* The plan bar: a sticky card in the third column; on one column, fixed above the bottom nav (its border, padding, icon and label) */
 .plan-bar { position: sticky; top: 124px; display: grid; gap: 12px; background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); }
 .plan-bar .stack { gap: 2px; }
+/* Between one column and room for three, the bar sits under the kit list instead, so the kit keeps the width */
+@media (min-width: 861px) and (max-width: 1279px) {
+  .kits-grid:has(> .plan-bar) { grid-template-columns: 260px minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .kits-grid:has(> .plan-bar) > .kit-main { grid-column: 2; grid-row: 1 / span 2; }
+  .kits-grid > .plan-bar { grid-column: 1; grid-row: 2; align-self: start; z-index: 2; }
+}
+/* The open kit: its name, Packed | To get and Delete on one row; readiness and what holds it side by side when there's room */
+.kit-main { container: kit / inline-size; }
+.kit-hd { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px; }
+.kit-hd > .kit-ttl { flex: 1 1 220px; min-width: 0; }
+.kit-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+@container kit (min-width: 640px) { .kit-top:has(> :nth-child(2)) { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
+.kit-serves { display: inline-flex; align-items: center; gap: 8px; }
+.kit-serves input { width: 72px; }
+/* Weight and space: the bag beside what it says, once the panel is wide enough */
+.pack-p { container-type: inline-size; }
+.pack-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px 28px; align-items: start; }
+.pack-body > .pack-txt { display: grid; gap: 10px; min-width: 0; }
+@container (min-width: 600px) { .pack-body { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); } .pack-body > .pack-txt { padding-top: 26px; } }
 @media (max-width: 860px) {
   .kits-grid, .kits-grid:has(> .plan-bar) { grid-template-columns: 1fr; }
   .kits-grid:has(> .plan-bar) { padding-bottom: 80px; }
@@ -430,7 +449,10 @@ textarea.ed { width: 100%; min-height: 0; resize: none; margin: 0; }
 .hh-pick label:hover { background: var(--paper); }
 .hh-pick input { accent-color: var(--ink); }
 .hh-pick > div { padding: 4px 8px 2px; }
-.ed.hh-note { font-size: .82rem; width: 100%; }
+/* Health-need chips and the note share a row; the note takes what's left, or wraps under the chips */
+.hh-more { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.ed.hh-note { font-size: .82rem; flex: 1 1 110px; min-width: 0; width: auto; }
+.ed.hh-note:not(:placeholder-shown) { flex-basis: 100%; }
 .hh-card .hint { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .hh-meds { border-top: 1px dashed var(--rule); padding-top: 10px; display: grid; gap: 10px; font-size: .85rem; }
 .hh-med { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; }
@@ -577,7 +599,7 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 .seg button { min-height: 30px; padding: 3px 14px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: inherit; font-size: .82rem; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 500; }
 /* A kit's Packed | To get switch: min-width 0, or a long name's unwrapped width would set the column's */
-.kit-sw { justify-self: start; min-width: 0; max-width: 100%; }
+.kit-sw { min-width: 0; max-width: 100%; }
 /* Review: a sheet over the page, the whole screen on a phone. There the sheet scrolls itself, so a classic scrollbar
    sits inside it and never narrows it */
 html:has(.review-sheet) { overflow: hidden; }
@@ -1865,10 +1887,10 @@ function kitRow(k, r) {
 function kitReadyPanel(kit, r, M = model()) {
   const c = statusColor(r.score);
   return `<div class="panel stack">
-    <div class="row" style="justify-content:space-between;align-items:flex-end">
+    <div class="row" style="justify-content:space-between;align-items:flex-end;row-gap:8px">
       <div><p class="eyebrow">Kit readiness</p>
         <div class="row" style="gap:10px;align-items:baseline"><span class="kit-pct" style="color:${statusInk(r.score)}">${r.score}%</span>${bandTag(r.score)}<span class="small muted">as a ${esc(r.std.label)} for ${esc(servesLine(r))}</span></div></div>
-      ${S.canWrite ? `<label class="f">People this kit is for<input type="number" min="1" max="50" id="kit-serves-${esc(kit.id)}" value="${r.serves}" data-change="serves" data-id="${esc(kit.id)}" style="width:110px"></label>` : ""}
+      ${S.canWrite ? `<label class="small muted kit-serves">People this kit is for<input type="number" min="1" max="50" id="kit-serves-${esc(kit.id)}" value="${r.serves}" data-change="serves" data-id="${esc(kit.id)}"></label>` : ""}
     </div>
     <div class="bar" style="--c:${c}"><span style="width:${r.score}%"></span></div>
   </div>`;
@@ -1943,7 +1965,7 @@ function packPanel(kit, ready) {
   const notes = [];
   if (go && lim.kg && P.waterNeedG > lim.kg * 1000) notes.push(`Water for ${esc(servesLine(ready))} over 3 days weighs about ${lbText(P.waterNeedG)} lb, more than one person can carry. ${lim.carriers > 1 ? `Your household can carry about ${Math.round(lim.totalKg * KG_LB)} lb across ${lim.carriers} people, so split it into more bags.` : ""}`);
   if (go && lim.kg && P.waterG > lim.kg * 500) notes.push(`Water is ${lbText(P.waterG)} lb of this bag. A filter or purification tablets with one day of water is far lighter, but only stored water counts on the checklist, so the score would drop.`);
-  return `<div class="panel stack">
+  return `<div class="panel stack pack-p">
     <div class="row" style="justify-content:space-between;align-items:baseline">
       <p class="eyebrow">Weight and space</p>
       <span class="small muted">${P.estN ? `${P.estN} of ${P.lines.length} item${P.lines.length === 1 ? "" : "s"} estimated` : "Every item has its own weight and size"}${P.estN && sample && S.canWrite ? ` <button class="btn ghost sm" data-act="packEstimate" data-id="${esc(kit.id)}" ${est?.state === "working" ? "disabled" : ""}>${est?.state === "working" ? "Estimating…" : "Estimate with Claude"}</button>` : ""}</span>
@@ -1951,7 +1973,7 @@ function packPanel(kit, ready) {
     ${est?.state === "error" ? `<p class="small" style="color:var(--bad)">${esc(est.msg)}</p>` : ""}
     <div class="row" style="justify-content:space-between">${lim.kg ? `<div class="seg" role="group" aria-label="Show the bag by">${seg("ml", "Space")}${seg("g", "Weight")}</div>` : "<b>Space</b>"}
       <span class="row">${go ? input("carryKg", lim.suggestedKg ? Math.round(lim.suggestedKg * KG_LB) : "", "lb", "Carry limit") : ""}${input("bagL", lim.suggestedL, "L", go ? "Bag size" : "Trunk space")}</span></div>
-    ${bagFig(P, lim, m)}
+    <div class="pack-body">${bagFig(P, lim, m)}<div class="pack-txt">
     <p class="small muted">${go ? (lim.suggestedKg ? `Suggested carry limit ${Math.round(lim.suggestedKg * KG_LB)} lb, about what ${esc(lim.carrier)} can carry (a fifth of body weight for an adult, less for children and seniors). ` : "") + `Suggested bag ${lim.suggestedL} L, a typical hiking pack.` : `Suggested ${lim.suggestedL} L, a typical trunk bin.`}</p>
     ${notes.map(n => `<p class="small">${n}</p>`).join("")}
     ${P.best ? `<div class="stack"><b>Best pack within your limits</b>
@@ -1962,7 +1984,7 @@ function packPanel(kit, ready) {
     ${P.swaps.length ? `<div class="stack"><b>Lighter swaps</b><p class="small muted">Same points, less weight.</p>
       <ul class="pack-l">${P.swaps.map(x => li(x.it, `→ ${esc(x.to)}`, `saves ${x.est ? "about " : ""}${lbText(x.saveG)} lb · ${esc(x.trade)}`)).join("")}</ul></div>` : ""}
     ${P.fits && !P.takeOut.length && !P.swaps.length ? `<p class="small">Fits, and every item earns its place.</p>` : ""}
-  </div>`;
+  </div></div></div>`;
 }
 /* Likelihood as three bars, and a need's state: 0 missing, 1 some, 2 have. */
 const lik = rel => `<span class="lik" role="img" aria-label="${LEVELS[rel][0]} likelihood" title="${LEVELS[rel][0]} likelihood">${[1, 2, 3].map(i => `<i${i <= LEVELS[rel][1] ? ` class="on"` : ""}></i>`).join("")}</span>`;
@@ -2038,7 +2060,7 @@ function viewKits(M) {
         <div class="row"><button class="btn" type="submit">Add kit</button>${S.kits.length ? `<button class="btn ghost" type="button" data-act="cancelKit">Cancel</button>` : ""}</div>
       </form>`}
     </div>
-    <div class="stack">${kit ? kitDetail(kit, M.kitRes[kit.id], M) : `<p class="muted">Pick a kit to see its contents, or add one.</p>${reviewBtn}`}</div>${planBar(M)}
+    <div class="stack kit-main">${kit ? kitDetail(kit, M.kitRes[kit.id], M) : `<p class="muted">Pick a kit to see its contents, or add one.</p>${reviewBtn}`}</div>${planBar(M)}
   </div>${S.allKits ? `<div class="review-bg"><div class="review-sheet stack" role="dialog" aria-modal="true" aria-labelledby="review-h">
     <div class="row review-hd"><h2 id="review-h">Review</h2><button class="btn ghost sm" id="review-x" data-act="allBack">Close</button></div>${viewShop(M)}</div></div>` : ""}`;
 }
@@ -2116,15 +2138,15 @@ function kitDetail(kit, ready, M = model()) {
   ${S.canWrite && items.length ? `<p class="small muted">Tick anything that's no longer in this kit, then remove it.</p>` : ""}
   ${how("kit-table", `Water L, Food kcal, lb and Size L are totals for the whole line (a 24-pack of 500 ml bottles is 12 L). Grey lb and Size L numbers are estimates until you type your own. Only Water L and Food kcal count toward water and food needs. Value is how many of the kit's ${ready.score} readiness points each item earns: a checklist line's points are shared by the items that fill it, so a lone tourniquet is worth more than one of twenty water bottles.`)}`;
   return `
-  <div class="row" style="justify-content:space-between;align-items:flex-end">
-    <div><p class="eyebrow">${esc(KIT_TYPES[kit.type] || "Kit")}${kit.where ? " · " + esc(kit.where) : ""}</p><h2>${esc(kit.name)}</h2></div>
+  <div class="kit-hd">
+    <div class="kit-ttl"><p class="eyebrow">${esc(KIT_TYPES[kit.type] || "Kit")}${kit.where ? " · " + esc(kit.where) : ""}</p><h2>${esc(kit.name)}</h2></div>
+    <div class="seg kit-sw" role="group" aria-label="${esc(kit.name)}">${side("packed", `Packed · ${items.length}`)}${side("get", `To get · ${getN}`)}</div>
     ${S.canWrite ? (S.confirm === "kit:" + kit.id
       ? `<div class="row"><span class="small">Delete this kit, its ${pl(items.length, "item")} and ${pl(photos.length, "photo")}?</span><button class="btn danger sm" data-act="delKit" data-id="${esc(kit.id)}">Delete</button><button class="btn ghost sm" data-act="cancelConfirm">Cancel</button></div>`
       : `<button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button>`) : ""}
-  </div><div class="seg kit-sw" role="group" aria-label="${esc(kit.name)}">${side("packed", `Packed · ${items.length}`)}${side("get", `To get · ${getN}`)}</div>${get
+  </div>${get
     ? `<div class="panel stack">${shopTools(M, P, kit)}${shopSection(M, P, kit) || `<p class="small muted">Nothing to get for this kit.</p>`}</div>${reviewBtn}` : `
-  ${containerCard(kit, ready.h)}
-  ${kitReadyPanel(kit, ready, M)}
+  <div class="kit-top">${kitReadyPanel(kit, ready, M)}${containerCard(kit, ready.h)}</div>
   ${contentsPanel(kit, items, list, ready, M)}
   ${kitChecklist(kit, ready, M)}
   ${packPanel(kit, ready)}
@@ -2341,10 +2363,10 @@ function hhPerson(m, i, meds) {
       ${S.canWrite ? `<button type="button" class="x" data-act="hhDel" data-k="members" data-i="${i}" aria-label="Remove ${esc(name)}">×</button>` : ""}
     </div>
     <p class="hh-size" id="hh-m${i}-sizing"><span>${icon("food")}${kcalFor(m).toLocaleString()} kcal</span><span>${icon("water")}3.8 L a day</span>${extra ? `<span>${esc(extra)}</span>` : ""}</p>
-    <div class="chips">${cs.map(c => S.canWrite ? `<button type="button" class="chip hn" data-act="condPick" data-i="${i}" title="${esc(CONDITIONS[c])}">${icon(COND_CHIP[c][1])}${COND_CHIP[c][0]}</button>` : `<span class="chip hn" title="${esc(CONDITIONS[c])}">${icon(COND_CHIP[c][1])}${COND_CHIP[c][0]}</span>`).join("")}${S.canWrite ? `<button type="button" class="chip add" data-act="condPick" data-i="${i}" aria-expanded="${pick}">${cs.length ? "+" : "+ health need"}</button>` : ""}</div>
+    <div class="hh-more"><div class="chips">${cs.map(c => S.canWrite ? `<button type="button" class="chip hn" data-act="condPick" data-i="${i}" title="${esc(CONDITIONS[c])}">${icon(COND_CHIP[c][1])}${COND_CHIP[c][0]}</button>` : `<span class="chip hn" title="${esc(CONDITIONS[c])}">${icon(COND_CHIP[c][1])}${COND_CHIP[c][0]}</span>`).join("")}${S.canWrite ? `<button type="button" class="chip add" data-act="condPick" data-i="${i}" aria-expanded="${pick}">${cs.length ? "+" : "+ health need"}</button>` : ""}</div>
+      <input type="text" class="ed hh-note" id="hh-m${i}-needs" value="${esc(m.needs || "")}" data-input="hh" data-p="members.${i}.needs" placeholder="Anything else?" aria-label="${esc(name)}: anything else they need" ${D()}></div>
     ${pick ? `<div class="hh-pick" role="group" aria-label="${esc(name)}'s health needs">${Object.entries(CONDITIONS).map(([k, v]) => `<label><input type="checkbox" id="hh-m${i}-c-${k}" data-change="hhCond" data-i="${i}" data-k="${k}" ${cs.includes(k) ? "checked" : ""} ${D()}>${esc(v)}</label>`).join("")}
       <div><button type="button" class="btn ghost sm" data-act="condPick" data-i="${i}">Done</button></div></div>` : ""}
-    <input type="text" class="ed hh-note" id="hh-m${i}-needs" value="${esc(m.needs || "")}" data-input="hh" data-p="members.${i}.needs" placeholder="Anything else?" aria-label="${esc(name)}: anything else they need" ${D()}>
     ${S.canWrite ? `<div class="conds hint" id="hh-m${i}-hints" ${hints ? "" : "hidden"}>${hints}</div>` : ""}
     ${showMeds ? `<div class="hh-meds">${mine.map(([x, j]) => hhMed(x, j)).join("")}
       ${S.canWrite ? `<div><button type="button" class="chip add" data-act="planMedAdd" data-who="${esc(name)}">+ ${mine.length ? "another medication" : "medication and refill date"}</button></div>` : ""}</div>` : ""}
