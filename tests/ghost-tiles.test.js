@@ -301,6 +301,25 @@ test("tapping Packed it twice while the first save is slow puts one item in the 
   assert.equal(app.run("model().overall"), 18);
 });
 
+// A dropped connection: the item saves, then the list write toasts its error and fails, the way setDoc does.
+test("when the list doesn't save, Packed it leaves the save error showing and offers no Undo", async () => {
+  const app = household();
+  tap(app, plan(tile(app, "car", "Whistle")));
+  const id = app.json("shopItems()[0].id");
+  app.run(`setDoc = (f => (...a) => a[0] === "household"
+    ? (toast("Couldn't save. Check your connection and try again."), Promise.reject(new Error("offline"))) : f(...a))(setDoc)`);
+  const n = app.json("TOASTS.length");
+  await app.run(`ACT.shopPack({ dataset: { act: "shopPack", id: ${JSON.stringify(id)} } })`);
+  await settle();
+  const after = app.json("TOASTS.slice(" + n + ").map(t => ({ m: t.m, label: t.a?.label ?? null }))");
+  assert.ok(after.length, "a toast says something went wrong");
+  assert.equal(after.at(-1).label, null, "no Undo for a tick that didn't save");
+  assert.match(after.at(-1).m, /Couldn't save/, "the save error is the last word");
+  assert.equal(app.json("shopItems()[0].done"), false, "the line stays open");
+  // and a later tap is not blocked by a tick left half-done
+  assert.equal(app.json("ticking.size"), 0);
+});
+
 test("Take off plan removes the line, and the tile is a Plan button again", () => {
   const app = household();
   tap(app, plan(tile(app, "car", "Whistle")));

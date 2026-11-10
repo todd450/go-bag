@@ -2508,7 +2508,7 @@ async function delDoc(col, id) {
   if (db) { try { await db.doc(col + "/" + id).delete(); } catch (e) { toast("Couldn't delete. Try again."); throw e; } }
   else { if (col === "household") S[id] = null; else S[col] = S[col].filter(x => x.id !== id); render(); }
 }
-const saveShop = items => setDoc("household", "shopping", { items, updatedAt: Date.now() }).catch(() => {});
+const saveShop = items => setDoc("household", "shopping", { items, updatedAt: Date.now() }).then(() => 1, () => 0);
 /* Adds these household gaps to the shopping list, a line each, and says so, with See list to open All kits at the top of the screen. */
 function shopGaps(M, add) {
   const see = { label: "See list", run: () => { S.view = "kits"; try { history.replaceState(null, "", "#kits"); } catch (_) {} ACT.allKits();
@@ -3077,8 +3077,8 @@ async function shopTick(id, on, rowEl, undoItem) {
     if (out && (undoItem || S.items.some(i => i.id === out))) await delDoc("items", out).catch(() => {});
     e.done = false; delete e.itemId; delete e.inKit;
   }
-  await saveShop(items); ticking.delete(id);
-  undo && toast(...undo);
+  const ok = await saveShop(items); ticking.delete(id);
+  ok && undo && toast(...undo);
 }
 // Every open line, or with one of the household's kits only the lines that go in it
 async function shareShop(kit) {
