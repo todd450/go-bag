@@ -66,7 +66,7 @@ test("prescriptions aren't priced: the sum leaves them out, as Review's does", (
   assert.equal(bar(kitsTab(app)).cost, total);
 });
 
-test("no open lines, no bar; and none on the Readiness, Household or Plan tabs", async () => {
+test("no open lines, no bar; and none on the Readiness or Household tabs", async () => {
   for (const name of households) {
     const app = load({ fixture: name });
     app.run("S.shopping = null");
@@ -78,8 +78,8 @@ test("no open lines, no bar; and none on the Readiness, Household or Plan tabs",
   }
   const app = load({ fixture: "tests/household" });
   app.run(EVERY_GAP);
-  for (const v of ["overview", "household", "plan"]) {
-    const html = app.run(`(v => { S.view = v; const M = model(); return v === "overview" ? viewOverview(M) : v === "household" ? viewHousehold() : viewPlan(M); })(${JSON.stringify(v)})`);
+  for (const v of ["overview", "household"]) {
+    const html = app.run(`(v => { S.view = v; const M = model(); return v === "overview" ? viewOverview(M) : viewHousehold(); })(${JSON.stringify(v)})`);
     assert.equal(barOf(html), "", v);
   }
   // On the Kits tab, with the open kit on Packed and on To get

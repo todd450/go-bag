@@ -15,6 +15,7 @@ const unesc = s => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;
 
 const CLASSIC = "<style>::-webkit-scrollbar { width: 15px; height: 15px; background: #ddd; }</style>";
 
+// The dump holds every frame's copy of the page, so it outgrows execFileSync's default 1 MB buffer.
 // Runs `measure` inside the page for each fixture, at 390px wide, and returns a Map of fixture to what it returned.
 function atPhoneWidth(fixtures, measure) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-phone-"));
@@ -24,7 +25,7 @@ function atPhoneWidth(fixtures, measure) {
     const probe = `<script>onload = () => setTimeout(() => { document.body.dataset.out = JSON.stringify([...document.querySelectorAll("iframe")].map(fr => [fr.dataset.f, fr.contentWindow.eval("(" + ${JSON.stringify(String(measure))} + ")()")])); }, 1000);</script>`;
     fs.writeFileSync(path.join(dir, "probe.html"), `<!doctype html><body>${frames}${probe}</body>`);
     const out = execFileSync(chrome, ["--headless=new", "--disable-gpu", "--no-first-run", `--user-data-dir=${path.join(dir, "profile")}`,
-      "--virtual-time-budget=5000", "--dump-dom", `file://${path.join(dir, "probe.html")}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 60000 });
+      "--virtual-time-budget=5000", "--dump-dom", `file://${path.join(dir, "probe.html")}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 60000, maxBuffer: 1e8 });
     const m = out.match(/<body data-out="([^"]*)"/);
     assert.ok(m, "the page reported nothing");
     return new Map(JSON.parse(unesc(m[1])));

@@ -339,15 +339,15 @@ test("at 390px the sheet takes focus, gives it back on Close and Escape, and sto
     const esc = closed(), b = open();
     document.querySelector("#review-x").click();
     const close = closed();
-    // Plan's saved review from Claude is not the sheet: the page still scrolls under it
-    S.review = { text: "## What to buy next\n- Water", at: 1 }; S.view = "plan"; render();
-    return { a, esc, b, close, plan: { article: !!document.querySelector("#v-plan article"), overflow: getComputedStyle(document.documentElement).overflow } };
+    // Household's saved review from Claude is not the sheet: the page still scrolls under it
+    S.review = { text: "## What to buy next\n- Water", at: 1 }; S.view = "household"; render();
+    return { a, esc, b, close, plan: { article: !!document.querySelector("#v-household article"), overflow: getComputedStyle(document.documentElement).overflow } };
   });
   assert.equal(seen.size, 2);
   for (const [f, r] of seen) {
     for (const o of [r.a, r.b]) assert.deepEqual(o, { open: true, focusIn: true, overflow: "hidden", covers: true, packed: true }, `${f}: open`);
-    assert.equal(r.plan.article, true, `${f}: Plan shows the saved review`);
-    assert.notEqual(r.plan.overflow, "hidden", `${f}: and Plan still scrolls`);
+    assert.equal(r.plan.article, true, `${f}: Household shows the saved review`);
+    assert.notEqual(r.plan.overflow, "hidden", `${f}: and Household still scrolls`);
     for (const c of [r.esc, r.close]) {
       assert.equal(c.open, false, `${f}: closed`);
       assert.equal(c.back, true, `${f}: focus is back on the button that opened it`);

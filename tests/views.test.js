@@ -108,7 +108,7 @@ test("each tab opens with one short line, and the full explanation sits behind H
   const { run } = load({ fixture: "tests/household" });
   run(`syncDraft(); S.openKit = "go"; ACT.kitView({ dataset: { v: "list" } })`);
   const words = html => html.replace(/<[^>]*>/g, " ").trim().split(/\s+/).length;
-  const pages = { score: "viewOverview(model())", "kit-table": "viewKits(model())", household: "viewHousehold()", shop: "viewShop(model())", plan: "viewPlan(model())", review: "viewPlan(model())" };
+  const pages = { score: "viewOverview(model())", "kit-table": "viewKits(model())", household: "viewHousehold()", shop: "viewShop(model())" };
   for (const [id, view] of Object.entries(pages)) {
     const html = run(view);
     assert.match(html, new RegExp(`<details class="how" data-how="${id}" ><summary>How this works</summary><p>[^<]{60,}`), id);

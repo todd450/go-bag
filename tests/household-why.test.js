@@ -37,16 +37,16 @@ test("no suggestion for a need that is already on, or already counted as daily m
   assert.deepEqual(hints(run, "Insulin and daily pills", ["diabetes"]), []);
 });
 
-test("the household tab offers the suggestion, and taking it switches the need on for that person", () => {
+test("the household tab offers the suggestion, and taking it switches the need on for that person and saves it", async () => {
   const { run, json } = load({ fixture: "tests/household" });
   run(`S.profile.members[0].needs = "Daily blood-pressure medication"; S.hhDirty = false; syncDraft(); S.view = "household"`);
   assert.match(run("viewHousehold()"), /data-act="condAdd" data-i="0" data-k="meds"/);
-  run(`ACT.condAdd({ dataset: { i: "0", k: "meds" } })`);
+  await run(`ACT.condAdd({ dataset: { i: "0", k: "meds" } })`);
   assert.deepEqual(json("S.hhDraft.members[0].conditions"), ["meds"]);
-  assert.equal(run("S.hhDirty"), true);
   assert.doesNotMatch(run("viewHousehold()"), /data-act="condAdd" data-i="0"/);
-  // Nothing is saved until Save, and a read-only viewer sees no suggestion.
-  assert.equal(json("S.profile.members[0].conditions ?? null"), null);
+  // The tab saves as you go, so it is saved already; a read-only viewer sees no suggestion.
+  assert.deepEqual(json("S.profile.members[0].conditions"), ["meds"]);
+  assert.equal(run("S.hhDirty"), false);
   run(`S.hhDraft.members[0].conditions = []; S.canWrite = false`);
   assert.doesNotMatch(run("viewHousehold()"), /data-act="condAdd"/);
 });
