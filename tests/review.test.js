@@ -9,7 +9,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { load, ROOT } = require("./load");
-const { chrome, atPhoneWidth } = require("./phone");
+const { chrome, atPhoneWidth, CLASSIC } = require("./phone");
 const { openChrome } = require("../tools/screenshots");
 const { wrap } = require("../tools/page");
 
@@ -363,7 +363,7 @@ test("at 390px the sheet never scrolls sideways, with no lines and with every ga
   for (const [f, r] of seen) for (const [k, v] of Object.entries(r)) {
     assert.equal(v.width, 390, `${f} ${k}`);
     assert.ok(v.shown, `${f} ${k}: the sheet rendered`);
-    assert.ok(v.scroll <= v.width && v.inner <= v.room, `${f} ${k}: scrolls sideways (page ${v.scroll}px, sheet ${v.inner} of ${v.room}px)`);
+    assert.ok(v.scroll <= v.width && v.wide.every(n => n <= 0), `${f} ${k}: scrolls sideways (page ${v.scroll}px, backdrop and sheet ${v.wide}px too wide)`);
     assert.deepEqual(v.out, [], `${f} ${k}: these stick out of the screen`);
   }
 });
@@ -372,7 +372,7 @@ function measure(fixtures) {
     const look = () => {
       S.view = "kits"; S.allKits = true; render();
       const w = innerWidth, bg = document.querySelector(".review-bg"), sheet = document.querySelector(".review-sheet");
-      return { width: w, shown: !!sheet, scroll: document.documentElement.scrollWidth, inner: bg?.scrollWidth, room: bg?.clientWidth,
+      return { width: w, shown: !!sheet, scroll: document.documentElement.scrollWidth, wide: [bg, sheet].map(e => e ? e.scrollWidth - e.clientWidth : 0),
         out: [...(sheet?.querySelectorAll("*") || [])].filter(e => { const r = e.getBoundingClientRect(); return r.width && (r.left < -0.5 || r.right > w + 0.5); }).map(e => e.tagName + "." + e.getAttribute("class")) };
     };
     S.shopping = null;
@@ -471,6 +471,57 @@ test("a double-click or double tap on Plan, Plan the top N, a tick or × does wh
       after = await state();
       assert.equal(after.open.length, before.open.length - 1, `${was}: a double-click on × removes one line`);
       assert.deepEqual(after.done, before.done, `${was}: and ticks nothing`);
+    }
+  } finally {
+    await page.close();
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
+  }
+});
+
+/* Real input, in Chrome, with classic scrollbars: acting on a row deep in a long Review keeps the sheet where it was
+   scrolled to and keeps focus in the sheet, at phone and desktop width. A tick, a × and a change of kit each redraw the
+   page. Opening Review from a #shop link puts focus in the sheet too. */
+test("a tick, a × or a change of kit deep in Review keeps its scroll and keeps focus in the sheet", { skip: !chrome && "no Chrome found (set CHROME)" }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-keep-"));
+  const file = path.join(dir, "index.html");
+  fs.writeFileSync(file, wrap(undefined, "tests/household") + CLASSIC);
+  const page = await openChrome(chrome);
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const ev = async e => {
+    const r = await page.send("Runtime.evaluate", { expression: e, returnByValue: true });
+    if (r.exceptionDetails) throw new Error(`${e}: ${r.exceptionDetails.exception?.description}`);
+    return r.result.value;
+  };
+  // How far the sheet is scrolled, whichever box scrolls it, and whether focus is in the sheet
+  const where = () => ev(`({ y: [".review-bg", ".review-sheet"].reduce((a, s) => a + (document.querySelector(s)?.scrollTop || 0), 0),
+    inSheet: !!document.querySelector('[role="dialog"]')?.contains(document.activeElement) })`);
+  // A row's control that is on screen, clear of the screen's edges
+  const onScreen = sel => `[...document.querySelectorAll('.review-sheet .shop-row ${sel}')].find(e => { const r = e.getBoundingClientRect(); return r.top > 120 && r.bottom < innerHeight - 40; })`;
+  const click = async sel => {
+    const [x, y] = await ev(`(r => [r.left + r.width / 2, r.top + r.height / 2])(${sel}.getBoundingClientRect())`);
+    for (const type of ["mousePressed", "mouseReleased"]) await page.send("Input.dispatchMouseEvent", { type, x, y, button: "left", clickCount: 1 });
+    await sleep(400);
+  };
+  try {
+    for (const width of [390, 1440]) {
+      await page.send("Emulation.setDeviceMetricsOverride", { width, height: 844, deviceScaleFactor: 1, mobile: width < 600 });
+      const loaded = page.once("Page.loadEventFired");
+      await page.send("Page.navigate", { url: `file://${file}?${width}#shop` });
+      await loaded;
+      for (let i = 0; i < 50 && !await ev("S.loaded"); i++) await sleep(50);
+      await sleep(200);
+      assert.equal((await where()).inSheet, true, `${width}px: a #shop link puts focus in the sheet`);
+      await ev(`ACT.shopAddAll(); [".review-bg", ".review-sheet"].forEach(s => document.querySelector(s).scrollTop = 1500); 1`);
+      const start = await where();
+      assert.ok(start.y > 1000, `${width}px: the sheet scrolled (${start.y})`);
+      start.inSheet = true;
+      await click(onScreen(`input[type="checkbox"]`));
+      assert.deepEqual(await where(), start, `${width}px: a tick keeps the sheet's scroll and focus`);
+      await click(onScreen(`[data-act="shopDel"]`));
+      assert.deepEqual(await where(), start, `${width}px: a × keeps the sheet's scroll and focus`);
+      await ev(`(s => { s.focus(); s.value = s.options[2].value; s.dispatchEvent(new Event("change", { bubbles: true })); })(${onScreen("select")}); 1`);
+      await sleep(100);
+      assert.deepEqual(await where(), start, `${width}px: a change of kit keeps the sheet's scroll and focus`);
     }
   } finally {
     await page.close();

@@ -464,13 +464,14 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 500; }
 /* A kit's Packed | To get switch: min-width 0, or a long name's unwrapped width would set the column's */
 .kit-sw { justify-self: start; min-width: 0; max-width: 100%; }
-/* Review: a sheet over the page, the whole screen on a phone */
+/* Review: a sheet over the page, the whole screen on a phone. There the sheet scrolls itself, so a classic scrollbar
+   sits inside it and never narrows it */
 html:has(.review-sheet) { overflow: hidden; }
 .review-bg { position: fixed; inset: 0; z-index: 8; background: rgba(0, 0, 0, .4); display: grid; place-items: start center; overflow: auto; overscroll-behavior: contain; padding: 40px 16px; }
 .review-sheet { align-content: start; width: 100%; max-width: 820px; background: var(--paper); border-radius: 12px; padding: 20px; }
 .review-hd { justify-content: space-between; }
 .review-free .small::first-letter { text-transform: uppercase; }
-@media (max-width: 640px) { .review-bg { padding: 0; } .review-sheet { min-height: 100%; border-radius: 0; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 96px; } }
+@media (max-width: 640px) { .review-bg { display: block; overflow: hidden; padding: 0; } .review-sheet { height: 100%; overflow: auto; overscroll-behavior: contain; border-radius: 0; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 96px; } }
 .fl-zone { display: grid; gap: 6px; }
 .fl-h { font-size: .8rem; font-weight: 500; color: var(--ink-2); }
 .fl-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
@@ -2404,6 +2405,7 @@ function render() {
   hold.owed = 0; drew.n++;
   const a = document.activeElement, field = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
   const keep = a?.id ? { id: a.id, field, value: a.value, s: a.selectionStart, e: a.selectionEnd } : null;
+  const sheetY = [".review-bg", ".review-sheet"].map(s => $(s)?.scrollTop || 0); // Review keeps its scroll through a redraw
   const M = model();
   if (S.sel.size) { const live = new Set(S.items.filter(i => i.kitId === S.openKit).map(i => i.id)); for (const id of S.sel) if (!live.has(id)) S.sel.delete(id); }
   if (!S.openKit && S.kits.length) S.openKit = [...S.kits].sort((x, y) => (x.createdAt || 0) - (y.createdAt || 0))[0].id;
@@ -2430,6 +2432,12 @@ function render() {
       n.focus({ preventScroll: true });
       try { if (keep.field && keep.s != null) n.setSelectionRange(keep.s, keep.e); } catch (_) {}
     }
+  }
+  // Review is modal: focus stays in it, on Close when what had focus is gone
+  const dlg = $('[role="dialog"]');
+  if (dlg) {
+    [".review-bg", ".review-sheet"].forEach((s, i) => { if ($(s)) $(s).scrollTop = sheetY[i]; });
+    if (!dlg.contains?.(document.activeElement)) $("#review-x")?.focus({ preventScroll: true });
   }
   celebrate(M);
 }
@@ -2767,8 +2775,11 @@ const ACT = {
   gotoKit: b => { S.view = "kits"; if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.listKit = S.flOpen = S.bagM = S.ctr = S.toGet = S.allKits = null; try { history.replaceState(null, "", "#kits"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   kitSide: b => { S.toGet = b.dataset.v === "get" ? S.openKit : null; render(); },
   // Review opens with focus on its Close, and closes back to the button that opened it, else to a Review button
-  allKits: () => { reviewFrom = document.activeElement?.id; S.allKits = true; render(); $("#review-x")?.focus(); },
-  allBack: () => { S.allKits = null; render(); const b = reviewFrom && $("#" + reviewFrom); (b?.offsetParent ? b : $("#kit-all"))?.focus(); },
+  allKits: () => { reviewFrom = document.activeElement?.id; S.allKits = true; render(); },
+  allBack: () => {
+    S.allKits = null; render();
+    [reviewFrom && document.getElementById(reviewFrom), $("#kit-all"), $('#tabs [aria-current="page"]')].find(b => b?.offsetParent)?.focus();
+  },
   removeSel: () => removeItems([...S.sel]),
   clearSel: () => { S.sel.clear(); render(); },
   sortItems: b => { S.itemSort = b.dataset.k; render(); },
