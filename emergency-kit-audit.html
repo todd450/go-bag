@@ -375,6 +375,114 @@ tr.addrow td { background: var(--paper); }
 .wiz-dots i.on { background: var(--ink); }
 .wiz-nav { border-top: 1px solid var(--rule); padding-top: 14px; }
 
+/* Household tab (option A): cards that edit in place */
+:is(input, select, textarea).ed { background: transparent; border: 0; border-radius: 6px; padding: 2px 4px; margin: 0 -4px; color: inherit; font: inherit; box-shadow: inset 0 -1px 0 var(--rule); field-sizing: content; max-width: 100%; }
+:is(input, select, textarea).ed:hover:not(:disabled) { box-shadow: inset 0 -1px 0 var(--rule-2); }
+:is(input, select, textarea).ed:focus { background: color-mix(in srgb, var(--brand) 12%, transparent); box-shadow: inset 0 -2px 0 var(--brand); outline: none; border: 0; }
+:is(input, textarea).ed::placeholder { color: var(--brand); font-weight: 500; opacity: 1; }
+:is(input, textarea).ed:focus::placeholder { color: var(--ink-2); font-weight: 400; }
+:is(input, select, textarea).ed:disabled { box-shadow: none; opacity: 1; }
+input.ed[type=number] { appearance: textfield; -moz-appearance: textfield; min-width: 2.5ch; text-align: center; }
+input.ed[type=number]::-webkit-inner-spin-button, input.ed[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+select.ed { cursor: pointer; padding-right: 2px; }
+textarea.ed { width: 100%; min-height: 0; resize: none; margin: 0; }
+.hh-head { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; }
+.hh-prog { display: flex; align-items: center; gap: 10px; font-size: .82rem; color: var(--ink-2); }
+.seg8 { display: flex; gap: 3px; }
+.seg8 i { width: 18px; height: 6px; border-radius: 3px; background: var(--rule); }
+.seg8 i.on { background: var(--good); }
+.hh-place { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; padding: 14px 18px; }
+.hh-where { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 1rem; min-width: 0; }
+.hh-where > .ic { color: var(--ink-2); }
+.hh-veh { display: inline-flex; align-items: baseline; gap: 4px; }
+.hh-sep { width: 1px; align-self: stretch; background: var(--rule); }
+.hh-likely { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: .85rem; }
+.hh-likely .h { display: inline-flex; gap: 6px; align-items: center; }
+.hh-place .re { margin-left: auto; }
+.hh-full { flex-basis: 100%; }
+.hh-all summary { cursor: pointer; width: fit-content; color: var(--ink-2); text-decoration: underline dotted; text-underline-offset: 3px; }
+.hh-all .reasons { margin-top: 8px; }
+.hh-all > p { margin-top: 8px; }
+.bars { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; }
+.bars i { width: 3px; background: var(--rule-2); border-radius: 1px; }
+.bars i:nth-child(1) { height: 5px; } .bars i:nth-child(2) { height: 8px; } .bars i:nth-child(3) { height: 12px; }
+.bars.l3 i, .bars.l2 i:nth-child(-n+2), .bars.l1 i:nth-child(1) { background: var(--ink); }
+.hh-sec { gap: 12px; }
+.hh-people { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; align-items: start; }
+.hh-card { background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 14px; display: grid; gap: 10px; align-content: start; box-shadow: var(--shadow); min-width: 0; }
+.hh-who { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.hh-who > .x { align-self: start; margin: -4px -6px 0 0; }
+.av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: .95rem; }
+.av.pt { background: var(--paper); color: var(--ink-2); border: 1px dashed var(--rule-2); }
+.hh-nm { display: grid; gap: 1px; min-width: 0; justify-items: start; }
+.ed.nm { font-weight: 600; font-size: 1rem; width: 100%; }
+.hh-age { display: inline-flex; white-space: nowrap; align-items: baseline; gap: 4px; font-size: .8rem; color: var(--ink-2); }
+.hh-size { font-size: .75rem; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.hh-size span { display: inline-flex; gap: 3px; align-items: center; }
+.hh-size .ic { width: 13px; height: 13px; }
+.chip.hn, .chip.add { cursor: pointer; font: inherit; font-size: .78rem; }
+.chip.hn { background: color-mix(in srgb, var(--bad) 9%, var(--card)); color: color-mix(in srgb, var(--bad) 80%, var(--ink)); }
+.chip.hn .ic { color: inherit; width: 13px; height: 13px; }
+.chip.add { background: none; border: 1px dashed var(--rule-2); color: var(--ink-2); padding: 3px 10px; }
+.chip.add:hover, .chip.hn:hover { border-color: var(--brand); color: var(--brand); }
+.hh-pick { display: grid; gap: 2px; font-size: .85rem; border: 1px solid var(--rule-2); border-radius: 12px; padding: 6px; }
+.hh-pick label { display: flex; gap: 8px; align-items: center; padding: 5px 8px; border-radius: 8px; cursor: pointer; }
+.hh-pick label:hover { background: var(--paper); }
+.hh-pick input { accent-color: var(--ink); }
+.hh-pick > div { padding: 4px 8px 2px; }
+.ed.hh-note { font-size: .82rem; width: 100%; }
+.hh-card .hint { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.hh-meds { border-top: 1px dashed var(--rule); padding-top: 10px; display: grid; gap: 10px; font-size: .85rem; }
+.hh-med { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; }
+.hh-med > .ic { width: 15px; height: 15px; color: var(--ink-2); }
+.hh-med .st { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: center; font-size: .8rem; color: var(--ink-2); }
+.hh-med .st.bad { color: var(--bad); font-weight: 600; } .hh-med .st.warn { color: var(--warn); font-weight: 600; }
+.hh-med .st .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.hh-med .st input { font-size: .8rem; font-weight: 400; color: var(--ink-2); }
+.hh-add { border-style: dashed; box-shadow: none; background: none; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; min-height: 112px; }
+.hh-plan { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.hh-route { grid-column: 1 / -1; }
+.card-h { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.route { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: auto repeat(3, minmax(0, 1fr)); position: relative; }
+.route::before { content: ""; position: absolute; left: 22px; right: calc((100% - 72px) / 3 - 22px); top: 21px; border-top: 2px dashed var(--rule-2); }
+.stop { position: relative; display: grid; gap: 6px; padding-right: 16px; align-content: start; justify-items: start; min-width: 0; }
+.stop.home { padding-right: 28px; }
+.stop .node { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--card); border: 2px solid var(--ink); position: relative; z-index: 1; font-weight: 700; }
+.stop.home .node { background: var(--ink); color: var(--card); }
+.stop.empty .node { border-style: dashed; border-color: var(--rule-2); color: var(--ink-2); }
+.stop .when { font-size: .75rem; color: var(--ink-2); }
+.stop.home .when { width: 44px; text-align: center; }
+.ed.what { font-weight: 600; font-size: .95rem; width: 100%; }
+.shut { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.valve { border-radius: 12px; padding: 12px; display: grid; gap: 6px; align-content: start; background: var(--paper); min-width: 0; }
+.valve .k { display: flex; gap: 6px; align-items: center; font-weight: 600; font-size: .85rem; }
+.valve.w .k { color: var(--zone-0); } .valve.g .k { color: var(--zone-1); } .valve.p .k { color: var(--warn); }
+.valve .ed { font-size: .88rem; width: 100%; }
+.valve .tip { font-size: .72rem; color: var(--ink-2); }
+.contact { display: flex; gap: 14px; align-items: center; }
+.call { width: 52px; height: 52px; border-radius: 50%; background: var(--good); color: #fff; display: grid; place-items: center; flex: none; }
+.call .ic { width: 22px; height: 22px; }
+.call.off { background: var(--paper); color: var(--ink-2); border: 1px dashed var(--rule-2); }
+.contact .ed { width: 100%; }
+.contact .ed.nm { font-size: 1.05rem; }
+.hh-notes { display: grid; gap: 4px; padding: 14px 18px; cursor: text; }
+.hh-rv { display: flex; gap: 12px 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.hh-rv .l { display: flex; gap: 12px; align-items: center; min-width: 0; flex: 1 1 280px; }
+.hh-rv h3 { font-size: 1rem; }
+.spark { width: 36px; height: 36px; border-radius: 10px; background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand); display: grid; place-items: center; flex: none; }
+@media (max-width: 860px) { .hh-plan { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) {
+  .hh-sep { display: none; } .hh-place .re { margin-left: 0; } .hh-place { padding: 12px 14px; }
+  .hh-people { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .hh-card { padding: 12px; } .hh-card.wide, .hh-add { grid-column: 1 / -1; } .hh-add { min-height: 0; }
+  .hh-who { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; } .av { width: 34px; height: 34px; }
+  .route { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .route::before { left: 21px; right: auto; top: 22px; bottom: 22px; border-top: 0; border-left: 2px dashed var(--rule-2); }
+  .stop, .stop.home { grid-template-columns: 44px minmax(0, 1fr); column-gap: 12px; padding: 0; align-items: center; }
+  .stop .node { grid-row: span 2; } .stop.home .when { width: auto; text-align: left; grid-row: span 2; }
+  .shut { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* Shopping */
 .shop { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--rule); }
 .shop-row { display: grid; grid-template-columns: minmax(0, 1fr) 84px 200px 28px; gap: 4px 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--rule); }
@@ -414,13 +522,8 @@ tr.addrow td { background: var(--paper); }
 
 /* Review */
 .review { max-width: 72ch; display: grid; gap: 12px; }
-.plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
 ::placeholder { color: color-mix(in srgb, var(--ink-2) 60%, transparent); opacity: 1; }
 .hint { font-size: .8rem; color: var(--ink-2); font-weight: 400; }
-.med { display: grid; grid-template-columns: minmax(0, 140px) minmax(0, 1fr) 28px; gap: 8px; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--rule); }
-.med select { grid-area: 1 / 1; } .med input[type=text] { grid-area: 1 / 2; } .med .x { grid-area: 1 / 3; }
-.med input[type=date] { grid-area: 2 / 1; } .med .med-st { grid-area: 2 / 2 / 3 / 4; }
-.med-st.bad { color: var(--bad); font-weight: 600; } .med-st.warn { color: var(--warn); font-weight: 600; }
 .review h3 { margin-top: 12px; }
 .review ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
 
@@ -548,7 +651,6 @@ html:has(.review-sheet) { overflow: hidden; }
       <button data-act="tab" data-v="overview">Readiness</button>
       <button data-act="tab" data-v="kits">Kits</button>
       <button data-act="tab" data-v="household">Household</button>
-      <button data-act="tab" data-v="plan">Plan</button>
     </nav>
   </div>
 </header>
@@ -557,7 +659,6 @@ html:has(.review-sheet) { overflow: hidden; }
   <section class="view" id="v-overview"></section>
   <section class="view" id="v-kits" hidden></section>
   <section class="view" id="v-household" hidden></section>
-  <section class="view" id="v-plan" hidden></section>
 </main>
 <input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
 <div class="toast" id="toast" role="status" hidden><span id="toast-msg"></span><button id="toast-act" type="button" hidden></button></div>
@@ -1006,7 +1107,7 @@ const ESS_BUY = {
   contact_list: ["A printed contact list, written at home", 0, "Family, neighbors, doctors, school and an out-of-area contact: phones die and numbers are hard to remember. Seal it in a zip-top bag."],
   multitool: ["A multi-tool with a knife blade", 25, "Pliers, a knife, screwdrivers and a can opener cover most jobs."],
   duct_tape: ["A roll of duct tape", 6, "It patches a tarp, a hose or a broken window. Wind a few feet around a pencil to save room in a go-bag."],
-  shutoff_wrench: ["A gas and water shut-off wrench", 12, "Hang it by the gas meter, and note where it is on the Plan tab. Only shut the gas off if you smell or hear a leak: the gas company has to turn it back on."],
+  shutoff_wrench: ["A gas and water shut-off wrench", 12, "Hang it by the gas meter, and note where it is on the Household tab. Only shut the gas off if you smell or hear a leak: the gas company has to turn it back on."],
   fire_starter: ["A lighter and waterproof matches", 8, "Keep them dry in a zip-top bag. After an earthquake, never strike one indoors until you know there's no gas leak."],
 };
 /* The checked Amazon product for a shopping line (issue #97): one pick is one unit of what the line counts.
@@ -1041,8 +1142,8 @@ function essentialGuide(id, h) {
   if (id === "allergy_med") return { line: "A box of antihistamine allergy tablets", price: 8,
     tip: allergic.length ? `It eases hives and itching, but it doesn't stop anaphylaxis: ${orList(allergic, "and")} still ${allergic.length > 1 ? "need" : "needs"} their epinephrine.` : "It eases hives, itching and hay fever. Many kinds don't make you drowsy." };
   if (id === "prescriptions") return onMeds.length > 1
-    ? { line: `A spare week of prescriptions for ${orList(onMeds)}`, price: null, tip: `Prescription only. ${orList(onMeds, "and")} each need a spare week of their own, one line each. Ask each pharmacy about an early refill, swap the spare into daily use before it expires, and track refills on the Plan tab.` }
-    : { line: `A spare week of ${onMeds.length ? onMeds[0] + "'s " : ""}prescriptions`, price: null, tip: `${rxAsk(onMeds, "a spare week to keep in the kit", "pharmacy")}. Swap it into daily use before it expires, and track refills on the Plan tab.` };
+    ? { line: `A spare week of prescriptions for ${orList(onMeds)}`, price: null, tip: `Prescription only. ${orList(onMeds, "and")} each need a spare week of their own, one line each. Ask each pharmacy about an early refill, swap the spare into daily use before it expires, and track refills on the Household tab.` }
+    : { line: `A spare week of ${onMeds.length ? onMeds[0] + "'s " : ""}prescriptions`, price: null, tip: `${rxAsk(onMeds, "a spare week to keep in the kit", "pharmacy")}. Swap it into daily use before it expires, and track refills on the Household tab.` };
   const [line, price, tip] = ESS_BUY[id];
   return { line, price, tip, ...(PICKS[id] ? { pick: id, qty: 1 } : {}) };
 }
@@ -1105,7 +1206,7 @@ function buyGuide(cat, qty, unit, kt, h, ess) {
     case "medications": {
       const kidsMed = [...little, ...kids];
       return { line: `Pain relievers, an antihistamine and anti-diarrhea tablets${kidsMed.length ? `, plus children's ibuprofen for ${orList(kidsMed, "and")}` : ""}`, price: kidsMed.length ? 30 : 20,
-        tip: onMeds.length ? `${orList(onMeds, "and")} also ${onMeds.length > 1 ? "need" : "needs"} a spare week of daily medication. Ask the pharmacy about an early refill, and track it on the Plan tab.` : "Store-brand versions work the same and cost much less. Spare glasses go here too." };
+        tip: onMeds.length ? `${orList(onMeds, "and")} also ${onMeds.length > 1 ? "need" : "needs"} a spare week of daily medication. Ask the pharmacy about an early refill, and track it on the Household tab.` : "Store-brand versions work the same and cost much less. Spare glasses go here too." };
     }
     case "light": return { line: pl(n, "LED headlamp"), price: n * 12, ...pk("light", n), tip: "Headlamps keep both hands free. Get ones that take the same AA or AAA batteries as your radio." };
     case "power": return { line: "A 20,000 mAh power bank and a pack of lithium AA batteries", price: 40,
@@ -1117,7 +1218,7 @@ function buyGuide(cat, qty, unit, kt, h, ess) {
     case "clothing": return { line: n > 1 ? `A change of clothes for ${h.members.length <= n ? "everyone" : n + " people"}` : "A change of clothes", price: 0, tip: `From your closet: sturdy shoes, socks, a rain jacket and a warm layer.${kids.length + little.length ? " Size kids' clothes up each year." : ""}` };
     case "hygiene": return { line: "Wet wipes, hand sanitizer, soap and travel toothbrushes", price: 20, tip: "Add menstrual products and any skin or eye care people use every day." };
     case "sanitation": return { line: "A 5-gallon bucket with a toilet seat lid, heavy-duty bags and kitty litter", price: 35, tip: "After an earthquake toilets may not flush for weeks. It's the thing people most often wish they'd bought." };
-    case "tools": return { line: "A multi-tool, duct tape and a gas shut-off wrench", price: 40, tip: "Hang the wrench by the gas meter, and note where it is on the Plan tab." };
+    case "tools": return { line: "A multi-tool, duct tape and a gas shut-off wrench", price: 40, tip: "Hang the wrench by the gas meter, and note where it is on the Household tab." };
     case "masks": { const packs = Math.ceil(n / 10); return { line: `${pl(packs, "pack")} of 10 N95 masks`, price: packs * 15, ...pk("masks", packs), tip: kids.length + little.length ? `Adult masks won't seal on small faces. Look for kids' sizes for ${orList([...kids, ...little], "and")}.` : "Look for NIOSH approval printed on each mask." }; }
     case "fire_safety": return { line: "An ABC fire extinguisher (2-A:10-B:C or bigger)", price: 45, ...pk("extinguisher", 1), tip: "Mount it near the kitchen exit, not over the stove." };
     case "wound": return { line: "Saline wound wash, butterfly closures, non-stick pads and fine-point tweezers", price: 20, tip: "Rinse a cut under clean running water for a few minutes, then close and cover it. Saline also works as an eye wash." };
@@ -1418,7 +1519,7 @@ const MILESTONES = { home: [1, 3, 7, 14], go: [1, 3] };
    What the page asks Claude, and how it reads the answers. */
 function planText() {
   const p = S.plan || {};
-  const lines = PLAN.flatMap(([, fs]) => fs).filter(([k]) => String(p[k] || "").trim()).map(([k, label]) => `${label}: ${p[k]}`);
+  const lines = PLAN.filter(([k]) => String(p[k] || "").trim()).map(([k, label]) => `${label}: ${p[k]}`);
   for (const x of Array.isArray(p.meds) ? p.meds : []) if (x.name) lines.push(`Medication: ${x.who ? x.who + " — " : ""}${x.name}${x.refill ? `, next refill ${x.refill}` : ""}`);
   return lines.join("\n") || "nothing filled in yet";
 }
@@ -1537,10 +1638,10 @@ function cleanRows(out) {
 /* ---------- views ----------
    The screen's state, and the markup each tab draws from what the core works out. */
 /* ---------- state ---------- */
-const VIEWS = ["overview", "kits", "household", "plan"];
+const VIEWS = ["overview", "kits", "household"];
 const S = {
-  // Old addresses: #review opens Plan, and #shop the Kits tab with Review open
-  view: VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : location.hash === "#review" ? "plan" : location.hash === "#shop" ? "kits" : "overview",
+  // Old addresses: #plan and #review open Household, where the plan and the review now live, and #shop the Kits tab with Review open
+  view: VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : ["#plan", "#review"].includes(location.hash) ? "household" : location.hash === "#shop" ? "kits" : "overview",
   live: false, loaded: false, slow: false, canWrite: true,
   openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   listKit: null, // the kit whose Contents panel shows List; any other kit shows Flat-lay. Memory only: never saved
@@ -1549,6 +1650,7 @@ const S = {
   allKits: location.hash === "#shop" || null, // true while the Review sheet is open (#121). Memory only
   ctr: null, // the open container editor: { id, ...typed }
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
+  condPick: null, // the person whose health-need picker is open on the Household tab. Memory only
   scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, bagM: null,
   add: { cat: "water", ess: "" }, // the add-by-hand row's Category and Essential, so every redraw shows the two together
 };
@@ -1614,6 +1716,8 @@ const ICONS = {
   cart: '<path d="M3 4h2.5l2.2 11h10.6L20.5 7H6.5"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/>',
   list: '<path d="M10 6h10M10 12h10M10 18h10"/><path d="m3.5 6 1.5 1.5 2.5-2.5M3.5 12l1.5 1.5 2.5-2.5M3.5 18l1.5 1.5 2.5-2.5"/>',
   yes: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+  spark: '<path d="M12 3c.6 4.5 2.5 6.4 7 7-4.5.6-6.4 2.5-7 7-.6-4.5-2.5-6.4-7-7 4.5-.6 6.4-2.5 7-7z"/>',
   no: '<circle cx="12" cy="12" r="7.5"/>',
 };
 const icon = (k, cls = "ic") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${Object.hasOwn(ICONS, k) ? ICONS[k] : ICONS.other}</svg>`;
@@ -1633,7 +1737,7 @@ const caseMark = (score, size) => `<svg class="case" viewBox="0 0 64 64" width="
 const tabIconHref = score => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -5.5 80 80">`
   + `<style>.ct{stroke:#fff;stroke-opacity:.4}.cf{stroke:#fff}.cs{fill:#fff}</style><rect x="-8" y="-5.5" width="80" height="80" rx="18" fill="#2B59D9"/>${caseParts(score, 16)}</svg>`);
 const KIT_ICON = { go: "bag", home: "home", car: "car" };
-const TAB_ICON = { overview: "gauge", kits: "bag", household: "person", plan: "flag" };
+const TAB_ICON = { overview: "gauge", kits: "bag", household: "person" };
 // One line up front and the full explanation a tap away; the ones you open stay open when the page re-renders
 const how = (id, body) => `<details class="how" data-how="${id}" ${S.how.has(id) ? "open" : ""}><summary>How this works</summary><p>${body}</p></details>`;
 const money = p => p === undefined ? "" : p === null ? "Prescription" : p === 0 ? "From home" : `$${p}`;
@@ -2183,39 +2287,147 @@ function viewWizard(d) {
     </div>
   </form>`;
 }
+/* The Household tab: who lives here, where, and the family plan, as cards that edit in place and save as you leave
+   each field. The wizard keeps its own form and saves at its last step. */
+const COND_CHIP = { meds: ["Daily medication", "medications"], allergy: ["Severe allergy", "allergy"], diabetes: ["Diabetes", "sugar"], heart: ["Heart condition", "cpr"],
+  asthma: ["Asthma or COPD", "breathing"], seizures: ["Seizures", "seizure"], opioids: ["Opioid medication", "naloxone"], device: ["Powered device", "power"], mobility: ["Limited mobility", "person"] };
+const AV_ZONES = [0, 1, 2, 6, 4, 5];
+// An inline field sized to what it holds, for browsers without field-sizing
+const fit = (v, ph) => Math.max(String(v ?? "").length, String(ph || "").length, 2) + 1;
+function hhPlace(d) {
+  const hz = S.hazards, chk = S.hzCheck, loc = S.profile?.location || "";
+  const top = hz?.assessedAt ? HAZARDS.filter(h => !h.group && LEVELS[hz.levels?.[h.id]]?.[1] > 0)
+    .sort((a, b) => LEVELS[hz.levels[b.id]][1] - LEVELS[hz.levels[a.id]][1] || weightOf(b, hz.levels[b.id]) - weightOf(a, hz.levels[a.id])).slice(0, 3) : [];
+  const stale = hz?.assessedAt && loc && hz.location !== loc;
+  const all = hz?.assessedAt ? HAZARDS.filter(h => LEVELS[hz.levels?.[h.id]]).sort((a, b) => LEVELS[hz.levels[b.id]][1] - LEVELS[hz.levels[a.id]][1]) : [];
+  const v = num(d.vehicles);
+  return `<div class="panel hh-place">
+    <div class="hh-where">${icon("home")}
+      <input type="text" class="ed" id="hh-location" value="${esc(d.location || "")}" size="${fit(d.location, "Your town or city")}" data-input="hh" data-p="location" placeholder="Your town or city" aria-label="Location" ${D()}>
+      <span class="muted">·</span>
+      <select class="ed" id="hh-home" data-input="hh" data-p="home" aria-label="Home" ${D()}>${["House", "Apartment or condo", "Townhouse", "Mobile home", "Other"].map(o => `<option ${o === d.home ? "selected" : ""}>${o}</option>`).join("")}</select>
+      <span class="muted">·</span>
+      <span class="hh-veh"><input type="number" class="ed" min="0" max="20" id="hh-vehicles" value="${esc(v)}" size="2" data-input="hh" data-p="vehicles" aria-label="Vehicles" ${D()}>${v === 1 ? "vehicle" : "vehicles"}</span>
+    </div>
+    ${top.length ? `<span class="hh-sep"></span><div class="hh-likely"><span class="small muted">Likely here</span>${top.map(h => `<span class="h"><span class="bars l${LEVELS[hz.levels[h.id]][1]}" title="${esc(LEVELS[hz.levels[h.id]][0])}"><i></i><i></i><i></i></span>${esc(h.name)}</span>`).join("")}</div>` : ""}
+    ${S.canWrite ? (chk?.state === "working" ? `<div class="working re"><span class="pulse"></span><span class="small">Checking ${esc(loc)}…</span></div>`
+      : `<button class="btn ${hz?.assessedAt && !stale ? "ghost " : ""}sm re" data-act="hzCheck" ${loc ? "" : "disabled"}>${!hz?.assessedAt ? "Check hazards" : stale ? `Check hazards for ${esc(loc)}` : "Check again"}</button>`) : ""}
+    ${!loc ? `<p class="small muted hh-full">Add your town to see which emergencies are likely there.</p>` : ""}
+    ${chk?.state === "error" ? `<p class="small hh-full" style="color:var(--bad)">${esc(chk.msg)}</p>` : ""}
+    ${all.length ? `<details class="hh-full hh-all" data-how="hzAll" ${S.how.has("hzAll") ? "open" : ""}><summary class="small">All ${all.length} ratings, and why</summary>
+      <div class="reasons">${all.map(h => `<div><span><b>${esc(h.name)}</b><br><span class="mono small">${esc(LEVELS[hz.levels[h.id]]?.[0] || "")}</span></span><span>${esc(h.group ? householdWhy(h, household()) : hz.reasons?.[h.id] || "")}</span></div>`).join("")}</div>
+      ${hz.notes ? `<p class="small"><b>Also:</b> ${esc(hz.notes)}</p>` : ""}<p class="small muted">Checked ${when(hz.assessedAt)} for ${esc(hz.location || "")}. Change any rating on the Readiness tab.</p></details>` : ""}
+  </div>`;
+}
+// A medication on its person's card: what it is and when the next refill is due
+function hhMed(x, j) {
+  const st = refillState(x);
+  return `<div class="hh-med">${icon("medications")}
+    <input type="text" class="ed" id="med-${j}-name" value="${esc(x.name || "")}" data-change="planMed" data-i="${j}" data-f="name" placeholder="Which medication?" maxlength="80" aria-label="Medication" ${D()}>
+    ${S.canWrite ? `<button class="x" data-act="planMedDel" data-i="${j}" aria-label="Remove ${esc(x.name || "medication")}">×</button>` : ""}
+    <span class="st ${st.cls}">${st.cls === "muted" ? "" : `<i class="dot"></i>`}<span>${st.text}</span>
+      <input type="date" class="ed" id="med-${j}-refill" value="${esc(x.refill || "")}" data-change="planMed" data-i="${j}" data-f="refill" aria-label="Next refill due" ${D()}></span>
+  </div>`;
+}
+function hhPerson(m, i, meds) {
+  const name = personName(m, i), cs = (Array.isArray(m.conditions) ? m.conditions : []).filter(c => CONDITIONS[c]), g = groupOf(m);
+  const mine = meds.map((x, j) => [x, j]).filter(([x]) => x.who === name), pick = S.condPick === i, showMeds = mine.length || onDailyMeds(m);
+  const extra = { infant: "Diapers, formula, wipes", child: "Comfort or activity item", senior: "Raises cardiac risk" }[g];
+  const hints = S.canWrite ? hintButtons(m, i) : "";
+  return `<div class="hh-card ${pick || showMeds ? "wide" : ""}">
+    <div class="hh-who"><span class="av" style="background:var(--zone-${AV_ZONES[i % AV_ZONES.length]})" aria-hidden="true">${esc((m.label || "").trim().charAt(0).toUpperCase() || String(i + 1))}</span>
+      <div class="hh-nm"><input type="text" class="ed nm" id="hh-m${i}-label" value="${esc(m.label || "")}" data-input="hh" data-p="members.${i}.label" placeholder="Name or role" aria-label="Person ${i + 1} name" ${D()}>
+        <label class="hh-age">${yearsOf(m) == null ? AGE[g][0] + " ·" : "age"} <input type="number" class="ed" min="0" max="120" step="1" id="hh-m${i}-years" value="${yearsOf(m) ?? ""}" size="3" data-input="hh" data-p="members.${i}.years" data-blank="1" placeholder="${yearsOf(m) == null ? "age" : ""}" aria-label="Person ${i + 1} age in years" ${D()}></label></div>
+      ${S.canWrite ? `<button type="button" class="x" data-act="hhDel" data-k="members" data-i="${i}" aria-label="Remove ${esc(name)}">×</button>` : ""}
+    </div>
+    <p class="hh-size" id="hh-m${i}-sizing"><span>${icon("food")}${kcalFor(m).toLocaleString()} kcal</span><span>${icon("water")}3.8 L a day</span>${extra ? `<span>${esc(extra)}</span>` : ""}</p>
+    <div class="chips">${cs.map(c => S.canWrite ? `<button type="button" class="chip hn" data-act="condPick" data-i="${i}" title="${esc(CONDITIONS[c])}">${icon(COND_CHIP[c][1])}${COND_CHIP[c][0]}</button>` : `<span class="chip hn" title="${esc(CONDITIONS[c])}">${icon(COND_CHIP[c][1])}${COND_CHIP[c][0]}</span>`).join("")}${S.canWrite ? `<button type="button" class="chip add" data-act="condPick" data-i="${i}" aria-expanded="${pick}">${cs.length ? "+" : "+ health need"}</button>` : ""}</div>
+    ${pick ? `<div class="hh-pick" role="group" aria-label="${esc(name)}'s health needs">${Object.entries(CONDITIONS).map(([k, v]) => `<label><input type="checkbox" id="hh-m${i}-c-${k}" data-change="hhCond" data-i="${i}" data-k="${k}" ${cs.includes(k) ? "checked" : ""} ${D()}>${esc(v)}</label>`).join("")}
+      <div><button type="button" class="btn ghost sm" data-act="condPick" data-i="${i}">Done</button></div></div>` : ""}
+    <input type="text" class="ed hh-note" id="hh-m${i}-needs" value="${esc(m.needs || "")}" data-input="hh" data-p="members.${i}.needs" placeholder="Anything else?" aria-label="${esc(name)}: anything else they need" ${D()}>
+    ${S.canWrite ? `<div class="conds hint" id="hh-m${i}-hints" ${hints ? "" : "hidden"}>${hints}</div>` : ""}
+    ${showMeds ? `<div class="hh-meds">${mine.map(([x, j]) => hhMed(x, j)).join("")}
+      ${S.canWrite ? `<div><button type="button" class="chip add" data-act="planMedAdd" data-who="${esc(name)}">+ ${mine.length ? "another medication" : "medication and refill date"}</button></div>` : ""}</div>` : ""}
+  </div>`;
+}
+function hhPet(p, i) {
+  const n = num(p.count);
+  return `<div class="hh-card">
+    <div class="hh-who"><span class="av pt" aria-hidden="true">${icon("pets")}</span>
+      <div class="hh-nm"><input type="text" class="ed nm" id="hh-p${i}-kind" value="${esc(p.kind || "")}" data-input="hh" data-p="pets.${i}.kind" placeholder="Dog, cat…" aria-label="Pet kind" ${D()}>
+        <label class="hh-age">how many <input type="number" class="ed" min="0" id="hh-p${i}-count" value="${esc(n)}" size="2" data-input="hh" data-p="pets.${i}.count" aria-label="How many" ${D()}></label></div>
+      ${S.canWrite ? `<button type="button" class="x" data-act="hhDel" data-k="pets" data-i="${i}" aria-label="Remove ${esc(p.kind || "pet")}">×</button>` : ""}
+    </div>
+    <p class="hh-size"><span>Their own food, water and a carrier</span></p>
+  </div>`;
+}
+// Where we meet, as a route out from home: near home, outside the neighbourhood, then where you'd evacuate to
+function hhRoute(p) {
+  const stops = [["meetNear", "1", "Get out fast, like a fire", "Add a spot near home"], ["meetFar", "2", "Can't get back home", "Add a spot farther away"], ["destination", icon("car"), "Told to evacuate", "Where would you go?"]];
+  return `<div class="panel hh-route"><div class="card-h"><b>Where we meet</b><span class="small muted">If you're split up or have to leave</span></div>
+    <ol class="route"><li class="stop home"><span class="node">${icon("home")}</span><span class="when">Home</span></li>
+    ${stops.map(([k, n, w, ph]) => `<li class="stop ${String(p[k] || "").trim() ? "" : "empty"}"><span class="node" aria-hidden="true">${n}</span><span class="when">${w}</span>
+      <input type="text" class="ed what" id="plan-${k}" value="${esc(p[k] || "")}" data-change="plan" data-f="${k}" placeholder="${ph}" maxlength="120" aria-label="${PLAN.find(f => f[0] === k)[1]}" ${D()}></li>`).join("")}</ol>
+  </div>`;
+}
+function hhShutoffs(p) {
+  const v = [["shutWater", "w", "water", "Water", ""], ["shutGas", "g", "burns", "Gas", "Only if you smell gas. The utility turns it back on."], ["shutPower", "p", "seizure", "Power", ""]];
+  return `<div class="panel"><div class="card-h"><b>Shut-offs</b><span class="small muted">Know them before you need them</span></div>
+    <div class="shut">${v.map(([k, c, ic, label, tip]) => `<label class="valve ${c}"><span class="k">${icon(ic)}${label}</span>
+      <input type="text" class="ed" id="plan-${k}" value="${esc(p[k] || "")}" data-change="plan" data-f="${k}" placeholder="Where is it?" maxlength="120" ${D()}>${tip ? `<span class="tip">${tip}</span>` : ""}</label>`).join("")}</div>
+  </div>`;
+}
+function hhContact(p) {
+  const tel = String(p.contactPhone || "").replace(/[^\d+]/g, "");
+  return `<div class="panel"><div class="card-h"><b>Everyone checks in with</b></div>
+    <div class="contact">${tel.length >= 3 ? `<a class="call" href="tel:${esc(tel)}" aria-label="Call ${esc(p.contactName || "your contact")}">${icon("phone")}</a>` : `<span class="call off" aria-hidden="true">${icon("phone")}</span>`}
+      <div class="stack" style="gap:2px;flex:1">
+        <input type="text" class="ed nm" id="plan-contactName" value="${esc(p.contactName || "")}" data-change="plan" data-f="contactName" placeholder="Someone out of the area" maxlength="120" aria-label="Out-of-area contact" ${D()}>
+        <input type="tel" class="ed" id="plan-contactPhone" value="${esc(p.contactPhone || "")}" data-change="plan" data-f="contactPhone" placeholder="Their phone" maxlength="120" aria-label="Their phone" ${D()}>
+        <p class="small muted">Long-distance calls and texts often get through when local ones don't.</p>
+      </div></div>
+  </div>`;
+}
 function viewHousehold() {
   const d = S.hhDraft || {};
   const members = Array.isArray(d.members) ? d.members : [];
   const pets = Array.isArray(d.pets) ? d.pets : [];
-  const hz = S.hazards;
-  const chk = S.hzCheck;
+  const p = S.plan || {}, meds = Array.isArray(p.meds) ? p.meds : [];
+  const fields = PLAN, filled = fields.filter(([k]) => String(p[k] || "").trim()).length;
   const fresh = !S.profile || S.profile.example;
-  return `
-  <div class="stack">
-    <div class="row" style="justify-content:space-between"><h2>Household</h2>${S.canWrite && S.wiz == null ? `<button class="btn ${fresh ? "" : "ghost "}sm" data-act="startWizard">${fresh ? "Set up in 4 quick steps" : "Walk me through it"}</button>` : ""}</div>
-    <p class="muted" style="max-width:70ch">Who lives here and where sets every amount the app suggests.</p>
-    ${how("household", "Needs are sized from this: 3.8 L of water per person per day, food calories by each person's age, masks and blankets per person, and baby, kids' and pet supplies when they apply. Health needs switch on the health emergencies that follow from them, like a medication supply running out or a powered device losing power. Your location is what Claude uses to judge which emergencies are likely.")}
-  </div>
-  ${S.wiz != null ? viewWizard(d) : `<form class="panel stack" data-submit="saveHH">
-    ${hhWhere(d)}
-    <div class="stack"><p class="eyebrow">People</p>${hhPeople(members)}</div>
-    <div class="stack"><p class="eyebrow">Health needs</p><p class="small muted">Does anyone in your home have any of these? Switch one on, then tick who.</p>${hhHealth(members)}</div>
-    <div class="stack"><p class="eyebrow">Pets</p>${hhPets(pets)}</div>
-    <label class="f">Anything else that matters in an emergency<textarea id="hh-notes" data-input="hh" data-p="notes" placeholder="Near a river or coast, wooded lot, well water, wood stove, second floor bedrooms, commute over a bridge…" ${D()}>${esc(d.notes || "")}</textarea></label>
-    ${S.canWrite ? `<div class="row"><button class="btn" type="submit" ${S.hhDirty ? "" : "disabled"}>Save household</button>${S.hhDirty ? `<span class="small muted">Unsaved changes</span>` : `<span class="small muted">${S.profile?.updatedAt ? "Saved " + when(S.profile.updatedAt) : ""}</span>`}</div>` : ""}
-  </form>`}
-
-  <div class="panel stack">
-    <div class="row" style="justify-content:space-between">
-      <div><b>Hazards for your area</b><p class="small muted">Claude rates each emergency for your saved location and circumstances. You can override any rating on the Readiness tab.</p></div>
-      ${S.canWrite ? (chk?.state === "working" ? `<div class="working"><span class="pulse"></span><span>Checking ${esc(S.profile?.location || "")}…</span></div>`
-        : `<button class="btn" data-act="hzCheck" ${S.profile?.location && !S.hhDirty ? "" : "disabled"}>${hz?.assessedAt ? "Check again" : "Check hazards"}</button>`) : ""}
-    </div>
-    ${!S.profile?.location ? `<p class="small muted">Save a location first.</p>` : S.hhDirty ? `<p class="small muted">Save your changes first.</p>` : ""}
-    ${chk?.state === "error" ? `<p class="small" style="color:var(--bad)">${esc(chk.msg)}</p>` : ""}
-    ${hz?.assessedAt ? `<div class="reasons">${HAZARDS.filter(h => LEVELS[hz.levels?.[h.id]]).sort((a, b) => LEVELS[hz.levels[b.id]][1] - LEVELS[hz.levels[a.id]][1]).map(h => `<div><span><b>${esc(h.name)}</b><br><span class="mono small">${esc(LEVELS[hz.levels[h.id]]?.[0] || "")}</span></span><span>${esc(h.group ? householdWhy(h, household()) : hz.reasons?.[h.id] || "")}</span></div>`).join("")}</div>
-      ${hz.notes ? `<p class="small"><b>Also:</b> ${esc(hz.notes)}</p>` : ""}<p class="small muted">Checked ${when(hz.assessedAt)} for ${esc(hz.location || "")}.</p>` : ""}
+  const names = new Set(members.map((m, i) => personName(m, i)));
+  const loose = meds.map((x, j) => [x, j]).filter(([x]) => !names.has(x.who));
+  const ms = members.map((m, i) => personName(m, i));
+  const head = `<div class="stack">
+    <div class="hh-head"><h2>Household</h2>
+      ${S.wiz == null ? `<span class="hh-prog" title="${filled} of ${fields.length} parts of the plan filled in"><span class="seg8" aria-hidden="true">${fields.map((_, k) => `<i class="${k < filled ? "on" : ""}"></i>`).join("")}</span><span class="mono">Plan ${filled} of ${fields.length}</span></span>` : ""}
+      <span style="flex:1"></span>
+      ${S.canWrite && S.wiz == null ? `<button class="btn ${fresh ? "" : "ghost "}sm" data-act="startWizard">${fresh ? "Set up in 4 quick steps" : "Walk me through it"}</button>` : ""}</div>
+    <p class="muted">Who lives here, where, and your plan. Everything saves as you go.</p>
+    ${how("household", "Needs are sized from who lives here: 3.8 L of water per person per day, food calories by each person's age, masks and blankets per person, and baby, kids' and pet supplies when they apply. Health needs switch on the health emergencies that follow from them, like a medication supply running out. Your town is what Claude uses to judge which emergencies are likely. Everything on this tab saves as you leave it, and Claude's review at the bottom builds on all of it.")}
   </div>`;
+  if (S.wiz != null) return head + viewWizard(d);
+  return `${head}
+  ${hhPlace(d)}
+  <section class="stack hh-sec">
+    <div class="sec-h"><h3>Who lives here</h3><span class="small muted">Sets water, food and supplies for every kit</span></div>
+    <div class="hh-people">
+      ${members.map((m, i) => hhPerson(m, i, meds)).join("")}
+      ${pets.map(hhPet).join("")}
+      ${S.canWrite ? `<div class="hh-card hh-add"><button type="button" class="btn ghost sm" data-act="hhAdd" data-k="members">+ Person</button><button type="button" class="btn ghost sm" data-act="hhAdd" data-k="pets">+ Pet</button></div>` : ""}
+    </div>
+    ${loose.length ? `<div class="panel stack"><p class="eyebrow">Medication not matched to anyone here</p>${loose.map(([x, j]) => `<div class="hh-med">${icon("medications")}<span>${esc(x.name || "Unnamed medication")}</span>
+      ${S.canWrite ? `<button class="x" data-act="planMedDel" data-i="${j}" aria-label="Remove ${esc(x.name || "medication")}">×</button>` : ""}
+      <span class="st"><select id="med-${j}-who" data-change="planMed" data-i="${j}" data-f="who" aria-label="Who takes it" ${D()}><option value="">Who?</option>${ms.map(n => `<option ${n === x.who ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></span>
+    </div>`).join("")}</div>` : ""}
+  </section>
+  <section class="stack hh-sec">
+    <div class="sec-h"><h3>Our plan</h3><span class="small muted">What a kit can't hold</span></div>
+    <div class="hh-plan">${hhRoute(p)}${hhShutoffs(p)}${hhContact(p)}</div>
+    <label class="panel hh-notes"><span class="small muted">Anything else that matters in an emergency</span>
+      <textarea class="ed" id="hh-notes" data-input="hh" data-p="notes" rows="1" placeholder="Near a river or coast, wooded lot, well water, wood stove, upstairs bedrooms, a commute over a bridge…" ${D()}>${esc(d.notes || "")}</textarea></label>
+  </section>
+  ${viewReview()}`;
 }
 
 /* Open lines in the chosen order and, with a budget, the ones it buys, most points per dollar first. The tools and
@@ -2313,23 +2525,9 @@ function viewShop(M) {
   </div>` : ""}`;
 }
 
-/* The family plan: what a kit can't hold. Each field saves when you leave it. */
-const PLAN = [
-  ["Where to meet", [
-    ["meetNear", "Near home", "If you have to get out fast, like in a fire", "The big oak at the end of the street"],
-    ["meetFar", "Outside your neighbourhood", "If you can't get back home", "Library on Main St"],
-    ["destination", "Where you'd go if told to evacuate", "A friend or relative outside the area, or a hotel", "Aunt Sue's in Bend"],
-  ]],
-  ["Who everyone checks in with", [
-    ["contactName", "Out-of-area contact", "Long-distance calls and texts often get through when local ones don't", "Name"],
-    ["contactPhone", "Their phone", "", "Phone number", "tel"],
-  ]],
-  ["Shut-offs", [
-    ["shutWater", "Water shut-off", "", "Basement, by the front wall"],
-    ["shutGas", "Gas shut-off", "Only turn it off if you smell gas. The utility has to turn it back on", "Outside, left of the garage"],
-    ["shutPower", "Electrical panel", "", "Garage, behind the door"],
-  ]],
-];
+/* The family plan: what a kit can't hold, the eight fields of the household's plan doc, with the labels Claude reads them by. */
+const PLAN = [["meetNear", "Meeting place near home"], ["meetFar", "Meeting place outside the neighbourhood"], ["destination", "Where we'd go if told to evacuate"],
+  ["contactName", "Out-of-area contact"], ["contactPhone", "Their phone"], ["shutWater", "Water shut-off"], ["shutGas", "Gas shut-off"], ["shutPower", "Electrical panel"]];
 function refillState(x) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(x.refill || "")) return { cls: "muted", text: "Add the next refill date", days: null };
   const [y, m, d] = x.refill.split("-").map(Number), due = new Date(y, m - 1, d);
@@ -2338,56 +2536,17 @@ function refillState(x) {
     : days <= 7 ? { cls: "warn", text: days === 0 ? "Refill due today" : `Refill due in ${days} day${days === 1 ? "" : "s"}`, days }
     : { cls: "muted", text: `Next refill ${when(due)}`, days };
 }
-function viewPlan(M) {
-  const p = S.plan || {};
-  const fields = PLAN.flatMap(([, fs]) => fs);
-  const filled = fields.filter(([k]) => String(p[k] || "").trim()).length;
-  const ms = household().members.map((m, i) => personName(m, i));
-  const meds = Array.isArray(p.meds) ? p.meds : [];
-  const onMeds = household().members.map((m, i) => [m, personName(m, i)]).filter(([m, n]) => onDailyMeds(m) && !meds.some(x => x.who === n)).map(([, n]) => n);
-  const field = ([k, label, hint, ph, type]) => `<label class="f">${label}<input type="${type || "text"}" id="plan-${k}" value="${esc(p[k] || "")}" data-change="plan" data-f="${k}" placeholder="${esc(ph)}" maxlength="120" ${D()}>${hint ? `<span class="hint">${hint}</span>` : ""}</label>`;
-  const med = (x, i) => { const st = refillState(x); return `<div class="med">
-      <select id="med-${i}-who" data-change="planMed" data-i="${i}" data-f="who" aria-label="Who takes it" ${D()}><option value="">Who?</option>${ms.map(n => `<option ${n === x.who ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
-      <input type="text" id="med-${i}-name" value="${esc(x.name || "")}" data-change="planMed" data-i="${i}" data-f="name" placeholder="Medication" maxlength="80" aria-label="Medication" ${D()}>
-      <input type="date" id="med-${i}-refill" value="${esc(x.refill || "")}" data-change="planMed" data-i="${i}" data-f="refill" aria-label="Next refill due" ${D()}>
-      ${S.canWrite ? `<button class="x" data-act="planMedDel" data-i="${i}" aria-label="Remove ${esc(x.name || "medication")}">×</button>` : ""}
-      <span class="med-st small ${st.cls}">${st.text}</span>
-    </div>`; };
-  return `
-  <div class="stack">
-    <h2>Family plan</h2>
-    <p class="muted" style="max-width:70ch">The parts of being ready that a kit can't hold. <span class="mono">${filled} of ${fields.length}</span> filled in.</p>
-    ${how("plan", "Everything saves as you go, and Claude's review further down this tab builds on what you write here.")}
-  </div>
-  <div class="plan-grid">
-    ${PLAN.map(([title, fs]) => `<div class="panel stack"><p class="eyebrow">${title}</p>${fs.map(field).join("")}</div>`).join("")}
-    <div class="panel stack">
-      <p class="eyebrow">Medication refills</p>
-      ${onMeds.length ? `<p class="small">${esc(orList(onMeds, "and"))} ${onMeds.length > 1 ? "take" : "takes"} daily medication. Add it here for a reminder on your next steps a week before a refill is due.</p>` : meds.length ? "" : `<p class="small muted">Add any medication someone can't go without, with its next refill date.</p>`}
-      ${meds.map(med).join("")}
-      ${S.canWrite ? `<div><button class="btn ghost sm" data-act="planMedAdd">Add medication</button></div>` : ""}
-    </div>
-  </div>
-  ${viewReview()}`;
-}
-
+// Claude's review: one row with its button, and the review itself once there is one
 function viewReview() {
-  const rv = S.rv;
-  const saved = S.review;
-  const text = rv?.text ?? saved?.text ?? "";
-  return `
-  <div class="stack">
-    <h2>Claude's review</h2>
-    <p class="muted" style="max-width:70ch">Claude writes a short plan from everything you've entered.</p>
-    ${how("review", "Claude reads your household, hazards, scores and full inventory, then covers what to buy next with quantities, what to rotate, and the plans and skills a kit can't cover.")}
-    <div class="row">
-      ${rv?.state === "working" ? `<button class="btn ghost" data-act="rvStop">Stop</button><div class="working"><span class="pulse"></span><span>${rv.text ? "Writing…" : "Thinking…"}</span></div>`
-        : `<button class="btn" data-act="rvRun" ${S.kits.length ? "" : "disabled"}>${saved ? "Write a new review" : "Write my review"}</button>`}
-      ${saved?.at && !rv ? `<span class="small muted">Last written ${when(saved.at)}</span>` : ""}
-    </div>
-    ${rv?.state === "error" ? `<p class="small" style="color:var(--bad)">${esc(rv.msg)}</p>` : ""}
+  const rv = S.rv, saved = S.review, text = rv?.text ?? saved?.text ?? "";
+  return `<div class="panel hh-rv">
+    <div class="l"><span class="spark" aria-hidden="true">${icon("spark")}</span><div><h3>Claude's review</h3><p class="small muted">A short plan from everything above: what to buy, rotate and practise.${saved?.at && !rv ? ` Last written ${when(saved.at)}.` : ""}</p></div></div>
+    <div class="row">${rv?.state === "working" ? `<div class="working"><span class="pulse"></span><span class="small">${rv.text ? "Writing…" : "Thinking…"}</span></div><button class="btn ghost sm" data-act="rvStop">Stop</button>`
+      : `<button class="btn ${saved ? "ghost " : ""}sm" data-act="rvRun" ${S.kits.length ? "" : "disabled"}>${saved ? "Write a new review" : "Write my review"}</button>`}</div>
+    ${!S.kits.length && !text ? `<p class="small muted hh-full">Add at least one kit, then ask for one.</p>` : ""}
+    ${rv?.state === "error" ? `<p class="small hh-full" style="color:var(--bad)">${esc(rv.msg)}</p>` : ""}
   </div>
-  ${text ? `<article class="panel review">${formatReview(text)}</article>` : `<div class="panel"><p class="muted">${S.kits.length ? "No review yet. It reads better once your plan above is filled in." : "No review yet. Add at least one kit, then ask for one."}</p></div>`}`;
+  ${text ? `<article class="panel review">${formatReview(text)}</article>` : ""}`;
 }
 function formatReview(t) {
   const out = []; let list = [];
@@ -2448,7 +2607,7 @@ function render() {
   // A hidden tab keeps no markup, so no id is on the page twice
   for (const v of VIEWS) { const e = $("#v-" + v); e.hidden = v !== S.view; if (e.hidden) e.innerHTML = ""; }
   const el = $("#v-" + S.view);
-  el.innerHTML = S.view === "overview" ? viewOverview(M) : S.view === "kits" ? viewKits(M) : S.view === "household" ? viewHousehold() : viewPlan(M);
+  el.innerHTML = S.view === "overview" ? viewOverview(M) : S.view === "kits" ? viewKits(M) : viewHousehold();
   if (keep) {
     const n = document.getElementById(keep.id);
     if (n) {
@@ -2757,7 +2916,7 @@ async function runReview() {
   const ctl = new AbortController();
   S.rv = { state: "working", text: "", ctl }; render();
   try {
-    const { text } = await sample(reviewPrompt(model()), { signal: ctl.signal, cache: false, onText: ({ text }) => { S.rv.text = text; if (S.view === "plan") render(); } });
+    const { text } = await sample(reviewPrompt(model()), { signal: ctl.signal, cache: false, onText: ({ text }) => { S.rv.text = text; if (S.view === "household") render(); } });
     S.rv = null;
     if (S.canWrite) await setDoc("household", "review", { text, at: Date.now() }).catch(() => {});
     if (!db) S.review = { text, at: Date.now() };
@@ -2790,7 +2949,11 @@ function setPath(o, path, val) {
 
 /* ---------- events ---------- */
 let reviewFrom;
-document.addEventListener("keydown", e => { if (e.key === "Escape" && S.allKits && S.view === "kits") ACT.allBack(); });
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (S.allKits && S.view === "kits") ACT.allBack();
+  else if (S.condPick != null && S.view === "household") { const i = S.condPick; S.condPick = null; render(); document.getElementById(`hh-m${i}-label`)?.focus(); }
+});
 const ACT = {
   tab: b => { S.view = b.dataset.v; try { history.replaceState(null, "", "#" + S.view); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   addKit: () => { S.addKit = true; render(); $("#nk-name")?.focus(); },
@@ -2814,10 +2977,12 @@ const ACT = {
   kitView: b => { S.listKit = b.dataset.v === "list" ? S.openKit : null; render(); },
   flEdit: b => { S.flOpen = S.flOpen === b.dataset.id ? null : b.dataset.id; render(); document.getElementById(b.id)?.focus(); },
   flAdd: () => { S.listKit = S.openKit; render(); $("#add-name")?.focus(); },
-  planMedAdd: () => {
+  // From a person's card the medication is theirs; otherwise the first person on daily medication with none yet
+  planMedAdd: async b => {
     const meds = Array.isArray(S.plan?.meds) ? S.plan.meds : [];
-    const who = household().members.map((m, i) => [m, personName(m, i)]).find(([m, n]) => onDailyMeds(m) && !meds.some(x => x.who === n));
-    savePlan({ ...(S.plan || {}), meds: [...meds, { who: who ? who[1] : "", name: "", refill: "" }] });
+    const who = b?.dataset?.who ?? household().members.map((m, i) => [m, personName(m, i)]).find(([m, n]) => onDailyMeds(m) && !meds.some(x => x.who === n))?.[1] ?? "";
+    await savePlan({ ...(S.plan || {}), meds: [...meds, { who, name: "", refill: "" }] });
+    document.getElementById(`med-${meds.length}-name`)?.focus();
   },
   planMedDel: b => savePlan({ ...(S.plan || {}), meds: (S.plan?.meds || []).filter((_, i) => i !== +b.dataset.i) }),
   toggleOff: () => { S.showOff = !S.showOff; render(); },
@@ -2880,13 +3045,24 @@ const ACT = {
     } catch (_) {}
     render();
   },
-  hhAdd: b => { const k = b.dataset.k; S.hhDraft[k] = [...(S.hhDraft[k] || []), k === "members" ? { label: "", age: "adult", needs: "" } : { kind: "", count: 1 }]; S.hhDirty = true; render(); },
-  hhDel: b => { const k = b.dataset.k; S.hhDraft[k].splice(+b.dataset.i, 1); S.hhDirty = true; render(); },
+  hhAdd: async b => {
+    const k = b.dataset.k, n = (S.hhDraft[k] || []).length;
+    S.hhDraft[k] = [...(S.hhDraft[k] || []), k === "members" ? { label: "", age: "adult", needs: "" } : { kind: "", count: 1 }];
+    await hhChanged();
+    document.getElementById(k === "members" ? `hh-m${n}-label` : `hh-p${n}-kind`)?.focus();
+  },
+  // Outside the wizard a removal saves at once, so its toast offers Undo
+  hhDel: async b => {
+    const k = b.dataset.k, i = +b.dataset.i, [gone] = S.hhDraft[k].splice(i, 1);
+    S.condPick = null;
+    if (await hhChanged() && gone) toast(`Removed ${k === "members" ? personName(gone, i) : gone.kind || "pet"}`, { label: "Undo", run: () => { S.hhDraft[k].splice(i, 0, gone); return hhChanged(); } });
+  },
   condAdd: b => {
     const m = S.hhDraft.members?.[+b.dataset.i]; if (!m || !CONDITIONS[b.dataset.k]) return;
     m.conditions = [...new Set([...(Array.isArray(m.conditions) ? m.conditions : []), b.dataset.k])];
-    S.hhDirty = true; render();
+    return hhChanged();
   },
+  condPick: b => { const i = +b.dataset.i; S.condPick = S.condPick === i ? null : i; render(); document.getElementById(S.condPick == null ? `hh-m${i}-label` : `hh-m${i}-c-meds`)?.focus({ preventScroll: true }); },
   condToggle: b => {
     const k = b.dataset.k, ms = S.hhDraft.members || [];
     const has = ms.filter(m => (m.conditions || []).includes(k));
@@ -2969,13 +3145,15 @@ document.addEventListener("input", e => {
     if (t.dataset.blank) { S.hhDirty = true; render(); return; }
     const note = /^members\.(\d+)\.needs$/.exec(t.dataset.p || ""), box = note && $(`#hh-m${note[1]}-hints`);
     if (box) { const html = hintButtons(S.hhDraft.members[+note[1]], +note[1]); box.innerHTML = html; box.hidden = !html; }
-    if (!S.hhDirty) { S.hhDirty = true; const btn = $('form[data-submit="saveHH"] button[type=submit]'); if (btn) btn.disabled = false; }
+    S.hhDirty = true;
   } else if (t.dataset.input === "ctr" && S.ctr) S.ctr[t.dataset.f] = t.value;
 });
 document.addEventListener("toggle", e => { const id = e.target.dataset?.how; if (id) e.target.open ? S.how.add(id) : S.how.delete(id); }, true);
 document.addEventListener("change", async e => {
   const t = e.target;
-  if (t.dataset.change === "item") {
+  if (t.dataset.input === "hh") {
+    if (S.wiz == null && S.hhDirty) await saveHousehold(true);
+  } else if (t.dataset.change === "item") {
     const it = S.items.find(i => i.id === t.dataset.id); if (!it) return;
     const f = t.dataset.f;
     let v = t.value;
@@ -3012,7 +3190,7 @@ document.addEventListener("change", async e => {
     const cs = new Set(m.conditions || []);
     t.checked ? cs.add(t.dataset.k) : cs.delete(t.dataset.k);
     m.conditions = [...cs];
-    S.hhDirty = true; render();
+    await hhChanged();
   } else if (t.dataset.change === "shopTick") {
     shopTick(t.dataset.id, t.checked, t.closest(".shop-row"));
   } else if (t.dataset.change === "shopKit") {
@@ -3067,8 +3245,6 @@ document.addEventListener("submit", async e => {
     const id = uid();
     await setDoc("kits", id, { name, type, where: $("#nk-where").value.trim(), photos: [], createdAt: Date.now() }).catch(() => {});
     S.openKit = id; S.addKit = false; f.reset(); render();
-  } else if (f.dataset.submit === "saveHH") {
-    await saveHousehold();
   } else if (f.dataset.submit === "wizNext") {
     await wizStep();
   } else if (f.dataset.submit === "shopNew") {
@@ -3088,16 +3264,26 @@ document.addEventListener("submit", async e => {
     S.ctr = null; render();
   }
 });
-async function saveHousehold() {
-  const d = clone(S.hhDraft);
+/* A change to the household: the wizard holds it until its last step; this tab saves it straight away. */
+const hhChanged = () => { S.hhDirty = true; if (S.wiz == null && S.canWrite) return saveHousehold(true); render(); return Promise.resolve(false); };
+/* Saves the draft. `quiet`: no toast, for the saves this tab makes as you leave each field. A medication follows its
+   person through a rename, since medications name who takes them. */
+async function saveHousehold(quiet) {
+  const typed = JSON.stringify(S.hhDraft), d = clone(S.hhDraft);
   d.members = (d.members || []).map(m => ({ label: String(m.label || "").trim(), years: yearsOf(m) == null ? null : Math.floor(yearsOf(m)), age: groupOf(m), needs: String(m.needs || "").trim(), conditions: (m.conditions || []).filter(c => CONDITIONS[c]) }));
   if (!d.members.length) d.members = [{ label: "", age: "adult", needs: "" }];
   d.pets = (d.pets || []).filter(p => num(p.count)).map(p => ({ kind: String(p.kind || "").trim(), count: num(p.count) }));
   d.location = String(d.location || "").trim();
-  const data = { ...d, example: false, updatedAt: Date.now() };
+  const data = { ...d, example: false, updatedAt: Date.now() }, was = (S.profile?.members || []).map(personName);
   try { await setDoc("household", "profile", data); } catch (_) { return false; }
+  const now = d.members.map(personName), meds = Array.isArray(S.plan?.meds) ? S.plan.meds : [];
+  const renamed = was.length === now.length ? new Map(was.map((n, i) => [n, now[i]]).filter(([a, b]) => a !== b && !now.includes(a))) : new Map();
   if (db) S.profile = clone(data);
-  S.hhDirty = false; S.hhDraft = d; S.condOpen.clear(); toast("Household saved"); render();
+  // Typing into the next field while this saved keeps the draft, and that field saves when you leave it
+  if (JSON.stringify(S.hhDraft) === typed) { S.hhDirty = false; S.hhDraft = d; }
+  S.condOpen.clear(); if (!quiet) toast("Household saved");
+  if (renamed.size && meds.some(x => renamed.has(x.who))) await savePlan({ ...S.plan, meds: meds.map(x => renamed.has(x.who) ? { ...x, who: renamed.get(x.who) } : x) });
+  render();
   return true;
 }
 /* Last step saves, then shows the next steps; a new location gets its hazards checked straight away. */

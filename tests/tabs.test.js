@@ -1,4 +1,5 @@
-// Four tabs (issue #119, part of #115): the Shopping tab is folded into Kits, where each kit's To get (#118) and Review
+// The tabs. Three since the Plan tab joined Household, where the family plan and Claude's review now live: an old #plan or
+// #review link opens Household. Before that, four (issue #119, part of #115): the Shopping tab is folded into Kits, where each kit's To get (#118) and Review
 // (#121) hold the list. Nothing on the page opens a "shop" tab any more. An old #shop link, and the toast after adding an
 // emergency's missing items to the list, open the Kits tab with Review open. ("All kits" below is Review: #118's name.)
 const test = require("node:test");
@@ -38,12 +39,12 @@ const tap = (app, act, ds = {}) => app.run(`ACT.${act}({ dataset: ${JSON.stringi
 // What a tap on the toast's button does: the toast closes, then its action runs
 const tapToast = app => app.run(`(a => { toastAction = null; SHOWN["#toast"].hidden = true; a.run(); })(toastAction)`);
 
-test("the page has four tabs, each with its nav button, its icon and its section", () => {
+test("the page has three tabs, each with its nav button, its icon and its section", () => {
   const app = load(), views = app.json("VIEWS");
-  assert.deepEqual(views, ["overview", "kits", "household", "plan"]);
+  assert.deepEqual(views, ["overview", "kits", "household"]);
   const nav = markup.match(/<nav [^>]*id="tabs"[^>]*>([\s\S]*?)<\/nav>/);
   assert.ok(nav, "the page has its nav");
-  assert.deepEqual([...nav[1].matchAll(/<button\b[^>]*>/g)].map(([b]) => b.match(/ data-v="([^"]*)"/)?.[1]), views, "four nav buttons, one per tab, in order");
+  assert.deepEqual([...nav[1].matchAll(/<button\b[^>]*>/g)].map(([b]) => b.match(/ data-v="([^"]*)"/)?.[1]), views, "a nav button per tab, in order");
   assert.deepEqual([...markup.matchAll(/<section [^>]*id="v-([^"]*)"/g)].map(m => m[1]), views, "a section per tab");
   assert.deepEqual(app.json("Object.keys(TAB_ICON)"), views, "an icon per tab, and none for a tab that's gone");
 });
@@ -82,10 +83,10 @@ for (const name of households) {
   });
 }
 
-test("an old #shop link starts on Kits with All kits open; #review still starts on Plan, and no hash on Readiness", () => {
+test("an old #shop link starts on Kits with All kits open; #plan and #review start on Household, and no hash on Readiness", () => {
   for (const name of households) {
     const kits = load({ fixture: name }).run("S.kits.length");
-    for (const [hash, on] of [["#shop", "kits"], ["#review", "plan"], ["", "overview"], ["#kits", "kits"], ["#plan", "plan"]]) {
+    for (const [hash, on] of [["#shop", "kits"], ["#review", "household"], ["", "overview"], ["#kits", "kits"], ["#plan", "household"], ["#household", "household"]]) {
       const app = load({ fixture: name, hash }), at = `${name}, "${hash}"`;
       screen(app);
       const s = shows(app);

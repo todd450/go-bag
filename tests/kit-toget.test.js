@@ -418,7 +418,7 @@ test("after Review and every other tab, every id on the page is unique, and Revi
     // Review over the Kits tab, closed before each other tab (the tabs can't be reached while it's open), and opened again
     const review = () => { if (S.kits.length) [...document.querySelectorAll("#v-kits button")].find(b => b.textContent.startsWith("To get")).click(); document.querySelector('#v-kits [data-act="allKits"]').click(); };
     tab("kits"); review(); step("kits");
-    for (const v of ["overview", "household", "plan"]) { ACT.allBack(); tab(v); step(v); tab("kits"); review(); step("kits"); }
+    for (const v of ["overview", "household"]) { ACT.allBack(); tab(v); step(v); tab("kits"); review(); step("kits"); }
     // Typing a line on Review: the field it reads is the one on screen, which it then clears
     const f = document.querySelector("#v-kits #shop-new");
     f.value = "Spare reading glasses";

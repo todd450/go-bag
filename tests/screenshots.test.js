@@ -42,9 +42,9 @@ test("a tab added to the page is shot without editing the tool", () => {
 });
 
 test("when the two versions list different tabs, every tab of either is shot once", () => {
-  const renamed = pageWith(v => v.map(t => (t === "plan" ? "family-plan" : t)));
+  const renamed = pageWith(v => v.map(t => (t === "household" ? "home-and-plan" : t)));
   const both = tabs(PAGE, renamed);
-  for (const t of [...load().json("VIEWS"), "family-plan"]) assert.ok(both.includes(t), t);
+  for (const t of [...load().json("VIEWS"), "home-and-plan"]) assert.ok(both.includes(t), t);
   assert.equal(new Set(both).size, both.length);
 });
 
