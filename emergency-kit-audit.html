@@ -465,6 +465,8 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 .seg { display: inline-flex; padding: 2px; border: 1px solid var(--rule-2); border-radius: 999px; background: var(--card); }
 .seg button { min-height: 30px; padding: 3px 14px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: inherit; font-size: .82rem; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 500; }
+/* A kit's Packed | To get switch, under its header, and All kits' Back button, which cuts a long name short */
+.kit-sw, .kit-back { justify-self: start; max-width: 100%; }
 .fl-zone { display: grid; gap: 6px; }
 .fl-h { font-size: .8rem; font-weight: 500; color: var(--ink-2); }
 .fl-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
@@ -1513,6 +1515,8 @@ const S = {
   openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   listKit: null, // the kit whose Contents panel shows List; any other kit shows Flat-lay. Memory only: never saved
   flOpen: null, // the item whose flat-lay tile shows its fields, cleared when a kit is opened. Memory only
+  toGet: null, // the kit whose switch is on To get; any other kit shows Packed. Memory only
+  allKits: null, // the kit All kits was opened from, which it shows in place of. Memory only
   ctr: null, // the open container editor: { id, ...typed }
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
   scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, bagM: null,
@@ -1901,7 +1905,8 @@ function viewKits(M) {
         <div class="row"><button class="btn" type="submit">Add kit</button>${S.kits.length ? `<button class="btn ghost" type="button" data-act="cancelKit">Cancel</button>` : ""}</div>
       </form>`}
     </div>
-    <div class="stack">${kit ? kitDetail(kit, M.kitRes[kit.id], M) : `<div class="panel"><p class="muted">Pick a kit to see its contents, or add one.</p></div>`}</div>
+    <div class="stack">${kit && !(kit.id != null && S.allKits === kit.id) ? kitDetail(kit, M.kitRes[kit.id], M)
+      : `${kit ? `<button class="btn ghost sm kit-back" id="kit-back" data-act="allBack"><span class="ell">Back to ${esc(kit.name)}</span></button>` : ""}<h2>All kits</h2>${viewShop(M)}`}</div>
   </div>`;
 }
 /* An item's fields, as [class, label, html]: its List row's cells and its opened tile's fields, so the two never drift.
@@ -1931,6 +1936,9 @@ function kitDetail(kit, ready, M = model()) {
   const draft = S.draft?.kitId === kit.id ? S.draft : null;
   const tray = S.tray?.kitId === kit.id ? S.tray.photos : [];
   const working = scanning?.state === "working";
+  // Packed | To get: To get is the kit's open lines and its gaps not on the list, with the tools and section All kits shows
+  const get = kit.id != null && S.toGet === kit.id, left = shopItems().filter(e => !e.done && shopKit(e) === kit.id), off = new Set(splitListed(M.gaps).off);
+  const side = (v, label) => `<button type="button" id="ks-${v}" data-act="kitSide" data-v="${v}" aria-pressed="${get === (v === "get")}">${label}</button>`;
   // List: the item table as it always was, shown in the Contents panel once List is pressed
   const list = S.listKit !== kit.id ? "" : `
   ${S.canWrite && S.sel.size ? `<div class="selbar">
@@ -1971,7 +1979,8 @@ function kitDetail(kit, ready, M = model()) {
     ${S.canWrite ? (S.confirm === "kit:" + kit.id
       ? `<div class="row"><span class="small">Delete this kit, its ${pl(items.length, "item")} and ${pl(photos.length, "photo")}?</span><button class="btn danger sm" data-act="delKit" data-id="${esc(kit.id)}">Delete</button><button class="btn ghost sm" data-act="cancelConfirm">Cancel</button></div>`
       : `<button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button>`) : ""}
-  </div>
+  </div><div class="seg kit-sw" role="group" aria-label="${esc(kit.name)}">${side("packed", `Packed · ${items.length}`)}${side("get", `To get · ${left.length + kitGaps(M, kit.id).filter(g => off.has(g)).length}`)}</div>${get
+    ? (P => `<div class="panel stack">${shopTools(M, P, kit)}${shopSection(M, P, kit) || `<p class="small muted">Nothing to get for this kit.</p>`}</div><div><button class="btn ghost sm" id="kit-all" data-act="allKits">All kits</button></div>`)(shopPlan(M, left)) : `
   ${containerCard(kit, ready.h)}
   ${kitReadyPanel(kit, ready, M)}
   ${contentsPanel(kit, items, list, ready, M)}
@@ -1988,7 +1997,7 @@ function kitDetail(kit, ready, M = model()) {
     ${working ? "" : `<div class="row"><button class="btn" data-act="readTray">Read ${tray.length} photo${tray.length === 1 ? "" : "s"}</button><button class="btn ghost" data-act="pickPhotos">Add more</button><button class="btn ghost" data-act="trayClear">Clear</button></div>`}` : ""}
     ${scanning ? (working ? `<div class="working"><span class="pulse"></span><span>${esc(scanning.msg)}</span></div>` : `<p class="small" style="color:var(--bad)">${esc(scanning.msg)}</p>`) : ""}
   </div>` : ""}
-  ${draft ? draftTable(draft) : ""}`;
+  ${draft ? draftTable(draft) : ""}`}`;
 }
 /* The Contents panel: Flat-lay, one tile per item in the zones of ZONES, then a dashed tile per missing essential
    (`ready`'s rows, as the checklist shows them), or List, the item table (`list`). */
@@ -2385,7 +2394,8 @@ function render() {
   const toBuy = shopItems().filter(x => !x.done).length;
   $("#tab-shop-n").textContent = toBuy ? ` ${toBuy}` : "";
   $("#banner").innerHTML = viewBanner();
-  for (const v of VIEWS) $("#v-" + v).hidden = v !== S.view;
+  // A hidden tab keeps no markup, so no id is on the page twice: All kits shows the Shopping tab's list on Kits too
+  for (const v of VIEWS) { const e = $("#v-" + v); e.hidden = v !== S.view; if (e.hidden) e.innerHTML = ""; }
   const el = $("#v-" + S.view);
   el.innerHTML = S.view === "overview" ? viewOverview(M) : S.view === "kits" ? viewKits(M) : S.view === "shop" ? viewShopTab(M) : S.view === "household" ? viewHousehold() : viewPlan(M);
   if (keep) {
@@ -2724,8 +2734,11 @@ const ACT = {
   tab: b => { S.view = b.dataset.v; try { history.replaceState(null, "", "#" + S.view); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   addKit: () => { S.addKit = true; render(); $("#nk-name")?.focus(); },
   cancelKit: () => { S.addKit = false; render(); $(".add-kit")?.focus(); },
-  openKit: b => { if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.confirm = null; S.listKit = S.flOpen = S.bagM = S.ctr = null; render(); },
-  gotoKit: b => { S.view = "kits"; if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.listKit = S.flOpen = S.bagM = S.ctr = null; try { history.replaceState(null, "", "#kits"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
+  openKit: b => { if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.confirm = null; S.listKit = S.flOpen = S.bagM = S.ctr = S.toGet = S.allKits = null; render(); },
+  gotoKit: b => { S.view = "kits"; if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.listKit = S.flOpen = S.bagM = S.ctr = S.toGet = S.allKits = null; try { history.replaceState(null, "", "#kits"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
+  kitSide: b => { S.toGet = b.dataset.v === "get" ? S.openKit : null; render(); },
+  allKits: () => { S.allKits = S.openKit; render(); $("#kit-back")?.focus(); },
+  allBack: () => { S.allKits = null; render(); $("#kit-all")?.focus(); },
   removeSel: () => removeItems([...S.sel]),
   clearSel: () => { S.sel.clear(); render(); },
   sortItems: b => { S.itemSort = b.dataset.k; render(); },
