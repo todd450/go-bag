@@ -90,7 +90,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .hdr-score b { font-family: var(--f-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
 nav.tabs { display: flex; gap: 28px; overflow-x: auto; width: 100%; scrollbar-width: none; }
 nav.tabs button { display: flex; align-items: center; gap: 6px; background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 0 12px; font-weight: 500; font-size: .92rem; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
-nav.tabs button .ic, nav.tabs .tab-n:empty { display: none; }
+nav.tabs button .ic { display: none; }
 nav.tabs button[aria-current="page"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
 nav.tabs button:hover { color: var(--ink); }
 @media (max-width: 640px) {
@@ -139,7 +139,6 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .sum .sum-score { border-right: 1px solid var(--rule); padding-right: 28px; }
 .sum-score { display: grid; gap: 8px; align-content: start; }
 @media (max-width: 760px) { .sum { grid-template-columns: 1fr; } .sum .sum-score { border-right: 0; padding-right: 0; border-bottom: 1px solid var(--rule); padding-bottom: 16px; } }
-.tab-n { font-size: .75rem; font-variant-numeric: tabular-nums; color: var(--ink-2); font-weight: 500; }
 .ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .ic-s { width: 14px; height: 14px; }
 .cat-td { display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
@@ -385,8 +384,6 @@ tr.addrow td { background: var(--paper); }
 #shop-budget { width: 88px; }
 .shop-add { display: flex; gap: 8px; }
 .shop-add input { flex: 1; }
-/* The Shopping tab's heading sits as close to its intro as a stack's (#117) */
-.shop-h { margin-bottom: -14px; }
 .shop-gap { display: grid; grid-template-columns: auto minmax(0, 1fr) 84px auto; gap: 2px 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); }
 .shop-gap > .ic { color: var(--ink-2); }
 @media (max-width: 560px) {
@@ -515,8 +512,8 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 .shop-row.flash { animation: flash 1.4s ease-out; }
 @keyframes flash { from { background: color-mix(in srgb, var(--good) 18%, transparent); } to { background: transparent; } }
 @media (prefers-reduced-motion: reduce) { .shop-row.flash { animation: none; } .hdr-score b { transition: none; } }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--paper); padding: 12px 18px; border-radius: 12px; z-index: 20; max-width: calc(100% - 32px); font-size: .9rem; display: flex; gap: 14px; align-items: center; box-shadow: 0 6px 20px rgba(0, 0, 0, .18); }
-.toast button { background: none; color: inherit; border: 1px solid currentColor; border-radius: 999px; padding: 4px 12px; font-weight: 600; cursor: pointer; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--paper); padding: 12px 18px; border-radius: 12px; z-index: 20; width: max-content; max-width: calc(100% - 32px); font-size: .9rem; display: flex; gap: 14px; align-items: center; box-shadow: 0 6px 20px rgba(0, 0, 0, .18); }
+.toast button { background: none; color: inherit; border: 1px solid currentColor; border-radius: 999px; padding: 4px 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 @media (max-width: 640px) { .toast { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); } }
 </style>
 
@@ -527,7 +524,6 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
     <nav class="tabs" id="tabs" aria-label="Sections">
       <button data-act="tab" data-v="overview">Readiness</button>
       <button data-act="tab" data-v="kits">Kits</button>
-      <button data-act="tab" data-v="shop">Shopping<span class="tab-n" id="tab-shop-n"></span></button>
       <button data-act="tab" data-v="household">Household</button>
       <button data-act="tab" data-v="plan">Plan</button>
     </nav>
@@ -537,7 +533,6 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
   <div id="banner"></div>
   <section class="view" id="v-overview"></section>
   <section class="view" id="v-kits" hidden></section>
-  <section class="view" id="v-shop" hidden></section>
   <section class="view" id="v-household" hidden></section>
   <section class="view" id="v-plan" hidden></section>
 </main>
@@ -1509,15 +1504,16 @@ function cleanRows(out) {
 /* ---------- views ----------
    The screen's state, and the markup each tab draws from what the core works out. */
 /* ---------- state ---------- */
-const VIEWS = ["overview", "kits", "shop", "household", "plan"];
+const VIEWS = ["overview", "kits", "household", "plan"];
 const S = {
-  view: VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : location.hash === "#review" ? "plan" : "overview",
+  // Old addresses: #review opens Plan, and #shop the Kits tab with All kits open
+  view: VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : location.hash === "#review" ? "plan" : location.hash === "#shop" ? "kits" : "overview",
   live: false, loaded: false, slow: false, canWrite: true,
   openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   listKit: null, // the kit whose Contents panel shows List; any other kit shows Flat-lay. Memory only: never saved
   flOpen: null, // the item whose flat-lay tile shows its fields, cleared when a kit is opened. Memory only
   toGet: null, // the kit whose switch is on To get; any other kit shows Packed. Memory only
-  allKits: null, // the kit All kits was opened from, which it shows in place of. Memory only
+  allKits: location.hash === "#shop" || null, // the kit All kits was opened from, which it shows in place of; true from #shop until a kit is open. Memory only
   ctr: null, // the open container editor: { id, ...typed }
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
   scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, bagM: null,
@@ -1604,7 +1600,7 @@ const caseMark = (score, size) => `<svg class="case" viewBox="0 0 64 64" width="
 const tabIconHref = score => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -5.5 80 80">`
   + `<style>.ct{stroke:#fff;stroke-opacity:.4}.cf{stroke:#fff}.cs{fill:#fff}</style><rect x="-8" y="-5.5" width="80" height="80" rx="18" fill="#2B59D9"/>${caseParts(score, 16)}</svg>`);
 const KIT_ICON = { go: "bag", home: "home", car: "car" };
-const TAB_ICON = { overview: "gauge", kits: "bag", shop: "cart", household: "person", plan: "flag" };
+const TAB_ICON = { overview: "gauge", kits: "bag", household: "person", plan: "flag" };
 // One line up front and the full explanation a tap away; the ones you open stay open when the page re-renders
 const how = (id, body) => `<details class="how" data-how="${id}" ${S.how.has(id) ? "open" : ""}><summary>How this works</summary><p>${body}</p></details>`;
 const money = p => p === undefined ? "" : p === null ? "Prescription" : p === 0 ? "From home" : `$${p}`;
@@ -2261,8 +2257,6 @@ function viewShop(M) {
     <ul class="shop">${got.map(e => shopRow(e, shopInfo(e, M))).join("")}</ul>
   </div>` : ""}`;
 }
-// The Shopping tab: All kits under the tab's heading, until #119 folds the tab into Kits
-const viewShopTab = M => `<h2 class="shop-h">Shopping list</h2>${viewShop(M)}`;
 
 /* The family plan: what a kit can't hold. Each field saves when you leave it. */
 const PLAN = [
@@ -2383,6 +2377,7 @@ function render() {
   const M = model();
   if (S.sel.size) { const live = new Set(S.items.filter(i => i.kitId === S.openKit).map(i => i.id)); for (const id of S.sel) if (!live.has(id)) S.sel.delete(id); }
   if (!S.openKit && S.kits.length) S.openKit = [...S.kits].sort((x, y) => (x.createdAt || 0) - (y.createdAt || 0))[0].id;
+  if (S.allKits === true && (S.openKit || S.loaded)) S.allKits = S.openKit; // #shop: All kits from the kit that opens first
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.v === S.view ? "page" : "false"));
   $("#hdr-score").innerHTML = M.overall == null ? "" : `<span class="eyebrow">Readiness</span><b>${M.overall}</b><span class="eyebrow">/ 100</span>`;
   $(".brand-mark").innerHTML = caseMark(M.overall, 28);
@@ -2393,13 +2388,11 @@ function render() {
     tabIcon = tab; const l = $('link[rel="icon"]');
     if (l) { if (document.head && l.parentNode !== document.head) document.head.appendChild(l); l.href = tabIconHref(tab); }
   }
-  const toBuy = shopItems().filter(x => !x.done).length;
-  $("#tab-shop-n").textContent = toBuy ? ` ${toBuy}` : "";
   $("#banner").innerHTML = viewBanner();
-  // A hidden tab keeps no markup, so no id is on the page twice: All kits shows the Shopping tab's list on Kits too
+  // A hidden tab keeps no markup, so no id is on the page twice
   for (const v of VIEWS) { const e = $("#v-" + v); e.hidden = v !== S.view; if (e.hidden) e.innerHTML = ""; }
   const el = $("#v-" + S.view);
-  el.innerHTML = S.view === "overview" ? viewOverview(M) : S.view === "kits" ? viewKits(M) : S.view === "shop" ? viewShopTab(M) : S.view === "household" ? viewHousehold() : viewPlan(M);
+  el.innerHTML = S.view === "overview" ? viewOverview(M) : S.view === "kits" ? viewKits(M) : S.view === "household" ? viewHousehold() : viewPlan(M);
   if (keep) {
     const n = document.getElementById(keep.id);
     if (n) {
@@ -2499,11 +2492,13 @@ async function delDoc(col, id) {
   else { if (col === "household") S[id] = null; else S[col] = S[col].filter(x => x.id !== id); render(); }
 }
 const saveShop = items => setDoc("household", "shopping", { items, updatedAt: Date.now() }).catch(() => {});
-/* Adds these household gaps to the shopping list, a line each, and says so. */
+/* Adds these household gaps to the shopping list, a line each, and says so, with See list to open All kits at the top of the screen. */
 function shopGaps(M, add) {
-  if (!add.length) { toast("Already on your shopping list"); return; }
+  const see = { label: "See list", run: () => { S.view = "kits"; try { history.replaceState(null, "", "#kits"); } catch (_) {} ACT.allKits();
+    window.scrollTo({ top: $(".kits-grid>:last-child").offsetTop - $(".kits-grid").offsetTop }); } };
+  if (!add.length) { toast("Already on your shopping list", see); return; }
   saveShop([...shopItems(), ...add.map(g => shopFromGap(g, M.h))]);
-  toast(add.length === 1 ? `Added ${gapName(add[0])} to your shopping list` : `Added ${add.length} items to your shopping list`);
+  toast(add.length === 1 ? `Added ${gapName(add[0])} to your shopping list` : `Added ${add.length} items to your shopping list`, see);
 }
 const savePlan = data => setDoc("household", "plan", { ...data, updatedAt: Date.now() }).catch(() => {});
 
