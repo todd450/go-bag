@@ -462,9 +462,16 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 .seg { display: inline-flex; padding: 2px; border: 1px solid var(--rule-2); border-radius: 999px; background: var(--card); }
 .seg button { min-height: 30px; padding: 3px 14px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: inherit; font-size: .82rem; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 500; }
-/* A kit's Packed | To get switch, under its header, and All kits' Back button, which cuts a long name short:
-   min-width 0, or the name's unwrapped width would set the column's */
-.kit-sw, .kit-back { justify-self: start; min-width: 0; max-width: 100%; }
+/* A kit's Packed | To get switch: min-width 0, or a long name's unwrapped width would set the column's */
+.kit-sw { justify-self: start; min-width: 0; max-width: 100%; }
+/* Review: a sheet over the page, the whole screen on a phone. There the sheet scrolls itself, so a classic scrollbar
+   sits inside it and never narrows it */
+html:has(.review-sheet) { overflow: hidden; }
+.review-bg { position: fixed; inset: 0; z-index: 8; background: rgba(0, 0, 0, .4); display: grid; place-items: start center; overflow: auto; overscroll-behavior: contain; padding: 40px 16px; }
+.review-sheet { align-content: start; width: 100%; max-width: 820px; background: var(--paper); border-radius: 12px; padding: 20px; }
+.review-hd { justify-content: space-between; }
+.review-free .small::first-letter { text-transform: uppercase; }
+@media (max-width: 640px) { .review-bg { display: block; overflow: hidden; padding: 0; } .review-sheet { height: 100%; overflow: auto; overscroll-behavior: contain; border-radius: 0; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 96px; } }
 .fl-zone { display: grid; gap: 6px; }
 .fl-h { font-size: .8rem; font-weight: 500; color: var(--ink-2); }
 .fl-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
@@ -1517,14 +1524,14 @@ function cleanRows(out) {
 /* ---------- state ---------- */
 const VIEWS = ["overview", "kits", "household", "plan"];
 const S = {
-  // Old addresses: #review opens Plan, and #shop the Kits tab with All kits open
+  // Old addresses: #review opens Plan, and #shop the Kits tab with Review open
   view: VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : location.hash === "#review" ? "plan" : location.hash === "#shop" ? "kits" : "overview",
   live: false, loaded: false, slow: false, canWrite: true,
   openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   listKit: null, // the kit whose Contents panel shows List; any other kit shows Flat-lay. Memory only: never saved
   flOpen: null, // the item whose flat-lay tile shows its fields, or the planned line whose tile shows its actions, cleared when a kit is opened. Memory only
   toGet: null, // the kit whose switch is on To get; any other kit shows Packed. Memory only
-  allKits: location.hash === "#shop" || null, // the kit All kits was opened from, which it shows in place of; true from #shop until a kit is open. Memory only
+  allKits: location.hash === "#shop" || null, // true while the Review sheet is open (#121). Memory only
   ctr: null, // the open container editor: { id, ...typed }
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
   scan: null, draft: null, tray: null, hzCheck: null, rv: null, packEst: null, bagM: null,
@@ -1889,12 +1896,14 @@ function hzPanel(r, h, M, rows) {
   </div>`;
 }
 
+// Opens Review (#121): a kit's To get has one, and so does the Kits tab with no kits
+const reviewBtn = `<div><button class="btn ghost sm" id="kit-all" data-act="allKits">Review</button></div>`;
 function viewKits(M) {
   const kit = S.kits.find(k => k.id === S.openKit) || null;
   const counts = {};
   for (const it of S.items) counts[it.kitId] = (counts[it.kitId] || 0) + 1;
   const list = [...S.kits].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-  return `<div class="kits-grid">
+  return `<div class="kits-grid"${S.allKits ? " inert" : ""}>
     <div class="stack">
       <h2>Your kits</h2>
       <div class="tags">${list.map(k => `<button class="tag" data-act="openKit" data-id="${esc(k.id)}" aria-pressed="${k.id === S.openKit}">
@@ -1910,9 +1919,9 @@ function viewKits(M) {
         <div class="row"><button class="btn" type="submit">Add kit</button>${S.kits.length ? `<button class="btn ghost" type="button" data-act="cancelKit">Cancel</button>` : ""}</div>
       </form>`}
     </div>
-    <div class="stack">${kit && !(kit.id != null && S.allKits === kit.id) ? kitDetail(kit, M.kitRes[kit.id], M)
-      : `${kit ? `<button class="btn ghost sm kit-back" id="kit-back" data-act="allBack"><span class="ell">Back to ${esc(kit.name)}</span></button>` : ""}<h2>All kits</h2>${viewShop(M)}`}</div>
-  </div>`;
+    <div class="stack">${kit ? kitDetail(kit, M.kitRes[kit.id], M) : `<p class="muted">Pick a kit to see its contents, or add one.</p>${reviewBtn}`}</div>
+  </div>${S.allKits ? `<div class="review-bg"><div class="review-sheet stack" role="dialog" aria-modal="true" aria-labelledby="review-h">
+    <div class="row review-hd"><h2 id="review-h">Review</h2><button class="btn ghost sm" id="review-x" data-act="allBack">Close</button></div>${viewShop(M)}</div></div>` : ""}`;
 }
 /* An item's fields, as [class, label, html]: its List row's cells and its opened tile's fields, so the two never drift.
    Each writes through the data-change="item" handler. The Essential html is empty outside the five checklist categories. */
@@ -1986,7 +1995,7 @@ function kitDetail(kit, ready, M = model()) {
       ? `<div class="row"><span class="small">Delete this kit, its ${pl(items.length, "item")} and ${pl(photos.length, "photo")}?</span><button class="btn danger sm" data-act="delKit" data-id="${esc(kit.id)}">Delete</button><button class="btn ghost sm" data-act="cancelConfirm">Cancel</button></div>`
       : `<button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button>`) : ""}
   </div><div class="seg kit-sw" role="group" aria-label="${esc(kit.name)}">${side("packed", `Packed · ${items.length}`)}${side("get", `To get · ${getN}`)}</div>${get
-    ? `<div class="panel stack">${shopTools(M, P, kit)}${shopSection(M, P, kit) || `<p class="small muted">Nothing to get for this kit.</p>`}</div><div><button class="btn ghost sm" id="kit-all" data-act="allKits">All kits</button></div>` : `
+    ? `<div class="panel stack">${shopTools(M, P, kit)}${shopSection(M, P, kit) || `<p class="small muted">Nothing to get for this kit.</p>`}</div>${reviewBtn}` : `
   ${containerCard(kit, ready.h)}
   ${kitReadyPanel(kit, ready, M)}
   ${contentsPanel(kit, items, list, ready, M)}
@@ -2221,8 +2230,8 @@ function shopRow(e, i, over) {
     ${S.canWrite ? `<button class="x" data-act="shopDel" data-id="${esc(e.id)}" aria-label="Remove ${esc(i.line)} from the list">×</button>` : ""}
   </li>`;
 }
-/* The tools for a plan's lines: their sum, the product note, Order, Spend up to and Share list. With a kit (#118's To get),
-   Share list shares only that kit's open lines. */
+/* The tools for a plan's lines: their sum, the product note, Share list and, in Review, Order and Spend up to. With a kit
+   (#118's To get), Share list shares only that kit's open lines. */
 function shopTools(M, P, kit) {
   const { left, I, sort, budget, pick, spent } = P;
   if (!left.length) return "";
@@ -2231,43 +2240,48 @@ function shopTools(M, P, kit) {
   return `<div class="row" style="justify-content:space-between"><b>${left.length} to buy</b><button class="btn ghost sm" data-act="shopShare"${kit ? ` data-kit="${esc(kit.id)}"` : ""}>Share list</button></div>
     <p class="shop-sum">About <b>$${total.toLocaleString()}</b>${rx ? ` plus ${rx} prescription item${rx === 1 ? "" : "s"}` : ""}.${after != null && after > M.overall ? ` Buying it all takes readiness from ${M.overall} to <b>${after}</b>.` : ""}</p>
     ${left.some(e => pickOf(I(e))) ? `<p class="small muted">Each product is one we've checked. Links carry no tracking tag.</p>` : ""}
-    <div class="shop-tools">
+    ${kit ? "" : `<div class="shop-tools">
       <label class="small">Order <select id="shop-sort" data-change="shopSort">
         <option value="points" ${sort === "points" ? "selected" : ""}>Most points first</option>
         <option value="value" ${sort === "value" ? "selected" : ""}>Most points per dollar</option>
         <option value="added" ${sort === "added" ? "selected" : ""}>Order added</option></select></label>
       <label class="small">Spend up to $ <input type="number" id="shop-budget" data-change="budget" min="0" step="5" inputmode="numeric" value="${budget || ""}" placeholder="Any" aria-label="Budget in dollars"></label>
       ${pick ? `<span class="small">${pick.size ? `<b>$${spent}</b> buys ${pl(pick.size, "item")}${pickAfter != null && pickAfter > M.overall ? `: readiness ${M.overall} → <b>${pickAfter}</b>` : ""}.` : "Nothing on the list fits that budget yet."} <button class="btn ghost sm" data-act="budgetClear">Clear</button></span>` : ""}
-    </div>`;
+    </div>`}`;
 }
+// Open lines in the plan's order, those the budget leaves out dimmed under "Over your budget"
+function shopList(P, lines) {
+  const cut = P.pick?.size ? lines.findIndex(e => !P.pick.has(e.id)) : -1;
+  return lines.length ? `<ul class="shop">${lines.map((e, k) => (k === cut ? `<li class="shop-cut small muted">Over your budget</li>` : "") + shopRow(e, P.I(e), P.pick && !P.pick.has(e.id))).join("")}</ul>` : "";
+}
+// A line's price, for the kit it goes in, as shopInfo prices it
+const linePrice = (e, M) => buyGuide(e.cat, e.qty, e.unit, S.kits.find(k => k.id === shopKit(e))?.type || e.kits[0] || "home", M.h, e.essential).price;
+// Free tonight: the gaps not on the list whose line costs nothing
+const freeGaps = M => splitListed(M.gaps).off.filter(g => linePrice(shopFromGap(g, M.h), M) === 0);
 /* A kit's share of the list, which a kit's To get reuses (#118): its open lines in the plan's order, dimmed by its budget,
    then its gaps not on the list yet, most points first, each planned into the kit. With no kit: the lines and gaps no kit
    takes, planned with none. "" when there's nothing. */
 function shopSection(M, P, kit) {
   const id = kit ? kit.id : "", dk = kit ? ` data-kit="${esc(id)}"` : "", off = new Set(splitListed(M.gaps).off);
-  const lines = P.order.filter(e => kit ? shopKit(e) === id : !shopKit(e)), cut = P.pick?.size ? lines.findIndex(e => !P.pick.has(e.id)) : -1;
+  const lines = P.order.filter(e => kit ? shopKit(e) === id : !shopKit(e));
   const gaps = (kit ? kitGaps(M, id) : M.gaps.filter(g => !shopKit(shopFromGap(g, M.h)))).filter(g => off.has(g)).map(g => ({ g, gain: gapGain(M, g) })).sort((a, b) => b.gain - a.gain);
-  // A gap's price is its line's, priced for the kit the line goes in, as shopInfo prices it
-  const price = g => { const e = shopFromGap(g, M.h, id); return money(buyGuide(e.cat, e.qty, e.unit, S.kits.find(k => k.id === shopKit(e))?.type || e.kits[0] || "home", M.h, e.essential).price); };
+  const price = g => money(linePrice(shopFromGap(g, M.h, id), M));
   const gapRow = ({ g, gain }) => { const n = gapName(g), p = price(g); return `<li class="shop-gap">${icon(g.cat)}<span>${esc(n.charAt(0).toUpperCase() + n.slice(1))}</span><div class="shop-meta">${gain ? `<span class="gain mono" title="Readiness points this adds">+${gain}</span>` : ""}${p ? `<span class="small muted">${p}</span>` : ""}</div>${S.canWrite ? `<button class="btn ghost sm" data-act="shopAdd" data-cat="${esc(g.cat)}"${g.essential ? ` data-essential="${esc(g.essential)}"` : ""}${dk} aria-label="Plan ${esc(n)}">Plan</button>` : ""}</li>`; };
-  return (lines.length ? `<ul class="shop">${lines.map((e, k) => (k === cut ? `<li class="shop-cut small muted">Over your budget</li>` : "") + shopRow(e, P.I(e), P.pick && !P.pick.has(e.id))).join("")}</ul>` : "")
+  return shopList(P, lines)
     + (gaps.length ? `<div class="stack"><p class="eyebrow">Not on your list yet · ${gaps.length}</p><ul class="shop">${gaps.map(gapRow).join("")}</ul>${S.canWrite && kit ? `<div><button class="btn sm" data-act="shopAddTop"${dk}>Plan the top ${Math.min(5, gaps.length)}</button></div>` : ""}</div>` : "");
 }
-/* All kits: every open line under the kit it goes in, each kit's gaps to plan below its lines, then the lines and gaps no
-   kit takes. The tools at the top cover every open line. */
+/* Review (#121): the tools, every open line in one list, Free tonight, the gaps no kit takes, then Got it. */
 function viewShop(M) {
-  const items = shopItems(), left = items.filter(x => !x.done), got = items.filter(x => x.done), P = shopPlan(M, left), seen = new Set();
-  // The Kits tab's order, oldest first: a kit with no id has no lines of its own, and a repeated id is one kit
-  const kits = [...S.kits].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).filter(k => k.id && !seen.has(k.id) && seen.add(k.id));
-  const group = (name, body) => `<section class="panel stack shop-g"><h3>${name}</h3>${body}</section>`, loose = shopSection(M, P, null);
+  const items = shopItems(), left = items.filter(x => !x.done), got = items.filter(x => x.done), P = shopPlan(M, left);
+  const loose = shopSection(M, { ...P, order: [] }, null), free = freeGaps(M), base = scoreIfBought(left), to = free.length && scoreIfBought([...left, ...free.map(g => shopFromGap(g, M.h))]);
   return `
   <div class="stack">
     <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
     ${how("shop", "Each ticked item goes into the kit shown beside it, so your readiness rises as you shop. Untick to take it back out. Prices are rough US store prices, to help you plan.")}
   </div>
-  ${left.length ? `<div class="panel stack">${shopTools(M, P)}</div>` : M.gaps.length ? "" : `<p class="small muted">Your kits cover every emergency you've marked as relevant.</p>`}
-  ${kits.map(k => group(esc(k.name).trim() || "Unnamed kit", shopSection(M, P, k) || `<p class="small muted">Nothing to get for this kit.</p>`)).join("")}
-  ${loose ? group("No kit yet", loose) : ""}
+  ${left.length ? `<div class="panel stack">${shopTools(M, P)}</div>${shopList(P, P.order)}<p class="small muted">Points overlap, so the rows don't add up to the total.</p>` : M.gaps.length ? "" : `<p class="small muted">Your kits cover every emergency you've marked as relevant.</p>`}
+  ${free.length ? `<div class="panel row review-free"><div class="stack" style="gap:2px;flex:1"><b>Free tonight, from home</b><span class="small muted">${esc(orList(free.map(gapName), "and"))}</span></div>${to > base ? `<span class="gain mono">+${to - base} → ${to}</span>` : ""}${S.canWrite ? `<button class="btn sm" data-act="shopAddFree">Add all ${free.length}</button>` : ""}</div>` : ""}
+  ${loose ? `<section class="panel stack"><h3>No kit yet</h3>${loose}</section>` : ""}
   ${S.canWrite ? `<form class="shop-add" data-submit="shopNew"><input type="text" id="shop-new" placeholder="Add something else…" maxlength="80" aria-label="Add an item to the list"><button class="btn ghost sm" type="submit">Add</button></form>` : ""}
   ${got.length ? `<div class="panel stack">
     <div class="row" style="justify-content:space-between"><b>Got it (${got.length})</b>${S.canWrite ? `<button class="btn ghost sm" data-act="shopClear">Clear these</button>` : ""}</div>
@@ -2391,10 +2405,10 @@ function render() {
   hold.owed = 0; drew.n++;
   const a = document.activeElement, field = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
   const keep = a?.id ? { id: a.id, field, value: a.value, s: a.selectionStart, e: a.selectionEnd } : null;
+  const sheetY = [".review-bg", ".review-sheet"].map(s => $(s)?.scrollTop || 0); // Review keeps its scroll through a redraw
   const M = model();
   if (S.sel.size) { const live = new Set(S.items.filter(i => i.kitId === S.openKit).map(i => i.id)); for (const id of S.sel) if (!live.has(id)) S.sel.delete(id); }
   if (!S.openKit && S.kits.length) S.openKit = [...S.kits].sort((x, y) => (x.createdAt || 0) - (y.createdAt || 0))[0].id;
-  if (S.allKits === true && (S.openKit || S.loaded)) S.allKits = S.openKit; // #shop: All kits from the kit that opens first
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.v === S.view ? "page" : "false"));
   $("#hdr-score").innerHTML = M.overall == null ? "" : `<span class="eyebrow">Readiness</span><b>${M.overall}</b><span class="eyebrow">/ 100</span>`;
   $(".brand-mark").innerHTML = caseMark(M.overall, 28);
@@ -2406,6 +2420,7 @@ function render() {
     if (l) { if (document.head && l.parentNode !== document.head) document.head.appendChild(l); l.href = tabIconHref(tab); }
   }
   $("#banner").innerHTML = viewBanner();
+  $(".top").inert = $("#banner").inert = S.view === "kits" && !!S.allKits; // Review is modal
   // A hidden tab keeps no markup, so no id is on the page twice
   for (const v of VIEWS) { const e = $("#v-" + v); e.hidden = v !== S.view; if (e.hidden) e.innerHTML = ""; }
   const el = $("#v-" + S.view);
@@ -2417,6 +2432,12 @@ function render() {
       n.focus({ preventScroll: true });
       try { if (keep.field && keep.s != null) n.setSelectionRange(keep.s, keep.e); } catch (_) {}
     }
+  }
+  // Review is modal: focus stays in it, on Close when what had focus is gone
+  const dlg = $('[role="dialog"]');
+  if (dlg) {
+    [".review-bg", ".review-sheet"].forEach((s, i) => { if ($(s)) $(s).scrollTop = sheetY[i]; });
+    if (!dlg.contains?.(document.activeElement)) $("#review-x")?.focus({ preventScroll: true });
   }
   celebrate(M);
 }
@@ -2509,7 +2530,7 @@ async function delDoc(col, id) {
   else { if (col === "household") S[id] = null; else S[col] = S[col].filter(x => x.id !== id); render(); }
 }
 const saveShop = items => setDoc("household", "shopping", { items, updatedAt: Date.now() }).then(() => 1, () => 0);
-/* Adds these household gaps to the shopping list, a line each, and says so, with See list to open All kits at the top of the screen. */
+/* Adds these household gaps to the shopping list, a line each, and says so, with See list to open Review. */
 function shopGaps(M, add) {
   const see = { label: "See list", run: () => { S.view = "kits"; try { history.replaceState(null, "", "#kits"); } catch (_) {} ACT.allKits();
     window.scrollTo({ top: $(".kits-grid>:last-child").offsetTop - $(".kits-grid").offsetTop }); } };
@@ -2744,6 +2765,8 @@ function setPath(o, path, val) {
 }
 
 /* ---------- events ---------- */
+let reviewFrom;
+document.addEventListener("keydown", e => { if (e.key === "Escape" && S.allKits && S.view === "kits") ACT.allBack(); });
 const ACT = {
   tab: b => { S.view = b.dataset.v; try { history.replaceState(null, "", "#" + S.view); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   addKit: () => { S.addKit = true; render(); $("#nk-name")?.focus(); },
@@ -2751,8 +2774,12 @@ const ACT = {
   openKit: b => { if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.confirm = null; S.listKit = S.flOpen = S.bagM = S.ctr = S.toGet = S.allKits = null; render(); },
   gotoKit: b => { S.view = "kits"; if (S.openKit !== b.dataset.id) S.sel.clear(); S.openKit = b.dataset.id; S.listKit = S.flOpen = S.bagM = S.ctr = S.toGet = S.allKits = null; try { history.replaceState(null, "", "#kits"); } catch (_) {} render(); window.scrollTo({ top: 0 }); },
   kitSide: b => { S.toGet = b.dataset.v === "get" ? S.openKit : null; render(); },
-  allKits: () => { S.allKits = S.openKit; render(); $("#kit-back")?.focus(); },
-  allBack: () => { S.allKits = null; render(); $("#kit-all")?.focus(); },
+  // Review opens with focus on its Close, and closes back to the button that opened it, else to a Review button
+  allKits: () => { reviewFrom = document.activeElement?.id; S.allKits = true; render(); },
+  allBack: () => {
+    S.allKits = null; render();
+    [reviewFrom && document.getElementById(reviewFrom), $("#kit-all"), $('#tabs [aria-current="page"]')].find(b => b?.offsetParent)?.focus();
+  },
   removeSel: () => removeItems([...S.sel]),
   clearSel: () => { S.sel.clear(); render(); },
   sortItems: b => { S.itemSort = b.dataset.k; render(); },
@@ -2877,6 +2904,13 @@ const ACT = {
     if (!add.length) return;
     saveShop([...shopItems(), ...add]);
     toast(`Added the top ${add.length} to your shopping list`);
+  },
+  // Free tonight's Add all: every free gap not on the list, in one write, each line with no kit
+  shopAddFree: () => {
+    const M = model(), add = freeGaps(M).map(g => shopFromGap(g, M.h));
+    if (!add.length) return;
+    saveShop([...shopItems(), ...add]);
+    toast(`Added ${pl(add.length, "item")} to your shopping list`);
   },
   budgetClear: () => { S.budget = ""; render(); },
   shopDel: b => saveShop(shopItems().filter(x => x.id !== b.dataset.id)),

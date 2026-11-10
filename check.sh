@@ -38,7 +38,9 @@ for f in web/runtime.js tools/build-web.js api/*.mjs; do node --check "$f"; done
 # Raised to 80,000 on 5 Nov 2026 for item pictures on the flat-lay tiles: the cutout (keyOut, cutThumb) and
 # "Add item pictures" took the page to about 79.3 KB. Waiting on the founder's yes in the PR.
 # Raised to 83,000 on 6 Nov 2026 by the founder's choice (#96), for each kit's real container: the container card and its editor, the bag's empty weight and the box outline.
-budget=83000
+# Raised to 85,000 for #115 step 2: Review, the plan bar and ghost tiles; the founder raised it on 10 Nov 2026. The page
+# measured 83,764 bytes with #121's Review sheet (macOS gzip -9), against main's 82,975.
+budget=85000
 size=$(gzip -9c emergency-kit-audit.html | wc -c | tr -d ' ')
 echo "check: page is $size bytes gzipped, budget $budget"
 [ "$size" -le "$budget" ] || { echo "check: the page is over its size budget by $((size - budget)) bytes gzipped. Make it smaller, or raise the budget in check.sh in its own line and say why in the PR."; exit 1; }
