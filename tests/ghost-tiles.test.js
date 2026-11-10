@@ -240,11 +240,65 @@ test("ticking a row on the list toasts with Undo too", async () => {
   const id = app.json("shopItems()[0].id");
   await app.fire("change", { dataset: { change: "shopTick", id }, checked: true });
   await new Promise(r => setImmediate(r)); // the handler starts the tick without waiting for it
-  const t =app.json("TOASTS.map(t => ({ m: t.m, label: t.a?.label }))").at(-1);
+  const t = app.json("TOASTS.map(t => ({ m: t.m, label: t.a?.label }))").at(-1);
   assert.deepEqual(t, { m: "Put in Trunk bag. Readiness 17 → 18", label: "Undo" });
   await app.run("TOASTS.at(-1).a.run()");
   assert.equal(app.json("shopItems()[0].done"), false);
   assert.equal(app.run("model().overall"), 17);
+});
+
+// On the live site a save resolves before the page's copy of the list catches up, and a slow save leaves time for
+// a second tap. HELD keeps each list write unanswered until release(), and land() then applies them in order.
+function slowList(app) {
+  app.run(`globalThis.HELD = []; globalThis.LANDING = [];
+    setDoc = (f => (...a) => a[0] === "household" ? new Promise(r => HELD.push({ a, r })) : f(...a))(setDoc);
+    globalThis.release = () => HELD.splice(0).forEach(h => { LANDING.push(h.a); h.r(); });
+    globalThis.land = () => { for (const a of LANDING.splice(0)) S[a[1]] = a[2]; render(); };`);
+}
+const settle = () => new Promise(r => setImmediate(r));
+
+test("Undo tapped before the list has caught up still takes the item out and opens the line again", async () => {
+  const app = household();
+  tap(app, plan(tile(app, "car", "Whistle")));
+  const id = app.json("shopItems()[0].id");
+  slowList(app);
+  const packing = app.run(`ACT.shopPack({ dataset: { act: "shopPack", id: ${JSON.stringify(id)} } })`);
+  await settle();
+  assert.ok(!app.json("TOASTS.some(t => t.a?.label === 'Undo')"), "no Undo until the list is saved");
+  app.run("release()");
+  await packing;
+  assert.equal(app.json("TOASTS.map(t => t.a?.label)").at(-1), "Undo");
+  assert.equal(app.json("shopItems()[0].done"), false, "the page's list has not caught up yet");
+  const undoing = app.run("TOASTS.at(-1).a.run()");
+  await settle();
+  app.run("release()");
+  await undoing;
+  app.run("land()");
+  assert.equal(app.json(`S.items.filter(i => i.source === "list").length`), 0, "the item is out");
+  const line = app.json("shopItems()[0]");
+  assert.equal(line.done, false, "the line is open again");
+  assert.ok(!("itemId" in line) && !("inKit" in line));
+  assert.equal(app.run("model().overall"), 17);
+});
+
+test("tapping Packed it twice while the first save is slow puts one item in the kit", async () => {
+  const app = household();
+  tap(app, plan(tile(app, "car", "Whistle")));
+  const id = app.json("shopItems()[0].id");
+  slowList(app);
+  const pack = () => app.run(`ACT.shopPack({ dataset: { act: "shopPack", id: ${JSON.stringify(id)} } })`);
+  const first = pack();
+  await settle();
+  const second = pack();
+  await settle();
+  app.run("release()");
+  await Promise.all([first, second]);
+  await settle();
+  app.run("release()");
+  app.run("land()");
+  assert.equal(app.json(`S.items.filter(i => i.source === "list").length`), 1);
+  assert.equal(app.json("shopItems()[0].done"), true);
+  assert.equal(app.run("model().overall"), 18);
 });
 
 test("Take off plan removes the line, and the tile is a Plan button again", () => {

@@ -3051,10 +3051,13 @@ async function wizStep() {
   render(); window.scrollTo({ top: 0 });
   if (S.profile?.location && S.hazards?.location !== S.profile.location && sample) runHazardCheck();
 }
-/* Ticking an item puts it in its kit (so the gap closes), and its toast's Undo unticks it; unticking takes that item back out. */
-async function shopTick(id, on, rowEl) {
-  const items = clone(shopItems()), e = items.find(x => x.id === id); if (!e) return;
+/* Ticking an item puts it in its kit (so the gap closes), and its toast's Undo unticks it; unticking takes that item back out.
+   A second tap mid-tick does nothing, and Undo comes once the list is saved, with the item it takes out. */
+const ticking = new Set();
+async function shopTick(id, on, rowEl, undoItem) {
+  const items = clone(shopItems()), e = items.find(x => x.id === id); if (!e || ticking.has(id)) return;
   const from = rowEl?.getBoundingClientRect?.(); // measured now: saving re-renders the list
+  let undo; ticking.add(id);
   if (on) {
     const kit = S.kits.find(k => k.id === shopKit(e));
     if (kit && CATS[e.cat]) {
@@ -3062,18 +3065,20 @@ async function shopTick(id, on, rowEl) {
       flyPoints(from, shopInfo(e, model()).gain); // the row's points are exactly what the tick adds (tests/shopping.test.js)
       try {
         await setDoc("items", itemId, { ...itemFromShop(e, kit.id), addedAt: Date.now() });
-      } catch (_) { render(); return; }
+      } catch (_) { ticking.delete(id); render(); return; }
       e.itemId = itemId; e.inKit = kit.id;
       const after = model().overall;
-      toast(`Put in ${kit.name}${after > before ? `. Readiness ${before} → ${after}` : ""}`, { label: "Undo", run: () => shopTick(id, false) });
+      undo = [`Put in ${kit.name}${after > before ? `. Readiness ${before} → ${after}` : ""}`, { label: "Undo", run: () => shopTick(id, false, 0, itemId) }];
     }
     e.done = true;
     S.flash = e.id; clearTimeout(S.flashT); S.flashT = setTimeout(() => { S.flash = null; }, 1400);
   } else {
-    if (e.itemId && S.items.some(i => i.id === e.itemId)) await delDoc("items", e.itemId).catch(() => {});
+    const out = undoItem || e.itemId;
+    if (out && (undoItem || S.items.some(i => i.id === out))) await delDoc("items", out).catch(() => {});
     e.done = false; delete e.itemId; delete e.inKit;
   }
-  await saveShop(items);
+  await saveShop(items); ticking.delete(id);
+  undo && toast(...undo);
 }
 // Every open line, or with one of the household's kits only the lines that go in it
 async function shareShop(kit) {
