@@ -387,6 +387,8 @@ tr.addrow td { background: var(--paper); }
 .shop-tip { color: var(--ink-2); max-width: 64ch; margin-top: 2px; }
 .shop-row.over { opacity: .55; }
 .shop-cut { padding: 14px 0 6px; border-bottom: 1px solid var(--rule-2); }
+.trip-hd { font-size: .9rem; margin: 8px 0 -8px; }
+.trip-hd span, .trip-over { color: var(--ink-2); font-weight: 400; }
 .shop-sum { margin: 0; }
 .shop-tools { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
 .shop-tools label { display: flex; gap: 8px; align-items: center; color: var(--ink-2); }
@@ -1153,6 +1155,10 @@ function shopInfo(e, M) {
   // The bold line says what to buy; below it, water and food say how much and everything else its category
   return { ...b, sub: e.unit ? e.text : catLabel(e.cat), gain: e.done || e.kitId === "none" || M.overall == null ? 0 : Math.max(0, scoreIfShopped(M, [e]) - M.overall) };
 }
+/* The one trip that buys an open line (#123): free is from home, no price the pharmacy, a checked product Amazon, else a
+   store run. `i` is its shopInfo, when the caller has it. TRIPS is Review's order. */
+const TRIPS = { home: "From home", store: "One store run", amazon: "Amazon", pharmacy: "Pharmacy" };
+const tripOf = (e, M, i = shopInfo(e, M)) => i.price === 0 ? "home" : i.price === null ? "pharmacy" : PICKS[i.pick]?.url ? "amazon" : "store";
 const shopItems = () => Array.isArray(HOUSEHOLD.shopping?.items) ? HOUSEHOLD.shopping.items : [];
 /* Gaps and list lines match on category plus essential. Each line still to buy covers one gap, so two
    prescriptions lines cover two people's, and an old line with no essential covers none of the five's. */
@@ -2263,7 +2269,7 @@ function shopTools(M, P, kit) {
         <option value="value" ${sort === "value" ? "selected" : ""}>Most points per dollar</option>
         <option value="added" ${sort === "added" ? "selected" : ""}>Order added</option></select></label>
       <label class="small">Spend up to $ <input type="number" id="shop-budget" data-change="budget" min="0" step="5" inputmode="numeric" value="${budget || ""}" placeholder="Any" aria-label="Budget in dollars"></label>
-      ${pick ? `<span class="small">${pick.size ? `<b>$${spent}</b> buys ${pl(pick.size, "item")}${pickAfter != null && pickAfter > M.overall ? `: readiness ${M.overall} → <b>${pickAfter}</b>` : ""}.` : "Nothing on the list fits that budget yet."} <button class="btn ghost sm" data-act="budgetClear">Clear</button></span>` : ""}
+      ${pick ? `<span class="small">${pick.size ? `<b>$${spent}</b> buys ${pl(pick.size, "item")}${pickAfter != null && pickAfter > M.overall ? `: readiness ${M.overall} → <b>${pickAfter}</b>` : ""}.` : "Nothing on the list fits that budget yet."} <button class="btn ghost sm" data-act="budgetClear">Clear</button></span>${pick.size && left.some(e => !pick.has(e.id)) ? `<span class="small muted trip-over">Over your budget: dimmed</span>` : ""}` : ""}
     </div>`}`;
 }
 // Open lines in the plan's order, those the budget leaves out dimmed under "Over your budget"
@@ -2287,7 +2293,7 @@ function shopSection(M, P, kit) {
   return shopList(P, lines)
     + (gaps.length ? `<div class="stack"><p class="eyebrow">Not on your list yet · ${gaps.length}</p><ul class="shop">${gaps.map(gapRow).join("")}</ul>${S.canWrite && kit ? `<div><button class="btn sm" data-act="shopAddTop"${dk}>Plan the top ${Math.min(5, gaps.length)}</button></div>` : ""}</div>` : "");
 }
-/* Review (#121): the tools, every open line in one list, Free tonight, the gaps no kit takes, then Got it. */
+/* Review (#121): the tools, every open line grouped by trip (#123), Free tonight, the gaps no kit takes, then Got it. */
 function viewShop(M) {
   const items = shopItems(), left = items.filter(x => !x.done), got = items.filter(x => x.done), P = shopPlan(M, left);
   const loose = shopSection(M, { ...P, order: [] }, null), free = freeGaps(M), base = scoreIfBought(left), to = free.length && scoreIfBought([...left, ...free.map(g => shopFromGap(g, M.h))]);
@@ -2296,7 +2302,8 @@ function viewShop(M) {
     <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
     ${how("shop", "Each ticked item goes into the kit shown beside it, so your readiness rises as you shop. Untick to take it back out. Prices are rough US store prices, to help you plan.")}
   </div>
-  ${left.length ? `<div class="panel stack">${shopTools(M, P)}</div>${shopList(P, P.order)}<p class="small muted">Points overlap, so the rows don't add up to the total.</p>` : M.gaps.length ? "" : `<p class="small muted">Your kits cover every emergency you've marked as relevant.</p>`}
+  ${left.length ? `<div class="panel stack">${shopTools(M, P)}</div>${Object.keys(TRIPS).map(t => { const l = P.order.filter(e => tripOf(e, M, P.I(e)) === t);
+    return l.length ? `<h3 class="trip-hd">${TRIPS[t]} <span>${l.length}</span></h3><ul class="shop">${l.map(e => shopRow(e, P.I(e), P.pick && !P.pick.has(e.id))).join("")}</ul>` : ""; }).join("")}<p class="small muted">Points overlap, so the rows don't add up to the total.</p>` : M.gaps.length ? "" : `<p class="small muted">Your kits cover every emergency you've marked as relevant.</p>`}
   ${free.length ? `<div class="panel row review-free"><div class="stack" style="gap:2px;flex:1"><b>Free tonight, from home</b><span class="small muted">${esc(orList(free.map(gapName), "and"))}</span></div>${to > base ? `<span class="gain mono">+${to - base} → ${to}</span>` : ""}${S.canWrite ? `<button class="btn sm" data-act="shopAddFree">Add all ${free.length}</button>` : ""}</div>` : ""}
   ${loose ? `<section class="panel stack"><h3>No kit yet</h3>${loose}</section>` : ""}
   ${S.canWrite ? `<form class="shop-add" data-submit="shopNew"><input type="text" id="shop-new" placeholder="Add something else…" maxlength="80" aria-label="Add an item to the list"><button class="btn ghost sm" type="submit">Add</button></form>` : ""}

@@ -27,17 +27,16 @@ const gapsOf = html => [...html.matchAll(/<li class="shop-gap">([\s\S]*?)<\/li>/
   const b = li.match(/<button [^>]*data-act="shopAdd"[^>]*>/)?.[0];
   return { plan: b && dataset(b), key: b && `${dataset(b).cat}|${dataset(b).essential || ""}` };
 });
-// Review's parts, top to bottom: the one list of open lines (ids in order, which are dimmed, and where "Over your budget"
-// falls), the footnote under it, Free tonight, No kit yet's gap rows, and Got it
+// Review's parts, top to bottom: the open lines in their trip groups (#123: ids in order, and which are dimmed), the
+// footnote under them, Free tonight, No kit yet's gap rows, and Got it
 function review(html) {
-  const list = html.match(/<ul class="shop">((?:(?!<\/ul>)[\s\S])*)<\/ul><p class="small muted">Points overlap/)?.[1] ?? null;
+  const list = html.match(/(<h3 class="trip-hd">[\s\S]*?)<p class="small muted">Points overlap/)?.[1] ?? null;
   const loose = html.match(/<section class="panel stack"><h3>No kit yet<\/h3>([\s\S]*?)<\/section>/)?.[1] ?? "";
   const free = html.match(/<div class="panel row review-free">[\s\S]*?(?=<section|<form|<div class="panel stack">|$)/)?.[0] ?? "";
   const got = html.match(/<b>Got it \(\d+\)<\/b>[\s\S]*$/)?.[0] ?? "";
   return {
     lines: list == null ? null : rowsOf(list).map(idOf),
     over: list == null ? [] : rowsOf(list).filter(r => / over"/.test(r.match(/^<li [^>]*>/)[0])).map(idOf),
-    seq: list == null ? [] : [...list.matchAll(/<li class="shop-(row|cut)[^"]*">/g)].map(m => m[1]),
     rows: list == null ? [] : rowsOf(list),
     loose: gapsOf(loose),
     free: free && { text: text(free), gain: text(free).match(/\+(\d+) → (\d+)/)?.slice(1).map(Number) || null, add: free.match(/<button [^>]*data-act="shopAddFree"[^>]*>([^<]*)</)?.[1] || null },
@@ -67,12 +66,13 @@ const SEED = `(() => { const M = model(), to = [...S.kits.map(k => k.id), "none"
     ...(M.gaps[1] ? [{ ...shopFromGap(M.gaps[1], M.h), id: "ticked", done: true, inKit: S.kits[0]?.id }] : []),
   ] }; })()`;
 const CASES = { "no lines": "S.shopping = null", "every gap planned": "S.shopping = null; ACT.shopAddAll()", "lines given kits": SEED };
-// What Review should show, worked out from the core: the open lines in shopPlan's order, the gaps not on the list that no
+// What Review should show, worked out from the core: the open lines in shopPlan's order, grouped by trip (#123), the gaps not on the list that no
 // kit takes, and the free ones (price 0) with the readiness planning them reaches
 const EXPECTED = `(() => { const M = model(), off = splitListed(M.gaps).off, left = shopItems().filter(e => !e.done);
   const free = off.filter(g => shopInfo(shopFromGap(g, M.h), M).price === 0), base = scoreIfBought(left);
   const to = free.length ? scoreIfBought([...left, ...free.map(g => shopFromGap(g, M.h))]) : null;
-  return { order: shopPlan(M, left).order.map(e => e.id), left: left.map(e => e.id), done: shopItems().filter(e => e.done).map(e => e.id),
+  const order = shopPlan(M, left).order;
+  return { order: Object.keys(TRIPS).flatMap(t => order.filter(e => tripOf(e, M) === t)).map(e => e.id), left: left.map(e => e.id), done: shopItems().filter(e => e.done).map(e => e.id),
     loose: off.filter(g => !shopKit(shopFromGap(g, M.h))).map(gapKey).sort(), free: free.map(gapKey), base, to }; })()`;
 
 for (const name of households) {
@@ -83,7 +83,7 @@ for (const name of households) {
       const html = view(app), r = review(html), want = app.json(EXPECTED), at = `${name}, ${label}, ${sort}`;
       if (!want.left.length) assert.equal(r.lines, null, `${at}: no list and no footnote with nothing to buy`);
       else {
-        assert.deepEqual(r.lines, want.order, `${at}: every open line once, in shopPlan's order`);
+        assert.deepEqual(r.lines, want.order, `${at}: every open line once, by trip, in shopPlan's order`);
         assert.deepEqual(r.over, [], `${at}: nothing dimmed without a budget`);
         // Each row names the kit it goes in, through its Goes in select, where there's a kit to choose
         for (const row of r.rows) {
@@ -177,7 +177,7 @@ test("a Plan under No kit yet saves a line with no kit, and it joins the list", 
   assert.deepEqual(after.loose.map(g => g.key), ["poison|"]);
 });
 
-test("with a budget, the rows it leaves out are dimmed, last, under one 'Over your budget'", () => {
+test("with a budget, the rows it leaves out are dimmed, last in their trip, and the tools say 'Over your budget' once", () => {
   const app = load({ fixture: "tests/household" });
   app.run(`ACT.shopAddAll(); S.budget = 60`);
   const html = view(app), r = review(html);
@@ -189,8 +189,11 @@ test("with a budget, the rows it leaves out are dimmed, last, under one 'Over yo
     return { out: left.filter(e => !pick.has(e.id)).map(e => e.id).sort(), n: pick.size, spent }; })()`);
   assert.ok(out.n > 0 && out.out.length > 0, "the budget buys some lines and leaves some out");
   assert.deepEqual(r.over.slice().sort(), out.out, "the dimmed rows are the ones the pick leaves out");
-  assert.match(r.seq.join(" "), /^(row )+cut( row)+$/, "picked rows, then one cut, then the dimmed ones");
-  assert.deepEqual(r.lines.slice(r.lines.length - r.over.length), r.over, "dimmed rows last");
+  assert.equal((html.match(/Over your budget/g) || []).length, 1, "one 'Over your budget'");
+  for (const [, g] of html.matchAll(/<h3 class="trip-hd">[\s\S]*?<ul class="shop">((?:(?!<\/ul>)[\s\S])*)<\/ul>/g)) {
+    const dim = rowsOf(g).map(row => / over"/.test(row.match(/^<li [^>]*>/)[0]));
+    assert.deepEqual(dim, dim.slice().sort(), "dimmed rows last in each trip");
+  }
   assert.match(text(html), new RegExp(`\\$${out.spent} buys ${out.n} items?`));
   assert.match(html, /id="shop-sort"/);
   assert.match(html, /id="shop-budget"/);
