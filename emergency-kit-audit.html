@@ -267,7 +267,16 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 
 /* Kits */
 .kits-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 24px; align-items: start; }
-@media (max-width: 860px) { .kits-grid { grid-template-columns: 1fr; } }
+.kits-grid:has(> .plan-bar) { grid-template-columns: 260px minmax(0, 1fr) 220px; }
+/* The plan bar: a sticky card in the third column; on one column, fixed above the bottom nav (its border, padding, icon and label) */
+.plan-bar { position: sticky; top: 124px; display: grid; gap: 12px; background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); }
+.plan-bar .stack { gap: 2px; }
+@media (max-width: 860px) {
+  .kits-grid, .kits-grid:has(> .plan-bar) { grid-template-columns: 1fr; }
+  .kits-grid:has(> .plan-bar) { padding-bottom: 80px; }
+  .plan-bar { position: fixed; z-index: 5; inset: auto 0 0; display: flex; justify-content: space-between; align-items: center; border-width: 1px 0 0; border-radius: 0; padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+}
+@media (max-width: 640px) { .plan-bar { bottom: calc(46px + 1.05rem + env(safe-area-inset-bottom, 0px)); padding-bottom: 10px; } }
 .tags { display: grid; gap: 8px; }
 .add-kit, .ctr-add { justify-content: center; border-style: dashed; }
 .tag { position: relative; text-align: left; background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 14px; padding: 10px 60px 10px 10px; cursor: pointer; display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 0 12px; width: 100%; line-height: 1.3; box-shadow: var(--shadow); transition: border-color .15s, box-shadow .15s; }
@@ -1919,9 +1928,17 @@ function viewKits(M) {
         <div class="row"><button class="btn" type="submit">Add kit</button>${S.kits.length ? `<button class="btn ghost" type="button" data-act="cancelKit">Cancel</button>` : ""}</div>
       </form>`}
     </div>
-    <div class="stack">${kit ? kitDetail(kit, M.kitRes[kit.id], M) : `<p class="muted">Pick a kit to see its contents, or add one.</p>${reviewBtn}`}</div>
+    <div class="stack">${kit ? kitDetail(kit, M.kitRes[kit.id], M) : `<p class="muted">Pick a kit to see its contents, or add one.</p>${reviewBtn}`}</div>${planBar(M)}
   </div>${S.allKits ? `<div class="review-bg"><div class="review-sheet stack" role="dialog" aria-modal="true" aria-labelledby="review-h">
     <div class="row review-hd"><h2 id="review-h">Review</h2><button class="btn ghost sm" id="review-x" data-act="allBack">Close</button></div>${viewShop(M)}</div></div>` : ""}`;
+}
+/* The plan bar (#122): the open lines, about what they cost and readiness once they're packed, as Review sums them
+   (prescriptions unpriced). Priced without shopInfo's points, which the bar doesn't show. Writes nothing. */
+function planBar(M) {
+  const left = shopItems().filter(e => !e.done);
+  if (!left.length) return "";
+  const price = e => CATS[e.cat] ? buyGuide(e.cat, e.qty, e.unit, HOUSEHOLD.kits.find(k => k.id === shopKit(e))?.type || (Array.isArray(e.kits) && e.kits[0]) || "home", M.h, e.essential).price || 0 : 0;
+  return `<aside class="plan-bar" aria-label="Your plan"><div class="stack"><b>${left.length} planned · about $${left.reduce((a, e) => a + price(e), 0).toLocaleString()}</b>${M.overall == null ? "" : `<span class="small">Readiness ${M.overall} → <b>${scoreIfBought(left)}</b> once packed</span>`}</div><button class="btn sm" id="plan-review" data-act="allKits">${icon("cart")}Review<span class="vh"> the plan</span></button></aside>`;
 }
 /* An item's fields, as [class, label, html]: its List row's cells and its opened tile's fields, so the two never drift.
    Each writes through the data-change="item" handler. The Essential html is empty outside the five checklist categories. */
