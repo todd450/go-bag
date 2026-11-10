@@ -385,7 +385,14 @@ tr.addrow td { background: var(--paper); }
 #shop-budget { width: 88px; }
 .shop-add { display: flex; gap: 8px; }
 .shop-add input { flex: 1; }
+/* The Shopping tab's heading sits as close to its intro as a stack's (#117) */
+.shop-h { margin-bottom: -14px; }
+.shop-gap { display: grid; grid-template-columns: auto minmax(0, 1fr) 84px auto; gap: 2px 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.shop-gap > .ic { color: var(--ink-2); }
 @media (max-width: 560px) {
+  .shop-gap { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .shop-gap .shop-meta { grid-area: 2 / 2; padding: 0; }
+  .shop-gap .btn { grid-area: 1 / 3 / 3; }
   .shop-row { grid-template-columns: minmax(0, 1fr) 28px; }
   .shop-meta { grid-column: 1; grid-row: 2; display: flex; gap: 10px; justify-content: flex-start; padding-left: 62px; }
   .shop-kit { grid-column: 1; grid-row: 3; padding-left: 62px; }
@@ -2155,63 +2162,51 @@ function viewHousehold() {
   </div>`;
 }
 
-function viewShop(M) {
-  const items = shopItems();
-  const left = items.filter(x => !x.done), got = items.filter(x => x.done);
-  const unlisted = splitListed(M.gaps, left).off.length;
-  const info = new Map(items.map(e => [e.id, shopInfo(e, M)]));
-  const I = e => info.get(e.id);
-  const kitName = id => S.kits.find(k => k.id === id)?.name;
-  const kitOpts = e => { const cur = shopKit(e); return `<option value="none" ${cur ? "" : "selected"}>Not in a kit yet</option>` + S.kits.map(k => `<option value="${esc(k.id)}" ${k.id === cur ? "selected" : ""}>Goes in ${esc(k.name)}</option>`).join(""); };
+/* Open lines in the chosen order and, with a budget, the ones it buys, most points per dollar first. The tools and
+   each kit's section read one plan, so a kit's rows are dimmed by the budget of every line the tools cover. */
+function shopPlan(M, left) {
+  const info = new Map(left.map(e => [e.id, shopInfo(e, M)])), I = e => info.get(e.id);
   /* Points per dollar. Things already at home rank first; prescriptions can't be budgeted, so they rank last. */
   const ratio = e => { const i = I(e); return i.price == null ? -1 : i.price === 0 ? (i.gain ? 1e6 + i.gain : 0) : i.gain / i.price; };
-  const sort = S.shopSort || "points";
-  const order = [...left];
+  const sort = S.shopSort || "points", order = [...left], budget = Math.max(0, num(S.budget));
   if (sort === "points") order.sort((a, b) => I(b).gain - I(a).gain);
   else if (sort === "value") order.sort((a, b) => ratio(b) - ratio(a) || I(b).gain - I(a).gain);
-  const budget = Math.max(0, num(S.budget));
   let pick = null, spent = 0;
   if (budget) {
     pick = new Set();
     for (const e of [...left].sort((a, b) => ratio(b) - ratio(a))) { const pr = I(e).price; if (pr != null && I(e).gain > 0 && spent + pr <= budget) { pick.add(e.id); spent += pr; } }
     order.sort((a, b) => pick.has(b.id) - pick.has(a.id));
   }
-  const after = M.overall == null ? null : scoreIfBought(left);
-  const pickAfter = pick && M.overall != null ? scoreIfBought(left.filter(e => pick.has(e.id))) : null;
-  const total = left.reduce((a, e) => a + (I(e).price || 0), 0), rx = left.filter(e => I(e).price === null).length;
-  /* The checked product, its quantity and its page, or why there's nothing to buy online. Links come only from PICKS. */
-  const product = i => PICKS[i.pick]?.url ? PICKS[i.pick] : null;
-  const buyLine = (e, i) => { const p = product(i), q = PICKS[i.pick]?.q;
+  return { left, I, order, sort, budget, pick, spent };
+}
+/* The checked product, its quantity and its page, or why there's nothing to buy online. Links come only from PICKS. */
+const pickOf = i => PICKS[i.pick]?.url ? PICKS[i.pick] : null;
+/* One line: tick, line, tip, product, points, price, the kit it goes in and ×. `over`: the budget leaves it out. */
+function shopRow(e, i, over) {
+  const cur = shopKit(e), inKit = S.kits.find(k => k.id === e.inKit)?.name;
+  const buyLine = () => { const p = pickOf(i), q = PICKS[i.pick]?.q;
     if (p) return `<span class="small"><b>${esc(p.name)}</b> · Qty ${i.qty} · ${amazonA({ amazonUrl: p.url })}${p.heavy ? ` <span style="color:var(--warn)">Heavy to ship: often cheaper to pick up locally</span>` : ""}</span>`;
     const why = q ? `Mixed groceries: ${amazonA({ shopQuery: q })}` : i.price === null ? "Prescription: ask the pharmacy" : i.price === 0 ? "From home: nothing to buy"
       : e.cat === "trauma" ? "Buy from a medical supplier: counterfeits are sold on marketplaces" : "";
     return why ? `<span class="small muted">${why}</span>` : ""; };
-  const row = e => { const i = I(e); return `<li class="shop-row ${e.done ? "done" : ""} ${S.flash === e.id ? "flash" : ""} ${pick && !pick.has(e.id) && !e.done ? "over" : ""}">
-    <label class="shop-chk"><input type="checkbox" id="shop-${esc(e.id)}" data-change="shopTick" data-id="${esc(e.id)}" ${e.done ? "checked" : ""} ${D()}>${icon(e.cat || "other")}<span><b>${esc(i.line)}</b>${!e.done && i.sub ? `<span class="small muted">${esc(i.sub)}</span>` : ""}${!e.done && i.tip ? `<span class="small shop-tip">${esc(i.tip)}</span>` : ""}${e.done ? "" : buyLine(e, i)}</span></label>
+  return `<li class="shop-row ${e.done ? "done" : ""} ${S.flash === e.id ? "flash" : ""} ${over && !e.done ? "over" : ""}">
+    <label class="shop-chk"><input type="checkbox" id="shop-${esc(e.id)}" data-change="shopTick" data-id="${esc(e.id)}" ${e.done ? "checked" : ""} ${D()}>${icon(e.cat || "other")}<span><b>${esc(i.line)}</b>${!e.done && i.sub ? `<span class="small muted">${esc(i.sub)}</span>` : ""}${!e.done && i.tip ? `<span class="small shop-tip">${esc(i.tip)}</span>` : ""}${e.done ? "" : buyLine()}</span></label>
     <div class="shop-meta">${e.done ? "" : `${i.gain ? `<span class="gain mono" title="Readiness points this adds">+${i.gain}</span>` : ""}${money(i.price) ? `<span class="small muted">${money(i.price)}</span>` : ""}`}</div>
-    <div class="shop-kit">${e.done ? (kitName(e.inKit) ? `<span class="small muted">In ${esc(kitName(e.inKit))}</span>` : "")
-      : CATS[e.cat] && S.kits.length ? `<select id="shop-${esc(e.id)}-kit" data-change="shopKit" data-id="${esc(e.id)}" aria-label="Kit for ${esc(i.line)}" ${D()}>${kitOpts(e)}</select>` : ""}</div>
+    <div class="shop-kit">${e.done ? (inKit ? `<span class="small muted">In ${esc(inKit)}</span>` : "")
+      : CATS[e.cat] && S.kits.length ? `<select id="shop-${esc(e.id)}-kit" data-change="shopKit" data-id="${esc(e.id)}" aria-label="Kit for ${esc(i.line)}" ${D()}><option value="none" ${cur ? "" : "selected"}>Not in a kit yet</option>${S.kits.map(k => `<option value="${esc(k.id)}" ${k.id === cur ? "selected" : ""}>Goes in ${esc(k.name)}</option>`).join("")}</select>` : ""}</div>
     ${S.canWrite ? `<button class="x" data-act="shopDel" data-id="${esc(e.id)}" aria-label="Remove ${esc(i.line)} from the list">×</button>` : ""}
-  </li>`; };
-  const cut = pick ? order.findIndex(e => !pick.has(e.id)) : -1;
-  const rows = order.map((e, k) => (k === cut && k > 0 ? `<li class="shop-cut small muted">Over your budget</li>` : "") + row(e)).join("");
-  return `
-  <div class="stack">
-    <h2>Shopping list</h2>
-    <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
-    ${how("shop", "Each ticked item goes into the kit shown beside it, so your readiness rises as you shop. Untick to take it back out. Prices are rough US store prices, to help you plan.")}
-  </div>
-  <div class="panel stack">
-    <div class="row" style="justify-content:space-between">
-      <b>${left.length ? `${left.length} to buy` : "Nothing to buy yet"}</b>
-      <div class="row">
-        ${S.canWrite && unlisted && left.length ? `<button class="btn ghost sm" data-act="shopAddAll">Add ${unlisted} more gap${unlisted === 1 ? "" : "s"}</button>` : ""}
-        ${left.length ? `<button class="btn ghost sm" data-act="shopShare">Share list</button>` : ""}
-      </div>
-    </div>
-    ${left.length ? `
+  </li>`;
+}
+/* The tools for a plan's lines: their sum, the product note, Order, Spend up to and Share list. With a kit (#118's To get),
+   Share list shares only that kit's open lines. */
+function shopTools(M, P, kit) {
+  const { left, I, sort, budget, pick, spent } = P;
+  if (!left.length) return "";
+  const after = M.overall == null ? null : scoreIfBought(left), pickAfter = pick && M.overall != null ? scoreIfBought(left.filter(e => pick.has(e.id))) : null;
+  const total = left.reduce((a, e) => a + (I(e).price || 0), 0), rx = left.filter(e => I(e).price === null).length;
+  return `<div class="row" style="justify-content:space-between"><b>${left.length} to buy</b><button class="btn ghost sm" data-act="shopShare"${kit ? ` data-kit="${esc(kit.id)}"` : ""}>Share list</button></div>
     <p class="shop-sum">About <b>$${total.toLocaleString()}</b>${rx ? ` plus ${rx} prescription item${rx === 1 ? "" : "s"}` : ""}.${after != null && after > M.overall ? ` Buying it all takes readiness from ${M.overall} to <b>${after}</b>.` : ""}</p>
-    ${left.some(e => product(I(e))) ? `<p class="small muted">Each product is one we've checked. Links carry no tracking tag.</p>` : ""}
+    ${left.some(e => pickOf(I(e))) ? `<p class="small muted">Each product is one we've checked. Links carry no tracking tag.</p>` : ""}
     <div class="shop-tools">
       <label class="small">Order <select id="shop-sort" data-change="shopSort">
         <option value="points" ${sort === "points" ? "selected" : ""}>Most points first</option>
@@ -2219,18 +2214,44 @@ function viewShop(M) {
         <option value="added" ${sort === "added" ? "selected" : ""}>Order added</option></select></label>
       <label class="small">Spend up to $ <input type="number" id="shop-budget" data-change="budget" min="0" step="5" inputmode="numeric" value="${budget || ""}" placeholder="Any" aria-label="Budget in dollars"></label>
       ${pick ? `<span class="small">${pick.size ? `<b>$${spent}</b> buys ${pl(pick.size, "item")}${pickAfter != null && pickAfter > M.overall ? `: readiness ${M.overall} → <b>${pickAfter}</b>` : ""}.` : "Nothing on the list fits that budget yet."} <button class="btn ghost sm" data-act="budgetClear">Clear</button></span>` : ""}
-    </div>
-    <ul class="shop">${rows}</ul>`
-      : M.gaps.length ? `<p class="small muted">Start with the gaps worth the most points. You can add the rest later.</p>
-      ${S.canWrite ? `<div class="row"><button class="btn sm" data-act="shopAddTop">Add the top ${Math.min(5, M.gaps.length)}</button>${M.gaps.length > 5 ? `<button class="btn ghost sm" data-act="shopAddAll">Add all ${M.gaps.length}</button>` : ""}</div>` : ""}`
-      : `<p class="small muted">Your kits cover every emergency you've marked as relevant.</p>`}
-    ${S.canWrite ? `<form class="shop-add" data-submit="shopNew"><input type="text" id="shop-new" placeholder="Add something else…" maxlength="80" aria-label="Add an item to the list"><button class="btn ghost sm" type="submit">Add</button></form>` : ""}
+    </div>`;
+}
+/* A kit's share of the list, which a kit's To get reuses (#118): its open lines in the plan's order, dimmed by its budget,
+   then its gaps not on the list yet, most points first, each planned into the kit. With no kit: the lines and gaps no kit
+   takes, planned with none. "" when there's nothing. */
+function shopSection(M, P, kit) {
+  const id = kit ? kit.id : "", dk = kit ? ` data-kit="${esc(id)}"` : "", off = new Set(splitListed(M.gaps).off);
+  const lines = P.order.filter(e => kit ? shopKit(e) === id : !shopKit(e)), cut = P.pick?.size ? lines.findIndex(e => !P.pick.has(e.id)) : -1;
+  const gaps = (kit ? kitGaps(M, id) : M.gaps.filter(g => !shopKit(shopFromGap(g, M.h)))).filter(g => off.has(g)).map(g => ({ g, gain: gapGain(M, g) })).sort((a, b) => b.gain - a.gain);
+  // A gap's price is its line's, priced for the kit the line goes in, as shopInfo prices it
+  const price = g => { const e = shopFromGap(g, M.h, id); return money(buyGuide(e.cat, e.qty, e.unit, S.kits.find(k => k.id === shopKit(e))?.type || e.kits[0] || "home", M.h, e.essential).price); };
+  const gapRow = ({ g, gain }) => { const n = gapName(g), p = price(g); return `<li class="shop-gap">${icon(g.cat)}<span>${esc(n.charAt(0).toUpperCase() + n.slice(1))}</span><div class="shop-meta">${gain ? `<span class="gain mono" title="Readiness points this adds">+${gain}</span>` : ""}${p ? `<span class="small muted">${p}</span>` : ""}</div>${S.canWrite ? `<button class="btn ghost sm" data-act="shopAdd" data-cat="${esc(g.cat)}"${g.essential ? ` data-essential="${esc(g.essential)}"` : ""}${dk} aria-label="Plan ${esc(n)}">Plan</button>` : ""}</li>`; };
+  return (lines.length ? `<ul class="shop">${lines.map((e, k) => (k === cut ? `<li class="shop-cut small muted">Over your budget</li>` : "") + shopRow(e, P.I(e), P.pick && !P.pick.has(e.id))).join("")}</ul>` : "")
+    + (gaps.length ? `<div class="stack"><p class="eyebrow">Not on your list yet · ${gaps.length}</p><ul class="shop">${gaps.map(gapRow).join("")}</ul>${S.canWrite && kit ? `<div><button class="btn sm" data-act="shopAddTop"${dk}>Plan the top ${Math.min(5, gaps.length)}</button></div>` : ""}</div>` : "");
+}
+/* All kits: every open line under the kit it goes in, each kit's gaps to plan below its lines, then the lines and gaps no
+   kit takes. The tools at the top cover every open line. */
+function viewShop(M) {
+  const items = shopItems(), left = items.filter(x => !x.done), got = items.filter(x => x.done), P = shopPlan(M, left), seen = new Set();
+  // The Kits tab's order, oldest first: a kit with no id has no lines of its own, and a repeated id is one kit
+  const kits = [...S.kits].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).filter(k => k.id && !seen.has(k.id) && seen.add(k.id));
+  const group = (name, body) => `<section class="panel stack shop-g"><h3>${name}</h3>${body}</section>`, loose = shopSection(M, P, null);
+  return `
+  <div class="stack">
+    <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
+    ${how("shop", "Each ticked item goes into the kit shown beside it, so your readiness rises as you shop. Untick to take it back out. Prices are rough US store prices, to help you plan.")}
   </div>
+  ${left.length ? `<div class="panel stack">${shopTools(M, P)}</div>` : M.gaps.length ? "" : `<p class="small muted">Your kits cover every emergency you've marked as relevant.</p>`}
+  ${kits.map(k => group(esc(k.name).trim() || "Unnamed kit", shopSection(M, P, k) || `<p class="small muted">Nothing to get for this kit.</p>`)).join("")}
+  ${loose ? group("No kit yet", loose) : ""}
+  ${S.canWrite ? `<form class="shop-add" data-submit="shopNew"><input type="text" id="shop-new" placeholder="Add something else…" maxlength="80" aria-label="Add an item to the list"><button class="btn ghost sm" type="submit">Add</button></form>` : ""}
   ${got.length ? `<div class="panel stack">
     <div class="row" style="justify-content:space-between"><b>Got it (${got.length})</b>${S.canWrite ? `<button class="btn ghost sm" data-act="shopClear">Clear these</button>` : ""}</div>
-    <ul class="shop">${got.map(row).join("")}</ul>
+    <ul class="shop">${got.map(e => shopRow(e, shopInfo(e, M))).join("")}</ul>
   </div>` : ""}`;
 }
+// The Shopping tab: All kits under the tab's heading, until #119 folds the tab into Kits
+const viewShopTab = M => `<h2 class="shop-h">Shopping list</h2>${viewShop(M)}`;
 
 /* The family plan: what a kit can't hold. Each field saves when you leave it. */
 const PLAN = [
@@ -2333,9 +2354,19 @@ for (const t of ["pointerdown", "mousedown"]) document.addEventListener(t, () =>
 for (const t of ["pointerup", "pointercancel", "mouseup", "dragend", "contextmenu"]) document.addEventListener(t, () => unhold("press"), true);
 document.addEventListener("click", () => { hold.press = hold.blur = 0; }, true);
 document.addEventListener("change", () => { if (document.activeElement === document.body) { hold.blur = 1; unhold("blur"); } }, true);
+/* A double-click or double tap's second click lands where the first one was. When the first redrew the page, something
+   else may be there now (a Plan puts its new lines above its own button, a ticked row moves away), so it does nothing.
+   Some browsers count a double tap as two single clicks, so a pointer click within 350 ms (a phone's double-tap time)
+   and a few pixels of the last one counts too. Keyboard clicks have detail 0 and never do. */
+const drew = { n: 0, atClick: 0, t: -1e9, x: 0, y: 0 };
+document.addEventListener("click", e => {
+  const again = e.detail > 1 || e.detail > 0 && e.timeStamp - drew.t < 350 && Math.hypot(e.clientX - drew.x, e.clientY - drew.y) < 24;
+  if (again && drew.n !== drew.atClick) { e.preventDefault(); e.stopImmediatePropagation(); }
+  else Object.assign(drew, { atClick: drew.n, t: e.timeStamp, x: e.clientX, y: e.clientY });
+}, true);
 function render() {
   if (hold.press || hold.blur) { hold.owed = 1; return; }
-  hold.owed = 0;
+  hold.owed = 0; drew.n++;
   const a = document.activeElement, field = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
   const keep = a?.id ? { id: a.id, field, value: a.value, s: a.selectionStart, e: a.selectionEnd } : null;
   const M = model();
@@ -2356,7 +2387,7 @@ function render() {
   $("#banner").innerHTML = viewBanner();
   for (const v of VIEWS) $("#v-" + v).hidden = v !== S.view;
   const el = $("#v-" + S.view);
-  el.innerHTML = S.view === "overview" ? viewOverview(M) : S.view === "kits" ? viewKits(M) : S.view === "shop" ? viewShop(M) : S.view === "household" ? viewHousehold() : viewPlan(M);
+  el.innerHTML = S.view === "overview" ? viewOverview(M) : S.view === "kits" ? viewKits(M) : S.view === "shop" ? viewShopTab(M) : S.view === "household" ? viewHousehold() : viewPlan(M);
   if (keep) {
     const n = document.getElementById(keep.id);
     if (n) {
@@ -2828,7 +2859,7 @@ const ACT = {
   budgetClear: () => { S.budget = ""; render(); },
   shopDel: b => saveShop(shopItems().filter(x => x.id !== b.dataset.id)),
   shopClear: () => saveShop(shopItems().filter(x => !x.done)),
-  shopShare: () => shareShop(),
+  shopShare: b => shareShop(b?.dataset.kit),
   hzCheck: runHazardCheck,
   rvRun: runReview,
   rvStop: () => S.rv?.ctl?.abort(),
@@ -3022,8 +3053,9 @@ async function shopTick(id, on, rowEl) {
   }
   await saveShop(items);
 }
-async function shareShop() {
-  const left = shopItems().filter(x => !x.done);
+// Every open line, or with one of the household's kits only the lines that go in it
+async function shareShop(kit) {
+  const id = ownKit(kit), left = shopItems().filter(x => !x.done && (!id || shopKit(x) === id));
   if (!left.length) return;
   const M = model();
   const text = "Emergency kit shopping list\n" + left.map(x => { const i = shopInfo(x, M); return `- ${i.line}${i.sub && i.sub !== i.line ? ` (${i.sub})` : ""}`; }).join("\n");
