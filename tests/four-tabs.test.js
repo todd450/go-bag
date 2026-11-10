@@ -185,7 +185,8 @@ test("at 390px the toast's See list is on one line, and tapping it opens Kits on
     const lines = e => { const r = document.createRange(); r.selectNodeContents(e); return new Set([...r.getClientRects()].map(x => Math.round(x.top))).size; };
     const t = document.querySelector("#toast"), b = document.querySelector("#toast-act"), box = t.getBoundingClientRect();
     const toast = { shown: !t.hidden && !b.hidden, left: box.left, right: box.right, bottom: box.bottom, width: box.width, label: lines(b),
-      message: lines(document.querySelector("#toast-msg")), navTop: document.querySelector("#tabs").getBoundingClientRect().top, screen: innerWidth };
+      message: lines(document.querySelector("#toast-msg")), navTop: document.querySelector("#tabs").getBoundingClientRect().top, screen: innerWidth,
+      room: document.documentElement.clientWidth };
     b.click();
     const a = document.activeElement;
     return { toast, view: S.view, current: document.querySelector('#tabs [aria-current="page"]')?.dataset.v, kits: S.kits.length,
@@ -197,10 +198,11 @@ test("at 390px the toast's See list is on one line, and tapping it opens Kits on
     assert.equal(t.screen, 390, f);
     assert.ok(t.shown, `${f}: the toast shows its button`);
     assert.equal(t.label, 1, `${f}: See list is on one line`);
-    assert.ok(t.left >= 0 && t.right <= t.screen, `${f}: the toast is on screen (${t.left} to ${t.right})`);
+    assert.ok(t.left >= 0 && t.right <= t.room, `${f}: the toast is on screen (${t.left} to ${t.right})`);
     assert.ok(t.bottom <= t.navTop, `${f}: the toast is above the tab bar`);
-    // A message wraps only once the toast is as wide as it can be, the screen less 16px a side
-    if (t.message > 1) assert.ok(t.width >= t.screen - 33, `${f}: the message wraps in a toast ${t.width}px wide`);
+    // A message wraps only once the toast is as wide as it can be: the page's width less 16px a side. The page's width is the
+    // screen's less any scrollbar that takes room (Linux Chrome's does, 15px; a phone's and a Mac's float over the page).
+    if (t.message > 1) assert.ok(t.width >= t.room - 33, `${f}: the message wraps in a toast ${t.width}px wide, with ${t.room}px of page`);
     assert.deepEqual([r.view, r.current, r.closed], ["kits", "kits", true], `${f}: See list opens Kits, and the toast closes`);
     assert.ok(r.groups > 0, `${f}: All kits is open`);
     if (r.kits) assert.equal(r.focus, "kit-back", `${f}: focus is on Back to the kit`);
