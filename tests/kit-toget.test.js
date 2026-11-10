@@ -66,6 +66,9 @@ const MAIN = {
   "fixtures/phone-width/long-essentials go": "812945e2822ef9d0ebfc",
   "fixtures/phone-width/long-essentials home": "0529ec51955fa25a85c0",
   "fixtures/phone-width/long-essentials car": "8b69000a9263f80f26cb",
+  "fixtures/phone-width/long-kit-name home": "0f91714baf6961b08c69",
+  "fixtures/phone-width/long-kit-name car": "2d99771ae3a0e08bd6d4",
+  "fixtures/phone-width/long-kit-name go": "0b15808e9f5026b56616",
 };
 
 const { chrome, atPhoneWidth } = require("./phone");

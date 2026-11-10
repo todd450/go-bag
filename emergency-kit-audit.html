@@ -465,8 +465,9 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 .seg { display: inline-flex; padding: 2px; border: 1px solid var(--rule-2); border-radius: 999px; background: var(--card); }
 .seg button { min-height: 30px; padding: 3px 14px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: inherit; font-size: .82rem; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 500; }
-/* A kit's Packed | To get switch, under its header, and All kits' Back button, which cuts a long name short */
-.kit-sw, .kit-back { justify-self: start; max-width: 100%; }
+/* A kit's Packed | To get switch, under its header, and All kits' Back button, which cuts a long name short:
+   min-width 0, or the name's unwrapped width would set the column's */
+.kit-sw, .kit-back { justify-self: start; min-width: 0; max-width: 100%; }
 .fl-zone { display: grid; gap: 6px; }
 .fl-h { font-size: .8rem; font-weight: 500; color: var(--ink-2); }
 .fl-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
@@ -1938,7 +1939,8 @@ function kitDetail(kit, ready, M = model()) {
   const working = scanning?.state === "working";
   // Packed | To get: To get is the kit's open lines and its gaps not on the list, with the tools and section All kits shows
   const get = kit.id != null && S.toGet === kit.id, left = shopItems().filter(e => !e.done && shopKit(e) === kit.id), off = new Set(splitListed(M.gaps).off);
-  const side = (v, label) => `<button type="button" id="ks-${v}" data-act="kitSide" data-v="${v}" aria-pressed="${get === (v === "get")}">${label}</button>`;
+  const getN = left.length + kitGaps(M, kit.id).filter(g => off.has(g)).length, P = get && shopPlan(M, left);
+  const side =(v, label) => `<button type="button" id="ks-${v}" data-act="kitSide" data-v="${v}" aria-pressed="${get === (v === "get")}">${label}</button>`;
   // List: the item table as it always was, shown in the Contents panel once List is pressed
   const list = S.listKit !== kit.id ? "" : `
   ${S.canWrite && S.sel.size ? `<div class="selbar">
@@ -1979,8 +1981,8 @@ function kitDetail(kit, ready, M = model()) {
     ${S.canWrite ? (S.confirm === "kit:" + kit.id
       ? `<div class="row"><span class="small">Delete this kit, its ${pl(items.length, "item")} and ${pl(photos.length, "photo")}?</span><button class="btn danger sm" data-act="delKit" data-id="${esc(kit.id)}">Delete</button><button class="btn ghost sm" data-act="cancelConfirm">Cancel</button></div>`
       : `<button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button>`) : ""}
-  </div><div class="seg kit-sw" role="group" aria-label="${esc(kit.name)}">${side("packed", `Packed · ${items.length}`)}${side("get", `To get · ${left.length + kitGaps(M, kit.id).filter(g => off.has(g)).length}`)}</div>${get
-    ? (P => `<div class="panel stack">${shopTools(M, P, kit)}${shopSection(M, P, kit) || `<p class="small muted">Nothing to get for this kit.</p>`}</div><div><button class="btn ghost sm" id="kit-all" data-act="allKits">All kits</button></div>`)(shopPlan(M, left)) : `
+  </div><div class="seg kit-sw" role="group" aria-label="${esc(kit.name)}">${side("packed", `Packed · ${items.length}`)}${side("get", `To get · ${getN}`)}</div>${get
+    ? `<div class="panel stack">${shopTools(M, P, kit)}${shopSection(M, P, kit) || `<p class="small muted">Nothing to get for this kit.</p>`}</div><div><button class="btn ghost sm" id="kit-all" data-act="allKits">All kits</button></div>` : `
   ${containerCard(kit, ready.h)}
   ${kitReadyPanel(kit, ready, M)}
   ${contentsPanel(kit, items, list, ready, M)}

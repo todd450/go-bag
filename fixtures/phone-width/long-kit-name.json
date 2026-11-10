@@ -1,0 +1,29 @@
+{
+  "about": "Made-up household whose kits have names as long as the add-a-kit form allows (59 and 60 characters), at phone width: one in plain words, one in wide capitals and one with punctuation. A kit's name shows in its header, in its row on the Kits tab, in All kits' Back button and as its section's heading on the shopping list.",
+  "profile": {
+    "location": "Duluth, MN",
+    "members": [
+      { "label": "Wilhelmina", "years": 9 },
+      { "label": "Walter", "years": 44 },
+      { "label": "Rosalind", "years": 81 }
+    ],
+    "pets": [],
+    "vehicles": 1,
+    "home": "House"
+  },
+  "hazards": { "assessedAt": 1, "location": "Duluth, MN", "levels": {}, "reasons": {} },
+  "kits": [
+    { "id": "home", "name": "Grandma's basement emergency supply bin by the water heater", "type": "home", "where": "Basement", "createdAt": 1 },
+    { "id": "car", "name": "WINTER WEATHER WAGON KIT FOR MOM, WALT, WILLOW & WILHELMINA!", "type": "car", "createdAt": 2 },
+    { "id": "go", "name": "Wilhelmina's school backpack with her inhaler and dry socks.", "type": "go", "where": "Hall hook", "createdAt": 3 }
+  ],
+  "items": [
+    { "id": "h1", "kitId": "home", "name": "Water jugs", "category": "water", "qty": 4, "liters": 15 },
+    { "id": "h2", "kitId": "home", "name": "Canned soup", "category": "food", "qty": 12, "kcal": 2400 },
+    { "id": "h3", "kitId": "home", "name": "Battery lantern", "category": "light", "qty": 1 },
+    { "id": "c1", "kitId": "car", "name": "Wool blankets", "category": "shelter", "qty": 2 },
+    { "id": "c2", "kitId": "car", "name": "Jumper cables", "category": "car", "qty": 1 },
+    { "id": "g1", "kitId": "go", "name": "Water pouches", "category": "water", "qty": 4, "liters": 2 },
+    { "id": "g2", "kitId": "go", "name": "Spare socks", "category": "clothing", "qty": 2 }
+  ]
+}
