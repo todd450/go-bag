@@ -90,7 +90,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .hdr-score b { font-family: var(--f-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
 nav.tabs { display: flex; gap: 28px; overflow-x: auto; width: 100%; scrollbar-width: none; }
 nav.tabs button { display: flex; align-items: center; gap: 6px; background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 0 12px; font-weight: 500; font-size: .92rem; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
-nav.tabs button .ic, nav.tabs .tab-n:empty { display: none; }
+nav.tabs button .ic { display: none; }
 nav.tabs button[aria-current="page"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
 nav.tabs button:hover { color: var(--ink); }
 @media (max-width: 640px) {
@@ -139,7 +139,6 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .sum .sum-score { border-right: 1px solid var(--rule); padding-right: 28px; }
 .sum-score { display: grid; gap: 8px; align-content: start; }
 @media (max-width: 760px) { .sum { grid-template-columns: 1fr; } .sum .sum-score { border-right: 0; padding-right: 0; border-bottom: 1px solid var(--rule); padding-bottom: 16px; } }
-.tab-n { font-size: .75rem; font-variant-numeric: tabular-nums; color: var(--ink-2); font-weight: 500; }
 .ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .ic-s { width: 14px; height: 14px; }
 .cat-td { display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
@@ -2493,9 +2492,10 @@ async function delDoc(col, id) {
   else { if (col === "household") S[id] = null; else S[col] = S[col].filter(x => x.id !== id); render(); }
 }
 const saveShop = items => setDoc("household", "shopping", { items, updatedAt: Date.now() }).catch(() => {});
-/* Adds these household gaps to the shopping list, a line each, and says so, with See list to open All kits. */
+/* Adds these household gaps to the shopping list, a line each, and says so, with See list to open All kits at the top of the screen. */
 function shopGaps(M, add) {
-  const see = { label: "See list", run: () => { S.view = "kits"; try { history.replaceState(null, "", "#kits"); } catch (_) {} ACT.allKits(); window.scrollTo({ top: 0 }); } };
+  const see = { label: "See list", run: () => { S.view = "kits"; try { history.replaceState(null, "", "#kits"); } catch (_) {} ACT.allKits();
+    window.scrollTo({ top: $(".kits-grid>:last-child").offsetTop - $(".kits-grid").offsetTop }); } };
   if (!add.length) { toast("Already on your shopping list", see); return; }
   saveShop([...shopItems(), ...add.map(g => shopFromGap(g, M.h))]);
   toast(add.length === 1 ? `Added ${gapName(add[0])} to your shopping list` : `Added ${add.length} items to your shopping list`, see);

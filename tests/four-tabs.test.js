@@ -208,3 +208,33 @@ test("at 390px the toast's See list is on one line, and tapping it opens Kits on
     if (r.kits) assert.equal(r.focus, "kit-back", `${f}: focus is on Back to the kit`);
   }
 });
+
+// In Chrome at 390px: on a phone All kits sits under the kit cards, so See list brings it up to where the tab starts. Back,
+// the All kits heading and the list's first group are on screen between the header and the tab bar, however far down
+// Readiness was scrolled to reach the Add button, and with no kits, a few or many
+test("at 390px See list shows All kits on screen, not the kit cards above it", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
+  const fixtures = ["tests/household", "fixtures/data-and-account-shapes/odd-container", "fixtures/empty-and-one/new-household", "fixtures/phone-width/long-kit-name"];
+  const measure = () => {
+    // The last emergency's Add, with every emergency open, scrolled to as a thumb would
+    S.openHz = new Set(model().results.map(r => r.hz.id)); render();
+    const add = [...document.querySelectorAll('[data-act="shopAddHz"]')].at(-1);
+    add.scrollIntoView({ block: "center" });
+    const from = scrollY;
+    add.click(); document.querySelector("#toast-act").click();
+    const box = e => e && (b => ({ top: Math.round(b.top), bottom: Math.round(b.bottom) }))(e.getBoundingClientRect());
+    const pane = document.querySelector("#v-kits .shop-g")?.parentElement;
+    return { from, kits: S.kits.length, header: box(document.querySelector(".top")).bottom, nav: box(document.querySelector("#tabs")).top,
+      back: box(document.querySelector("#kit-back")), heading: box(pane?.querySelector("h2")), group: box(pane?.querySelector(".shop-g")) };
+  };
+  // Two pages a run: Chrome prints each page whole, and more would overflow what Node reads back
+  const seen = new Map();
+  for (let i = 0; i < fixtures.length; i += 2) for (const [f, m] of atPhoneWidth(fixtures.slice(i, i + 2), measure)) seen.set(f, m);
+  assert.equal(seen.size, fixtures.length);
+  for (const [f, r] of seen) {
+    assert.ok(r.from > 0, `${f}: the Add button was scrolled to`);
+    const on = (b, what) => assert.ok(b && b.top >= r.header && b.bottom <= r.nav, `${f}: ${what} is on screen, between ${r.header} and ${r.nav} (${JSON.stringify(b)}), after Add at ${r.from}px down`);
+    if (r.kits) on(r.back, "Back to the kit");
+    on(r.heading, "the All kits heading");
+    assert.ok(r.group && r.group.top < r.nav, `${f}: the list's first group starts on screen (${JSON.stringify(r.group)}, tab bar at ${r.nav})`);
+  }
+});
