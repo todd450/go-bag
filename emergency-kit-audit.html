@@ -486,9 +486,14 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
 .fl-add:hover { border-color: var(--ink); }
 .fl-tile.miss { padding-inline: 3px; border-style: dashed; border-color: var(--rule-2); background: var(--card); color: var(--ink-2); }
 .fl-tile.miss .gain { font-size: .72rem; }
-.fl-tile.miss .fl-name { display: block; -webkit-line-clamp: none; line-clamp: none; overflow: visible; overflow-wrap: break-word; }
+.fl-tile.miss .fl-name, .fl-tile.miss .fl-note { display: block; -webkit-line-clamp: none; line-clamp: none; overflow: visible; overflow-wrap: break-word; }
 .fl-do { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; margin: -8px -3px -6px; padding: 8px 3px 6px; border: 0; border-radius: 9px; background: none; text-align: left; cursor: pointer; }
 .fl-tile.miss:has(.fl-do):hover { border-color: var(--ink); }
+/* A tile planned for its kit. --brand-tint stays light in dark mode, so its text is --brand-deep in both. */
+.fl-tile.plan { border-color: var(--brand); background: var(--brand-tint); color: var(--brand-deep); }
+.fl-tile.plan :is(.ic, .gain, .fl-note) { color: inherit; }
+.fl-acts { display: grid; gap: 4px; margin-top: 10px; }
+.fl-acts .btn { padding: 2px 4px; font-size: .7rem; line-height: 1.2; }
 /* A present tile's button fills its tile. Its item's fields open under the tile's row, across the grid: dense packing
    lets the rest of that row fill in before them. */
 .fl-ed { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; margin: -8px -5px -6px; padding: 8px 5px 6px; border: 0; border-radius: 9px; background: none; text-align: left; cursor: pointer; }
@@ -1143,6 +1148,11 @@ function splitListed(gaps, lines = shopItems().filter(x => !x.done)) {
   for (const g of gaps) { const k = gapKey(g), left = n.get(k) || 0; if (left) { n.set(k, left - 1); on.push(g); } else off.push(g); }
   return { on, off };
 }
+// The open line a gap is on the list as, else null: as splitListed counts, the nth of `gaps` with a key is the nth line with it
+function gapLine(gaps, g, lines = shopItems().filter(x => !x.done)) {
+  const k = gapKey(g);
+  return lines.filter(e => gapKey(e) === k)[gaps.filter(x => gapKey(x) === k).indexOf(g)] || null;
+}
 // A gap inside a sentence: an essential as named, a category lower-cased unless it starts with an acronym ("CPR & airway")
 const gapName = g => g.essential ? g.label : catLabel(g.cat).replace(/^[A-Z](?=[a-z])/, c => c.toLowerCase());
 // A gap's shopping line. Planned from a kit (#116), the line keeps that kit's id, so ticking it puts the item there.
@@ -1364,13 +1374,14 @@ const servesLine = r => `${r.serves} ${r.serves === 1 ? "person" : "people"}${r.
 /* The household gap a row's missing essential is: the same essential with the same label. There is none when every
    emergency that counts has it (another kit covers it, or the emergency doesn't apply), so adding it moves no score. */
 const essGap = (M, cat, e) => M.gaps.find(g => g.cat === cat && g.essential === e.id && g.label === e.label);
-// What ticking a gap's shopping line adds, worked out once per model: the shopping list's sum, shown on a kit's checklist and its tiles
+// What ticking a gap's shopping line adds, worked out once per model, gap and kit: the shopping list's sum. With a kit, planned into it
 const gapGains = new WeakMap();
-function gapGain(M, g) {
+function gapGain(M, g, kitId = "") {
   if (!g || M.overall == null) return 0;
   let c = gapGains.get(M); if (!c) gapGains.set(M, c = new Map());
-  if (!c.has(g)) c.set(g, Math.max(0, scoreIfShopped(M, [shopFromGap(g, M.h)]) - M.overall));
-  return c.get(g);
+  let k = c.get(g); if (!k) c.set(g, k = new Map());
+  if (!k.has(kitId)) k.set(kitId, Math.max(0, scoreIfShopped(M, [shopFromGap(g, M.h, kitId)]) - M.overall));
+  return k.get(kitId);
 }
 /* A missing essential's name inside a sentence: "insurance cards", but "ID copies" and "Sam's prescriptions" as they are. */
 const essWord = (cat, label) => essentialList(cat).some(x => label === x.label || x.perMed && label.startsWith(x.label + " (")) && !/^.[A-Z]/.test(label) ? label[0].toLowerCase() + label.slice(1) : label;
@@ -1511,7 +1522,7 @@ const S = {
   live: false, loaded: false, slow: false, canWrite: true,
   openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   listKit: null, // the kit whose Contents panel shows List; any other kit shows Flat-lay. Memory only: never saved
-  flOpen: null, // the item whose flat-lay tile shows its fields, cleared when a kit is opened. Memory only
+  flOpen: null, // the item whose flat-lay tile shows its fields, or the planned line whose tile shows its actions, cleared when a kit is opened. Memory only
   toGet: null, // the kit whose switch is on To get; any other kit shows Packed. Memory only
   allKits: location.hash === "#shop" || null, // the kit All kits was opened from, which it shows in place of; true from #shop until a kit is open. Memory only
   ctr: null, // the open container editor: { id, ...typed }
@@ -1620,14 +1631,12 @@ function essNotes(cat, items) {
   return [untagged.length && `${pl(untagged.length, "item")} still to tag: ${esc(itemNames(untagged))}`,
     old.length && `${esc(itemNames(old))} expired${old.length === 1 ? " " + esc(old[0].expires) : ""}, so ${old.length === 1 ? "it doesn't" : "they don't"} count`].filter(Boolean);
 }
-/* One of the five categories as a block in a kit's panel: the essentials in (each once, however many items fill it),
-   the ones missing with the points adding each is worth, the most first, an Add button for those not on the list yet,
-   and its notes (essNotes). `items` are the kit's, and `at` says which kit ("kit:<id>") the block is in. */
-function essBlock(M, row, items, at) {
+/* One of the five categories as a block in kit `kitId`'s panel: the essentials in (each once, however many items fill
+   it), the ones missing with the points adding each to this kit is worth, the most first, and its notes (essNotes). */
+function essBlock(M, row, items, kitId) {
   const live = items.filter(it => it.category === row.cat && expState(it) !== "expired");
   const off = new Set(splitListed(M.gaps).off);
-  const miss = row.ess.filter(e => !e.have).map(e => { const g = essGap(M, row.cat, e); return { e, g, gain: gapGain(M, g) }; }).sort((a, b) => b.gain - a.gain);
-  const add = new Set(miss.filter(x => x.g && off.has(x.g)).map(x => x.g)).size;
+  const miss = row.ess.filter(e => !e.have).map(e => { const g = essGap(M, row.cat, e); return { e, g, gain: gapGain(M, g, kitId) }; }).sort((a, b) => b.gain - a.gain);
   const slots = id => row.ess.filter(e => e.id === id).length;
   const has = row.ess.filter(e => e.have).map(e => {
     const its = live.filter(it => essentialOf(it) === e.id);
@@ -1635,8 +1644,7 @@ function essBlock(M, row, items, at) {
   });
   const lacks = miss.map(({ e, gain }) => `<span class="chip ess miss">${icon("no", "ic ic-s")}<span class="vh">Missing </span>${esc(e.label)}${gain ? ` · <span class="gain" title="Readiness points adding it adds">+${gain}</span>` : ""}</span>`);
   const foot = [
-    add ? `<button class="btn ghost sm" data-act="shopAddBlock" data-cat="${esc(row.cat)}" data-at="${esc(at)}" ${D()}>Add ${add} to list</button>`
-      : miss.some(x => x.g) ? `<span class="small muted">On your shopping list</span>` : "",
+    miss.some(x => x.g) && !miss.some(x => off.has(x.g)) ? `<span class="small muted">On your shopping list</span>` : "",
     ...essNotes(row.cat, items).map(n => `<span class="small muted">${n}</span>`),
   ].filter(Boolean);
   const pct = Math.round(row.cov * 100);
@@ -1647,9 +1655,9 @@ function essBlock(M, row, items, at) {
   </section>`;
 }
 /* A kit's checklist: a block for each category of named essentials, then the counted ones as chips. */
-function checklist(M, rows, h, days, items, at) {
+function checklist(M, rows, h, days, items, kitId) {
   const counted = chipsFor(rows, h, days);
-  return rows.filter(r => r.ess).map(r => essBlock(M, r, items, at)).join("")
+  return rows.filter(r => r.ess).map(r => essBlock(M, r, items, kitId)).join("")
     + (counted ? `<p class="eyebrow">Counted by amount</p><div class="chips">${counted}</div>` : "");
 }
 
@@ -1741,7 +1749,7 @@ function kitReadyPanel(kit, r, M = model()) {
 }
 function kitChecklist(kit, r, M = model()) {
   return `<div class="panel stack kit-ck">
-    <div>${checklist(M, r.rows, r.kh, "days", S.items.filter(i => i.kitId === kit.id), "kit:" + kit.id)}</div>
+    <div>${checklist(M, r.rows, r.kh, "days", S.items.filter(i => i.kitId === kit.id), kit.id)}</div>
     <p class="small muted">${r.drivers.length ? `Checklist covers ${esc(r.drivers.map(d => d.hz.name.toLowerCase()).join(", "))}. ` : ""}${r.whole ? "" : "Pet, baby and kids' supplies are expected only in kits for the whole household. "}Expired items don't count.</p>
   </div>`;
 }
@@ -2003,9 +2011,9 @@ function contentsPanel(kit, items, list, ready, M) {
   const seg = (v, label) => `<button type="button" data-act="kitView" data-v="${v}" aria-pressed="${!!list === (v === "list")}">${label}</button>`;
   const byZone = new Map(ZONES.map(z => [z, []]));
   for (const it of [...items].sort((a, b) => String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name)))) byZone.get(zoneOf(it.category)).push(flTile(it));
-  const { off } = splitListed(M.gaps), offs = new Set(off), next = new Map();
-  for (const g of off) if (!next.has(gapKey(g))) next.set(gapKey(g), g);
-  for (const row of ready.rows) if (row.ess) for (const e of row.ess) if (!e.have) byZone.get(zoneOf(row.cat)).push(flMiss(M, row.cat, e, offs, next));
+  const next = new Map();
+  for (const g of splitListed(M.gaps).off) if (!next.has(gapKey(g))) next.set(gapKey(g), g);
+  for (const row of ready.rows) if (row.ess) for (const e of row.ess) if (!e.have) byZone.get(zoneOf(row.cat)).push(flMiss(M, row.cat, e, next, kit));
   const flat = (items.length ? "" : `<p class="fl-empty muted">Nothing in this kit yet.</p>`)
     + [...byZone].filter(([, ts]) => ts.length).map(([z, ts]) => `<section class="fl-zone"><h3 class="fl-h">${esc(z.label)}</h3><ul class="fl-grid">${ts.join("")}</ul></section>`).join("");
   return `<div class="panel stack">
@@ -2025,21 +2033,30 @@ function flTile(it) {
   return `<li class="fl-tile${st ? " " + st : ""}" data-id="${esc(it.id)}">${S.canWrite ? `<button type="button" class="fl-ed" id="fl-${esc(it.id)}" data-act="flEdit" data-id="${esc(it.id)}" aria-expanded="${open}" aria-label="${esc(name + ", edit")}">${body}</button>` : body}</li>`
     + (open ? `<li class="fl-fields">${itemFields(it).filter(f => f[2]).map(([c, l, h]) => `<div class="fl-f ${c}" data-label="${l}">${h}</div>`).join("")}</li>` : "");
 }
-/* A missing essential's dashed tile: its icon, its label and the points adding it adds. While it is the household gap
-   the Add to list button would add (`next`, by gapKey) it is that button; once on the list it says so; with no household
-   gap there is nothing to add. Prescriptions slots share a key and shopAdd adds the first one off the list, so a later
-   slot says which to add first, and every button flips the tile it is on. The two words too wide for a phone tile get a
-   soft hyphen, since browsers don't hyphenate a capitalised word themselves; a name too wide breaks before its 's, and
-   "(1 of 2)" stays on one line. */
+/* A missing essential's dashed tile in `kit`: its icon, label, the points planning it into this kit adds and its line's
+   price (#120). While it is the gap shopAdd would plan (`next`, by gapKey) it is a Plan button; once its line (gapLine)
+   goes in this kit it opens Packed it and Take off plan (S.flOpen), and going elsewhere it says where. With no household
+   gap there is nothing to plan. Prescriptions slots share a key and shopAdd plans the first one off the list, so a later
+   slot says which to plan first. The two words too wide for a phone tile get a soft hyphen, since browsers don't
+   hyphenate a capitalised word themselves; a name too wide breaks before its 's, and "(1 of 2)" stays on one line. */
 const flWord = s => esc(s).replace(/(prescrip)(tions)|(extin)(guisher)/gi, (_, a, b, c, d) => `${a || c}\u00ad${b || d}`)
   .replace(/&#39;s\b/g, "<wbr>&#39;s").replace(/\((\d+) of (\d+)\)/g, "($1\u00a0of\u00a0$2)");
-function flMiss(M, cat, e, off, next) {
-  const g = essGap(M, cat, e), gain = gapGain(M, g), first = g && next.get(gapKey(g));
-  const act = !!g && first === g && S.canWrite, before = first && first !== g && S.canWrite && off.has(g);
+function flMiss(M, cat, e, next, kit) {
+  const g = essGap(M, cat, e), gain = gapGain(M, g, kit.id), first = g && next.get(gapKey(g)), w = S.canWrite;
+  const line = g && gapLine(M.gaps, g), to = line && shopKit(line), here = line && to === kit.id;
+  // Its line's price, or the price of the line planning it here would add
+  const p = g && shopInfo(line || shopFromGap(g, M.h, kit.id), M).price, cost = p === null ? "Rx" : money(p);
+  const notes = !g ? [] : here ? ["Planned" + (cost && " · " + cost)]
+    : line ? [to ? `Planned for ${esc(S.kits.find(k => k.id === to).name)}` : "Planned · no kit yet"]
+    : [p === null ? "Rx · pharmacy" : cost, first !== g && w && `Plan ${esc((first.label.match(/\((\d+ of \d+)\)$/) || [, first.label])[1])} first`];
   const body = `<span class="fl-top">${icon(cat)}${gain ? `<span class="gain" title="Readiness points adding it adds">+${gain}</span>` : ""}</span><span class="fl-name">${flWord(e.label)}</span>`
-    + (g && !off.has(g) ? `<span class="fl-note">On your list</span>` : act ? `<span class="fl-note">Add to list</span>`
-      : before ? `<span class="fl-note">Add ${esc((first.label.match(/\((\d+ of \d+)\)$/) || [, first.label])[1])} first</span>` : "");
-  return `<li class="fl-tile miss">${act ? `<button type="button" class="fl-do" data-act="shopAdd" data-cat="${esc(cat)}" data-essential="${esc(e.id)}" aria-label="${esc(`Add ${e.label} to your shopping list`)}">${body}</button>` : body}</li>`;
+    + notes.filter(Boolean).map(n => `<span class="fl-note">${n}</span>`).join("");
+  const id = here && esc(line.id), open = here && S.flOpen === line.id;
+  const tile = !w ? body
+    : here ? `<button type="button" class="fl-do" id="fl-${id}" data-act="flEdit" data-id="${id}" aria-expanded="${open}">${body}</button>`
+      + (open ? `<span class="fl-acts"><button type="button" class="btn sm" data-act="shopPack" data-id="${id}">Packed it</button><button type="button" class="btn ghost sm" data-act="shopDel" data-id="${id}">Take off plan</button></span>` : "")
+    : g && !line && first === g ? `<button type="button" class="fl-do" data-act="shopAdd" data-cat="${esc(cat)}" data-essential="${esc(e.id)}" data-kit="${esc(kit.id)}" aria-label="${esc(`Plan ${e.label} for ${kit.name}`)}">${body}</button>` : body;
+  return `<li class="fl-tile miss${here ? " plan" : ""}">${tile}</li>`;
 }
 function catOptions(sel) { return Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${k === sel ? "selected" : ""}>${v[0]}</option>`).join(""); }
 /* An Essential picker's options for category `cat` with `v` chosen: "Pick one…" (left out once tagged, when `blank` is
@@ -2838,13 +2855,8 @@ const ACT = {
     saveShop([...shopItems(), shopFromGap(g, M.h, b.dataset.kit)]);
     toast(`Added ${gapName(g)} to your shopping list`);
   },
-  // A kit's checklist block's button: its missing essentials that are household gaps not on the list yet
-  shopAddBlock: b => {
-    const M = model(), { cat, at = "" } = b.dataset, i = at.indexOf(":"), kind = at.slice(0, i), id = at.slice(i + 1);
-    const row = (kind === "kit" && Object.hasOwn(M.kitRes, id) ? M.kitRes[id] : null)?.rows.find(x => x.cat === cat && x.ess);
-    const off = new Set(splitListed(M.gaps).off);
-    shopGaps(M, [...new Set(row ? row.ess.filter(e => !e.have).map(e => essGap(M, cat, e)).filter(g => g && off.has(g)) : [])]);
-  },
+  // A planned tile's Packed it: ticks its line, so the item goes in the kit (#120)
+  shopPack: b => shopTick(b.dataset.id, true, b.closest?.("li")),
   // An opened emergency's button: every household gap it is short of that isn't on the list yet
   shopAddHz: b => {
     const M = model(), r = M.results.find(x => x.hz.id === b.dataset.id), off = new Set(splitListed(M.gaps).off);
@@ -3039,7 +3051,7 @@ async function wizStep() {
   render(); window.scrollTo({ top: 0 });
   if (S.profile?.location && S.hazards?.location !== S.profile.location && sample) runHazardCheck();
 }
-/* Ticking an item puts it in its kit (so the gap closes); unticking takes that item back out. */
+/* Ticking an item puts it in its kit (so the gap closes), and its toast's Undo unticks it; unticking takes that item back out. */
 async function shopTick(id, on, rowEl) {
   const items = clone(shopItems()), e = items.find(x => x.id === id); if (!e) return;
   const from = rowEl?.getBoundingClientRect?.(); // measured now: saving re-renders the list
@@ -3053,7 +3065,7 @@ async function shopTick(id, on, rowEl) {
       } catch (_) { render(); return; }
       e.itemId = itemId; e.inKit = kit.id;
       const after = model().overall;
-      toast(`Put in ${kit.name}${after > before ? `. Readiness ${before} → ${after}` : ""}`);
+      toast(`Put in ${kit.name}${after > before ? `. Readiness ${before} → ${after}` : ""}`, { label: "Undo", run: () => shopTick(id, false) });
     }
     e.done = true;
     S.flash = e.id; clearTimeout(S.flashT); S.flashT = setTimeout(() => { S.flash = null; }, 1400);
