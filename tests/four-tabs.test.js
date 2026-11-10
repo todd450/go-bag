@@ -1,6 +1,6 @@
-// Four tabs (issue #119, part of #115): the Shopping tab is folded into Kits, where each kit's To get and All kits (#118)
-// hold the list. Nothing on the page opens a "shop" tab any more. An old #shop link, and the toast after adding an
-// emergency's missing items to the list, open the Kits tab with All kits open.
+// Four tabs (issue #119, part of #115): the Shopping tab is folded into Kits, where each kit's To get (#118) and Review
+// (#121) hold the list. Nothing on the page opens a "shop" tab any more. An old #shop link, and the toast after adding an
+// emergency's missing items to the list, open the Kits tab with Review open. ("All kits" below is Review: #118's name.)
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -90,11 +90,11 @@ test("an old #shop link starts on Kits with All kits open; #review still starts 
       screen(app);
       const s = shows(app);
       assert.deepEqual(s.on, [on], `${at}: starts on ${on}`);
-      // #kits opens a kit, as it did before; a household with no kits shows All kits on Kits whichever way it came
-      if (on === "kits") assert.equal(s.allKits, hash === "#shop" || !kits, `${at}: All kits ${s.allKits ? "open" : "closed"}`);
-      if (hash === "#shop" && kits) {
-        assert.equal(app.run("S.allKits"), app.run("S.openKit"), `${at}: All kits is open from the kit the Kits tab opened`);
-        assert.match(app.run(`SHOWN["#v-kits"].innerHTML`), /data-act="allBack"/, `${at}: with Back to that kit`);
+      // #kits opens a kit, or with no kits says to add one, as it did before
+      if (on === "kits") assert.equal(s.allKits, hash === "#shop", `${at}: Review ${s.allKits ? "open" : "closed"}`);
+      if (hash === "#shop") {
+        if (kits) assert.ok(app.run("S.kits.some(k => k.id === S.openKit)"), `${at}: over the kit the Kits tab opened`);
+        assert.match(app.run(`SHOWN["#v-kits"].innerHTML`), /role="dialog"[\s\S]*data-act="allBack"/, `${at}: with Close`);
       }
     }
   }
@@ -108,7 +108,7 @@ test("from an old #shop link, All kits stays open as the household arrives, and 
   useFixture(app, "tests/household");
   assert.deepEqual(shows(app), { on: ["kits"], allKits: true }, "once it has arrived");
   tap(app, "allBack");
-  assert.deepEqual(shows(app), { on: ["kits"], allKits: false }, "Back shows the kit");
+  assert.deepEqual(shows(app), { on: ["kits"], allKits: false }, "Close shows the kit");
   tap(app, "openKit", { id: "car" });
   assert.deepEqual(shows(app), { on: ["kits"], allKits: false }, "another kit opens on its own page");
   // Deleting the open kit opens the first kit that's left, on its own page
@@ -122,6 +122,8 @@ test("from an old #shop link to a household with no kits, the first kit added op
   screen(app);
   app.run("S.loaded = true");
   assert.deepEqual(shows(app), { on: ["kits"], allKits: true });
+  // Review is over the add-a-kit form until it's closed
+  tap(app, "allBack");
   for (const [name, type] of [["Hall bag", "go"], ["Trunk box", "car"]]) {
     app.run(`$("#nk-name").value = ${JSON.stringify(name)}; $("#nk-type").value = ${JSON.stringify(type)}; $("#nk-where").value = ""`);
     await app.fire("submit", { dataset: { submit: "newKit" }, reset() {} });
@@ -190,7 +192,7 @@ test("at 390px the toast's See list is on one line, and tapping it opens Kits on
     b.click();
     const a = document.activeElement;
     return { toast, view: S.view, current: document.querySelector('#tabs [aria-current="page"]')?.dataset.v, kits: S.kits.length,
-      groups: document.querySelectorAll("#v-kits .shop-g").length, focus: a?.id || a?.tagName, closed: t.hidden };
+      review: !!document.querySelector('#v-kits [role="dialog"]'), focus: a?.id || a?.tagName, closed: t.hidden };
   });
   assert.equal(seen.size, 2);
   for (const [f, r] of seen) {
@@ -204,15 +206,14 @@ test("at 390px the toast's See list is on one line, and tapping it opens Kits on
     // screen's less any scrollbar that takes room (Linux Chrome's does, 15px; a phone's and a Mac's float over the page).
     if (t.message > 1) assert.ok(t.width >= t.room - 33, `${f}: the message wraps in a toast ${t.width}px wide, with ${t.room}px of page`);
     assert.deepEqual([r.view, r.current, r.closed], ["kits", "kits", true], `${f}: See list opens Kits, and the toast closes`);
-    assert.ok(r.groups > 0, `${f}: All kits is open`);
-    if (r.kits) assert.equal(r.focus, "kit-back", `${f}: focus is on Back to the kit`);
+    assert.ok(r.review, `${f}: Review is open`);
+    assert.equal(r.focus, "review-x", `${f}: focus is on Review's Close`);
   }
 });
 
-// In Chrome at 390px: on a phone All kits sits under the kit cards, so See list brings it up to where the tab starts. Back,
-// the All kits heading and the list's first group are on screen between the header and the tab bar, however far down
-// Readiness was scrolled to reach the Add button, and with no kits, a few or many
-test("at 390px See list shows All kits on screen, not the kit cards above it", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
+// In Chrome at 390px: See list opens Review as a sheet that covers the screen, so its Close, its heading and the list's
+// first row are on screen however far down Readiness was scrolled to reach the Add button, with no kits, a few or many
+test("at 390px See list shows Review on screen, over the page", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
   const fixtures = ["tests/household", "fixtures/data-and-account-shapes/odd-container", "fixtures/empty-and-one/new-household", "fixtures/phone-width/long-kit-name"];
   const measure = () => {
     // The last emergency's Add, with every emergency open, scrolled to as a thumb would
@@ -221,10 +222,10 @@ test("at 390px See list shows All kits on screen, not the kit cards above it", {
     add.scrollIntoView({ block: "center" });
     const from = scrollY;
     add.click(); document.querySelector("#toast-act").click();
-    const box = e => e && (b => ({ top: Math.round(b.top), bottom: Math.round(b.bottom) }))(e.getBoundingClientRect());
-    const pane = document.querySelector("#v-kits .shop-g")?.parentElement;
-    return { from, kits: S.kits.length, header: box(document.querySelector(".top")).bottom, nav: box(document.querySelector("#tabs")).top,
-      back: box(document.querySelector("#kit-back")), heading: box(pane?.querySelector("h2")), group: box(pane?.querySelector(".shop-g")) };
+    const box = e => e && (b => ({ top: Math.round(b.top), bottom: Math.round(b.bottom), left: Math.round(b.left), right: Math.round(b.right) }))(e.getBoundingClientRect());
+    const sheet = document.querySelector('#v-kits [role="dialog"]');
+    return { from, height: innerHeight, width: innerWidth, sheet: box(sheet), close: box(document.querySelector("#review-x")),
+      heading: box(document.querySelector("#review-h")), row: box(sheet?.querySelector(".shop-row, .shop-gap")) };
   };
   // Two pages a run: Chrome prints each page whole, and more would overflow what Node reads back
   const seen = new Map();
@@ -232,9 +233,10 @@ test("at 390px See list shows All kits on screen, not the kit cards above it", {
   assert.equal(seen.size, fixtures.length);
   for (const [f, r] of seen) {
     assert.ok(r.from > 0, `${f}: the Add button was scrolled to`);
-    const on = (b, what) => assert.ok(b && b.top >= r.header && b.bottom <= r.nav, `${f}: ${what} is on screen, between ${r.header} and ${r.nav} (${JSON.stringify(b)}), after Add at ${r.from}px down`);
-    if (r.kits) on(r.back, "Back to the kit");
-    on(r.heading, "the All kits heading");
-    assert.ok(r.group && r.group.top < r.nav, `${f}: the list's first group starts on screen (${JSON.stringify(r.group)}, tab bar at ${r.nav})`);
+    const on = (b, what) => assert.ok(b && b.top >= 0 && b.bottom <= r.height, `${f}: ${what} is on screen (${JSON.stringify(b)}), after Add at ${r.from}px down`);
+    on(r.close, "Close");
+    on(r.heading, "the Review heading");
+    assert.ok(r.row && r.row.top < r.height, `${f}: the list's first row starts on screen (${JSON.stringify(r.row)})`);
+    assert.deepEqual([r.sheet.left, r.sheet.right, r.sheet.top <= 0], [0, r.width, true], `${f}: the sheet covers the screen`);
   }
 });

@@ -1,7 +1,7 @@
-// Each kit's Packed | To get switch, and All kits on the Kits tab (issue #118, part of #115). Packed shows what a kit
-// showed before. To get shows the kit's share of the shopping list, with #117's tools and section for that kit, then
-// an All kits chip. All kits shows the whole list (viewShop) in the Kits tab's right column, with a Back button.
-// Which side is on, and whether All kits is open, live in memory only.
+// Each kit's Packed | To get switch (issue #118, part of #115). Packed shows what a kit showed before. To get shows the
+// kit's share of the shopping list, with its sum and Share list (Order and Spend up to are Review's, #121), then a Review
+// chip, which opens the whole list (viewShop) in a sheet over the page, with a Close button. Which side is on, and
+// whether Review is open, live in memory only.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
@@ -111,11 +111,8 @@ function toGet(html) {
     buttons: buttons(body),
   };
 }
-// The groups on All kits, top to bottom: each one's heading, how many gap rows and its open lines
-const groups = html => [...html.matchAll(/<section class="panel stack shop-g">([\s\S]*?)<\/section>/g)].map(([, g]) => ({
-  name: text(g.match(/<h3>([\s\S]*?)<\/h3>/)[1]), gaps: (g.match(/<li class="shop-gap">/g) || []).length,
-  lines: [...g.matchAll(/<li class="shop-row[^"]*">[\s\S]*?<\/li>/g)].map(([r]) => attrs(r.match(/<input [^>]*>/)[0])["data-id"]),
-}));
+// The Review sheet on the Kits tab, or "" when it's closed
+const sheet = html => html.match(/<div class="review-sheet stack" role="dialog"[\s\S]*$/)?.[0] || "";
 // What a kit's To get should list: the open lines shopKit sends to it, and its kitGaps that aren't on the list
 const want = (app, id) => app.json(`(id => { const M = model(), on = splitListed(M.gaps).on;
   return { lines: shopItems().filter(e => !e.done && shopKit(e) === id).map(e => e.id).sort(), gaps: kitGaps(M, id).filter(g => !on.includes(g)).map(gapKey).sort() }; })(${JSON.stringify(id)})`);
@@ -204,7 +201,8 @@ test("the Trunk bag's To get lists its three gaps, plans them into the Trunk bag
   const share = t.buttons.filter(b => b.ds.act === "shopShare");
   assert.deepEqual(share.map(b => b.ds), [{ act: "shopShare", kit: "car" }]);
   assert.match(text(t.body), /3 to buy/);
-  assert.ok(t.body.includes('id="shop-sort"') && t.body.includes('id="shop-budget"'), "Order and Spend up to $");
+  assert.ok(!t.body.includes('id="shop-sort"') && !t.body.includes('id="shop-budget"'), "no Order or Spend up to $: they're Review's");
+  assert.match(text(t.body), /About \$\d+/, "the sum");
   await app.run(`ACT.shopShare(${JSON.stringify({ dataset: share[0].ds })})`);
   const lines = app.json(`shopItems().filter(e => !e.done && shopKit(e) === "car").map(x => { const i = shopInfo(x, model()); return "- " + i.line + (i.sub && i.sub !== i.line ? " (" + i.sub + ")" : ""); })`);
   const [title, ...rest] = app.json("SHARED")[0].text.split("\n");
@@ -228,8 +226,8 @@ for (const name of households) {
         assert.deepEqual(t.buttons.filter(b => b.ds.act === "shopShare").map(b => b.ds.kit), w.lines.length ? [id] : [], `${at}: Share list`);
         for (const b of t.buttons.filter(b => /^shopAdd/.test(b.ds.act))) assert.equal(b.ds.kit, id, `${at}: ${b.label}`);
         assert.doesNotMatch(t.body, /Kit readiness|class="fl-|class="ess-blk"|Weight and space|Photograph the contents|<table/, at);
-        assert.deepEqual(t.buttons.filter(b => b.label === "All kits").map(b => b.ds.act), ["allKits"], `${at}: the All kits chip`);
-        assert.ok(text(t.body).length > "All kits".length, `${at}: says something above the chip`);
+        assert.deepEqual(t.buttons.filter(b => b.label === "Review").map(b => b.ds.act), ["allKits"], `${at}: the Review chip`);
+        assert.ok(text(t.body).length > "Review".length, `${at}: says something above the chip`);
       }
     }
   });
@@ -242,61 +240,59 @@ test("opening a kit, or the same one again, starts it on Packed", () => {
     app.run(`ACT.${how}({ dataset: { id: ${JSON.stringify(id)} } })`);
     assert.deepEqual(sides(kitsTab(app)).map(([, p]) => p), ["true", "false"], `${how} ${id}`);
     assert.match(kitsTab(app), /Kit readiness/, `${how} ${id}`);
-    // From All kits, too
-    press(app, getSide(app, "go"), "All kits");
+    // From Review, too
+    press(app, getSide(app, "go"), "Review");
     app.run(`ACT.${how}({ dataset: { id: ${JSON.stringify(id)} } })`);
-    assert.deepEqual(sides(kitsTab(app)).map(([, p]) => p), ["true", "false"], `${how} ${id} from All kits`);
-    assert.equal(groups(kitsTab(app)).length, 0, `${how} ${id}: All kits closes`);
+    assert.deepEqual(sides(kitsTab(app)).map(([, p]) => p), ["true", "false"], `${how} ${id} from Review`);
+    assert.equal(sheet(kitsTab(app)), "", `${how} ${id}: Review closes`);
   }
   // A fresh load starts on Packed
   assert.deepEqual(sides(load({ fixture: "tests/household" }).run(`S.view = "kits"; S.openKit = "car"; viewKits(model())`)).map(([, p]) => p), ["true", "false"]);
 });
 
-test("All kits from the Trunk bag shows the whole list under Back to Trunk bag, and Back returns to its To get", () => {
+test("Review from the Trunk bag's To get opens the whole list over it, and Close returns to its To get", () => {
   const app = load({ fixture: "tests/household" });
   app.run(SEED);
-  press(app, getSide(app, "car"), "All kits");
-  const html = kitsTab(app), all = app.run("viewShop(model())");
-  assert.ok(html.includes(all), "All kits is viewShop");
-  assert.deepEqual(groups(html).map(g => g.name), ["Hall closet go-bag", "Basement bin", "Trunk bag", "No kit yet"]);
-  assert.equal((html.match(SWITCH) || []).length, 0, "no kit is shown");
-  assert.doesNotMatch(html, /Kit readiness/);
-  const back = buttons(html).filter(b => b.label.startsWith("Back to"));
-  assert.deepEqual(back.map(b => b.label), ["Back to Trunk bag"]);
-  assert.ok(html.indexOf("Back to Trunk bag") < html.indexOf(all), "Back is above the list");
-  assert.ok(buttons(html).some(b => b.ds.act === "openKit" && b.ds.id === "car"), "the kit list stays on the left");
-  press(app, html, "Back to Trunk bag");
+  press(app, getSide(app, "car"), "Review");
+  const html = kitsTab(app), all = app.run("viewShop(model())"), s = sheet(html);
+  assert.ok(s.includes(all), "Review is viewShop");
+  assert.equal((s.match(SWITCH) || []).length, 0, "no kit in the sheet");
+  assert.equal((html.match(SWITCH) || []).length, 1, "the Trunk bag's To get stays behind it");
+  assert.match(html, /<div class="kits-grid" inert>/, "and can't be reached while it's open");
+  assert.ok(s.indexOf("Close") < s.indexOf(all), "Close is above the list");
+  press(app, html, "Close");
   const again = kitsTab(app), w = want(app, "car");
   assert.deepEqual(sides(again), [["Packed · 1", "false"], [`To get · ${w.lines.length + w.gaps.length}`, "true"]]);
-  assert.equal(groups(again).length, 0);
+  assert.equal(sheet(again), "");
   assert.match(again, /<h2>Trunk bag<\/h2>/);
 });
 
-test("a kit's name renders as text in Back, in the switch's label and in All kits", () => {
+test("a kit's name renders as text in the switch's label and in Review", () => {
   const app = load({ fixture: "tests/household" });
   const evil = ["<img src=x onerror=alert(1)>", '" onfocus="alert(2)', "<b>bold</b> & 'quoted'"];
   app.run(`S.kits.push(...${JSON.stringify(evil)}.map((name, i) => ({ id: "x" + i, name, type: ["go", "car", "home"][i], createdAt: 9 + i })))`);
   app.run("ACT.shopAddAll()");
   evil.forEach((name, i) => {
     const pages = [open(app, "x" + i), getSide(app, "x" + i)];
-    press(app, pages[1], "All kits");
+    press(app, pages[1], "Review");
     pages.push(kitsTab(app));
     for (const html of pages) assert.doesNotMatch(html, /<img src|<b>bold|" onfocus="/, name);
     for (const html of pages.slice(0, 2)) assert.equal(attrs(html.match(SWITCH)[0].match(/^<div [^>]*>/)[0])["aria-label"], name, "the switch is labelled with the kit's name");
-    assert.deepEqual(buttons(pages[2]).filter(b => b.label.startsWith("Back to")).map(b => b.label), [`Back to ${name}`]);
-    assert.ok(groups(pages[2]).some(g => g.name === name), "its group on All kits");
+    assert.ok(text(sheet(pages[2])).includes(`Goes in ${name}`), "its name in Review's Goes in choices");
+    press(app, pages[2], "Close");
   });
 });
 
-test("with no kits, the Kits tab shows All kits, every gap under No kit yet and no Back, and adding a kit opens it on Packed", async () => {
+test("with no kits, the Kits tab says to pick or add a kit, with Review under it, and adding a kit opens it on Packed", async () => {
   const app = load({ fixture: "fixtures/empty-and-one/new-household" });
   const html = kitsTab(app);
-  assert.deepEqual(groups(html).map(g => [g.name, g.gaps, g.lines.length]), [["No kit yet", 33, 0]]);
-  assert.ok(html.includes(app.run("viewShop(model())")));
+  assert.match(text(html), /Pick a kit to see its contents, or add one\. Review/);
+  assert.equal(sheet(html), "", "Review is closed");
   assert.equal((html.match(SWITCH) || []).length, 0);
-  assert.ok(!buttons(html).some(b => b.label.startsWith("Back")), "no Back button");
-  assert.doesNotMatch(html, /Pick a kit/);
   assert.match(html, /data-submit="newKit"/, "the add-a-kit form is open, as today");
+  press(app, html, "Review");
+  assert.ok(sheet(kitsTab(app)).includes(app.run("viewShop(model())")), "Review opens");
+  press(app, kitsTab(app), "Close");
   // Adding a kit through the form
   const add = async (name, type) => {
     app.run(`(q => { const v = { "#nk-name": ${JSON.stringify(name)}, "#nk-type": ${JSON.stringify(type)}, "#nk-where": "" };
@@ -309,8 +305,9 @@ test("with no kits, the Kits tab shows All kits, every gap under No kit yet and 
   assert.equal(app.run("S.openKit"), id);
   assert.match(now, /<h2>First bag<\/h2>/);
   assert.deepEqual(sides(now).map(([, p]) => p), ["true", "false"]);
-  // A kit added while All kits is open opens on Packed too
-  press(app, getSide(app, id), "All kits");
+  // A kit added after Review opens on Packed too
+  press(app, getSide(app, id), "Review");
+  press(app, kitsTab(app), "Close");
   const car = await add("Car kit", "car");
   now = kitsTab(app);
   assert.equal(app.run("S.openKit"), car);
@@ -318,16 +315,16 @@ test("with no kits, the Kits tab shows All kits, every gap under No kit yet and 
   assert.deepEqual(sides(now).map(([, p]) => p), ["true", "false"]);
 });
 
-test("switching sides, All kits and Back write nothing and store nothing", () => {
+test("switching sides, Review and Close write nothing and store nothing", () => {
   const app = load({ fixture: "tests/household" }), writes = recordWrites(app);
   app.run(`ACT.shopAddAll(); globalThis.STORED = []; globalThis.localStorage = globalThis.sessionStorage = { setItem: (...a) => STORED.push(a), getItem: () => null, removeItem: (...a) => STORED.push(a) };`);
   const before = writes().length, docs = app.json("{ kits: S.kits, items: S.items, shopping: S.shopping, profile: S.profile }");
   for (const id of Object.keys(NAMES)) {
     press(app, getSide(app, id), "Packed");
     press(app, kitsTab(app), "To get");
-    press(app, kitsTab(app), "All kits");
-    press(app, kitsTab(app), `Back to ${NAMES[id]}`);
-    press(app, kitsTab(app), "All kits");
+    press(app, kitsTab(app), "Review");
+    press(app, kitsTab(app), "Close");
+    press(app, kitsTab(app), "Review");
     app.run("render()");
   }
   app.run(`ACT.gotoKit({ dataset: { id: "go" } }); render()`);
@@ -336,7 +333,7 @@ test("switching sides, All kits and Back write nothing and store nothing", () =>
   assert.deepEqual(app.json("{ kits: S.kits, items: S.items, shopping: S.shopping, profile: S.profile }"), docs, "no doc changes");
 });
 
-test("read-only viewers can switch to To get and open All kits, with no Plan, Plan the top N, × or add form", async () => {
+test("read-only viewers can switch to To get and open Review, with no Plan, Plan the top N, × or add form", async () => {
   const app = load({ fixture: "tests/household" });
   for (const setup of ["S.shopping = null", "ACT.shopAddAll()", SEED]) {
     app.run(`S.canWrite = true; ${setup}`);
@@ -344,28 +341,28 @@ test("read-only viewers can switch to To get and open All kits, with no Plan, Pl
     app.run("S.canWrite = false");
     for (const id of Object.keys(NAMES)) {
       const get = getSide(app, id);
-      press(app, get, "All kits");
+      press(app, get, "Review");
       const all = kitsTab(app);
       for (const html of [get, all]) {
-        for (const act of ["shopAdd", "shopAddTop", "shopDel", "shopClear", "shopAddAll"]) assert.doesNotMatch(html, new RegExp(`data-act="${act}"`), `${setup} ${id}: ${act}`);
+        for (const act of ["shopAdd", "shopAddTop", "shopDel", "shopClear", "shopAddAll", "shopAddFree"]) assert.doesNotMatch(html, new RegExp(`data-act="${act}"`), `${setup} ${id}: ${act}`);
         assert.doesNotMatch(html, /shop-new|data-submit/, `${setup} ${id}: no add form`);
       }
       assert.equal(toGet(get).gapRows, want(app, id).gaps.length, `${setup} ${id}: the gaps still show`);
-      assert.ok(groups(all).length >= 3, `${setup} ${id}: All kits shows`);
-      press(app, all, `Back to ${NAMES[id]}`);
+      assert.ok(sheet(all).includes(app.run("viewShop(model())")), `${setup} ${id}: Review shows`);
+      press(app, all, "Close");
     }
   }
 });
 
 // Every household the phone check covers: the standard one, and each phone-width and empty-and-one fixture
 const PHONE = ["tests/household", ...households.filter(h => /^fixtures\/(phone-width|empty-and-one)\//.test(h))];
-test("at 390px a kit's To get and All kits never scroll sideways, with no lines and with every gap planned", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
+test("at 390px a kit's To get and Review never scroll sideways, with no lines and with every gap planned", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
   // Two households a run: Chrome prints each page whole, and more would overflow what execFileSync reads back
   const seen = new Map();
   for (let i = 0; i < PHONE.length; i += 2) for (const [f, r] of measure(PHONE.slice(i, i + 2))) seen.set(f, r);
   assert.equal(seen.size, PHONE.length);
   // Where focus lands after each tap, so a keyboard user keeps their place as the column redraws
-  const FOCUS = { "To get": /^To get · \d+$/, "All kits": /^Back to /, Back: /^All kits$/ };
+  const FOCUS = { "To get": /^To get · \d+$/, Review: /^Close$/, Close: /^Review$/ };
   let kits = 0;
   for (const [f, shots] of seen) {
     assert.ok(shots.length >= 2, `${f}: measured`);
@@ -396,37 +393,41 @@ function measure(fixtures) {
       const M = model();
       S.shopping = lines === "no" ? null : { items: M.gaps.map(g => shopFromGap(g, M.h)) };
       S.view = "kits"; render();
-      if (!S.kits.length) look(`${lines} lines, no kits`, view.querySelectorAll(".shop-g").length > 0);
+      if (!S.kits.length) {
+        look(`${lines} lines, no kits`, !!view.querySelector('[data-act="allKits"]'));
+        look(`${lines} lines, no-kits Review`, tap(b => b.textContent === "Review") && !!view.querySelector(".review-sheet .shop-gap, .review-sheet .shop-row"));
+        look(`${lines} lines, no-kits Close`, tap(b => b.textContent === "Close") && !view.querySelector(".review-sheet"));
+      }
       for (const k of S.kits) {
         tap(b => b.dataset.act === "openKit" && b.dataset.id === k.id);
         look(`${lines} lines, ${k.id} To get`, tap(b => b.textContent.startsWith("To get")) && !!view.querySelector('[data-act="allKits"]'));
-        look(`${lines} lines, ${k.id} All kits`, tap(b => b.textContent === "All kits") && view.querySelectorAll(".shop-g").length > 0);
-        look(`${lines} lines, ${k.id} Back`, tap(b => b.textContent.startsWith("Back to")) && !!view.querySelector('[data-act="allKits"]'));
+        look(`${lines} lines, ${k.id} Review`, tap(b => b.textContent === "Review") && !!view.querySelector(".review-sheet"));
+        look(`${lines} lines, ${k.id} Close`, tap(b => b.textContent === "Close") && !view.querySelector(".review-sheet") && !!view.querySelector('[data-act="allKits"]'));
       }
     }
     return shots;
   });
 }
 
-// All kits puts the list's fields on the Kits tab, so a hidden tab that kept its markup could put their ids on the page twice
-test("after All kits and every other tab, every id on the page is unique, and All kits' add field is the one read", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
+// Review puts the list's fields on the Kits tab, so a hidden tab that kept its markup could put their ids on the page twice
+test("after Review and every other tab, every id on the page is unique, and Review's add field is the one read", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
   const seen = atPhoneWidth(["tests/household", "fixtures/empty-and-one/new-household"], () => {
     const dup = () => { const ids = [...document.querySelectorAll("[id]")].map(e => e.id); return ids.filter((x, i) => ids.indexOf(x) !== i); };
     const tab = v => document.querySelector(`#tabs button[data-v="${v}"]`).click(), steps = [];
     const step = at => steps.push({ at, dup: dup(), fields: document.querySelectorAll("#shop-new").length });
-    tab("kits");
-    if (S.kits.length) { [...document.querySelectorAll("#v-kits button")].find(b => b.textContent.startsWith("To get")).click(); document.querySelector('#v-kits [data-act="allKits"]').click(); }
-    step("kits");
-    for (const v of ["overview", "kits", "household", "kits", "plan", "kits"]) { tab(v); step(v); }
-    // Typing a line on All kits: the field it reads is the one on screen, which it then clears
+    // Review over the Kits tab, closed before each other tab (the tabs can't be reached while it's open), and opened again
+    const review = () => { if (S.kits.length) [...document.querySelectorAll("#v-kits button")].find(b => b.textContent.startsWith("To get")).click(); document.querySelector('#v-kits [data-act="allKits"]').click(); };
+    tab("kits"); review(); step("kits");
+    for (const v of ["overview", "household", "plan"]) { ACT.allBack(); tab(v); step(v); tab("kits"); review(); step("kits"); }
+    // Typing a line on Review: the field it reads is the one on screen, which it then clears
     const f = document.querySelector("#v-kits #shop-new");
     f.value = "Spare reading glasses";
     f.form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
     return { steps, left: f.value };
   });
   for (const [f, r] of seen) {
-    // All kits stays open on Kits, the one tab with the field
+    // Review is open on Kits, the one tab with the field
     for (const s of r.steps) assert.deepEqual([s.dup, s.fields], [[], s.at === "kits" ? 1 : 0], `${f}, ${s.at}`);
-    assert.equal(r.left, "", `${f}: All kits' field was read`);
+    assert.equal(r.left, "", `${f}: Review's field was read`);
   }
 });
