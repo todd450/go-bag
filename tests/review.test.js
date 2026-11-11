@@ -285,7 +285,7 @@ test("the sheet is a modal dialog labelled Review, with Close, over the Kits tab
     const html = kitsTab(app), s = sheetOf(html), d = attrs(s.match(/^<div [^>]*>/)[0]);
     assert.deepEqual([d.role, d["aria-modal"]], ["dialog", "true"], fixture);
     const h = s.match(new RegExp(`<(h\\d) id="${d["aria-labelledby"]}">([\\s\\S]*?)</\\1>`));
-    assert.equal(text(h?.[2] || ""), "Review", `${fixture}: labelled by its heading`);
+    assert.equal(text(h?.[2] || ""), "Shopping list", `${fixture}: labelled by its heading`);
     assert.match(s, /<button [^>]*id="review-x"[^>]*data-act="allBack"[^>]*>Close<\/button>/);
     assert.match(html, /<div class="kits-grid" inert>/, `${fixture}: the page behind can't be reached`);
     tap(app, "allBack");
@@ -299,7 +299,7 @@ test("ways in: the To get chip, an old #shop link, the toast's See list, and the
   let app = load({ fixture: "tests/household" });
   app.run(`S.view = "kits"; ACT.openKit({ dataset: { id: "car" } }); ACT.kitSide({ dataset: { v: "get" } })`);
   const chip = kitsTab(app).match(/<button [^>]*data-act="allKits"[^>]*>([^<]*)<\/button>/);
-  assert.equal(chip[1], "Review");
+  assert.equal(chip[1], "Shopping list");
   tap(app, "allKits");
   assert.ok(sheetOf(kitsTab(app)).includes(view(app)), "the chip opens Review");
   // #shop
@@ -314,9 +314,9 @@ test("ways in: the To get chip, an old #shop link, the toast's See list, and the
   // No kits: "Pick a kit…" and a Review button, which opens the sheet with 33 gaps under No kit yet
   app = load({ fixture: "fixtures/empty-and-one/new-household" });
   const tab = kitsTab(app);
-  assert.match(text(tab), /Pick a kit to see its contents, or add one\. Review/);
+  assert.match(text(tab), /Pick a kit to see its contents, or add one\. Shopping list/);
   assert.equal(sheetOf(tab), "");
-  assert.equal(tab.match(/<button [^>]*data-act="allKits"[^>]*>([^<]*)<\/button>/)[1], "Review");
+  assert.equal(tab.match(/<button [^>]*data-act="allKits"[^>]*>([^<]*)<\/button>/)[1], "Shopping list");
   tap(app, "allKits");
   assert.equal(review(sheetOf(kitsTab(app))).loose.length, 33);
 });

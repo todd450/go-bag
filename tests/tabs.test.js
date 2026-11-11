@@ -182,7 +182,7 @@ for (const name of households.filter(h => h !== "tests/household")) {
 test("at 390px the toast's See list is on one line, and tapping it opens Kits on All kits", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
   const seen = atPhoneWidth(["tests/household", "fixtures/empty-and-one/new-household"], () => {
     const M = model(), off = new Set(splitListed(M.gaps).off), id = M.results.find(r => hzGaps(M, r).filter(g => off.has(g)).length > 1).hz.id;
-    S.openHz = new Set([id]); render();
+    S.view = "overview"; S.openHz = new Set([id]); render();
     document.querySelector(`[data-act="shopAddHz"][data-id="${id}"]`).click();
     // How many lines an element's text takes
     const lines = e => { const r = document.createRange(); r.selectNodeContents(e); return new Set([...r.getClientRects()].map(x => Math.round(x.top))).size; };
@@ -218,7 +218,7 @@ test("at 390px See list shows Review on screen, over the page", { skip: !chrome 
   const fixtures = ["tests/household", "fixtures/data-and-account-shapes/odd-container", "fixtures/empty-and-one/new-household", "fixtures/phone-width/long-kit-name"];
   const measure = () => {
     // The last emergency's Add, with every emergency open, scrolled to as a thumb would
-    S.openHz = new Set(model().results.map(r => r.hz.id)); render();
+    S.view = "overview"; S.openHz = new Set(model().results.map(r => r.hz.id)); render();
     const add = [...document.querySelectorAll('[data-act="shopAddHz"]')].at(-1);
     add.scrollIntoView({ block: "center" });
     const from = scrollY;
