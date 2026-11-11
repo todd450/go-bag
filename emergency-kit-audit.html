@@ -88,6 +88,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .hdr-score { font-size: .8rem; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; background: var(--paper); border-radius: 999px; padding: 4px 14px; }
 .hdr-score:empty { display: none; }
 .hdr-score b { font-family: var(--f-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
+/* On Readiness the ring shows the score: the header's copy fades in as the ring scrolls away, where scroll timelines work */
+@keyframes hs { from { opacity: 0; } }
+body:has(#v-overview:not([hidden])) .hdr-score { animation: hs linear both; animation-timeline: scroll(); animation-range: 110px 230px; }
 nav.tabs { display: flex; gap: 28px; overflow-x: auto; width: 100%; scrollbar-width: none; }
 nav.tabs button { display: flex; align-items: center; gap: 6px; background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 0 12px; font-weight: 500; font-size: .92rem; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
 nav.tabs button .ic { display: none; }
@@ -503,8 +506,9 @@ textarea.ed { width: 100%; min-height: 0; resize: none; margin: 0; }
 @media (max-width: 860px) { .hh-plan { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) {
   .hh-sep { display: none; } .hh-place .re { margin-left: 0; } .hh-place { padding: 12px 14px; }
-  .hh-people { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .hh-card { padding: 12px; } .hh-card.wide, .hh-add { grid-column: 1 / -1; } .hh-add { min-height: 0; }
+  /* Two cards a row; one alone on its row fills it */
+  .hh-people { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; }
+  .hh-card { flex: 1 1 40%; padding: 12px; } .hh-card.wide, .hh-add { flex-basis: 100%; } .hh-add { min-height: 0; }
   .hh-who { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; } .av { width: 34px; height: 34px; }
   .route { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .route::before { left: 21px; right: auto; top: 22px; bottom: 22px; border-top: 0; border-left: 2px dashed var(--rule-2); }
@@ -1920,8 +1924,9 @@ const kgOfLb = lb => Math.round(num(lb) / KG_LB * 100) / 100;
 function bagFig(P, lim, m) {
   const w = m === "g", k = w ? LB_G : 1e3, u = w ? " lb" : " L", max = (w ? lim.kg : lim.L) * 1e3, bagG = w && P.bagG || 0, have = (w ? P.g : P.ml) + bagG, c = lim.container;
   // Bands fill the stack, which sits 4px + 5px inside the bag (.bag-st), so a full bag's bands are exactly its height.
-  const r = Math.max(1, have / max), tall = Math.round(240 * Math.min(r, 1.5)), inner = tall - 9, px = inner / max / r, body = Math.round(tall / r);
-  const xs = P.lines.map(l => [w ? l.g : l.ml, l.it]).sort((a, b) => b[0] - a[0]), sm = xs.filter(x => x[0] * px < 18), n = sm.length > 1 && sm.length;
+  // The bag is 140px tall empty and its full 240px by half full. Bands merge as they would at full height, so it names the same items.
+  const r = Math.max(1, have / max), o = Math.min(r, 1.5), tall = Math.round((140 + 100 * Math.min(1, 2 * have / max)) * o), inner = tall - 9, px = inner / max / r, body = Math.round(tall / r);
+  const xs = P.lines.map(l => [w ? l.g : l.ml, l.it]).sort((a, b) => b[0] - a[0]), sm = xs.filter(x => x[0] * (Math.round(240 * o) - 9) / max / r < 18), n = sm.length > 1 && sm.length;
   const rows = n ? xs.filter(x => !sm.includes(x)).concat([[sm.reduce((a, x) => a + x[0], 0)]]) : xs;
   // A band is at least 18px to fit its label; whatever that adds past the stack comes off the biggest item's band, never the bag's.
   const bh = bagG && Math.max(18, Math.round(bagG * px)), hs = rows.map(([v]) => Math.max(18, Math.round(v * px))), extra = hs.reduce((a, h) => a + h, bh) - inner;
