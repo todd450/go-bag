@@ -214,6 +214,8 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .pick > .imp { min-width: 1.7em; }
 .imp.up, .imp-k { color: var(--brand); }
 /* Positioned so it clips its hidden words on a phone; clicks pass through it to the row's button. */
+.hz-cost { grid-column: 2; grid-row: 2; justify-self: end; font-size: .78rem; color: var(--ink-2); white-space: nowrap; }
+.hz-row:has(.hz-cost) .hz-needs { grid-column: 1; }
 .hz-needs { grid-column: 1 / -1; position: relative; pointer-events: none; display: flex; flex-wrap: wrap; gap: 3px 12px; font-size: .78rem; }
 /* Likelihood as three bars, and a need as its icon and name: missing in ink, some in amber with the amount, have in green with a check. */
 .lik { display: inline-flex; gap: 2px; align-items: flex-end; height: 11px; flex: none; }
@@ -272,8 +274,6 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .kit-row .kit-miss { grid-column: 1 / -1; margin-top: -2px; }
 /* What it costs (#138): the kits' table, then the emergencies' in two halves: side by side on a desktop, one list on a phone */
 .cost-grid { display: grid; gap: 16px; }
-.cost-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 48px; align-items: start; }
-@media (max-width: 760px) { .cost-2 { display: block; } .cost-2 table + table thead th { font-size: 0; padding: 0; } .cost-2 table:not(:last-child) tbody tr:last-child > * { border-bottom: 1px solid var(--rule); } }
 .cost-t { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .9rem; }
 .cost-t th, .cost-t td { padding: 7px 0; border-bottom: 1px solid var(--rule); text-align: right; font-weight: 400; background: none; color: var(--ink); font-size: inherit; vertical-align: baseline; }
 .cost-t tr:last-child > * { border-bottom: 0; }
@@ -647,8 +647,7 @@ html:has(.review-sheet) { overflow: hidden; }
 .fl-tile .ic { width: 22px; height: 22px; color: var(--ink-2); }
 .fl-pic { width: 34px; height: 34px; object-fit: contain; }
 .fl-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-weight: 500; }
-.fl-note { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
-.fl-note, .fl-exp { color: var(--ink-2); font-size: .68rem; }
+.fl-exp { color: var(--ink-2); font-size: .68rem; }
 .fl-q { min-width: 0; overflow-wrap: anywhere; font-size: .72rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .fl-tile.expired { border-color: var(--bad); box-shadow: inset 0 0 0 1px var(--bad); }
 .fl-tile.expired .fl-name { text-decoration: line-through; }
@@ -657,16 +656,7 @@ html:has(.review-sheet) { overflow: hidden; }
 .fl-tile.soon .fl-exp { color: var(--warn); font-weight: 500; }
 .fl-add { align-items: center; justify-content: center; border-style: dashed; border-color: var(--rule-2); background: var(--card); font: inherit; font-size: .78rem; font-weight: 500; text-align: center; cursor: pointer; }
 .fl-add:hover { border-color: var(--ink); }
-.fl-tile.miss { padding-inline: 3px; border-style: dashed; border-color: var(--rule-2); background: var(--card); color: var(--ink-2); }
-.fl-tile.miss .gain { font-size: .72rem; }
-.fl-tile.miss .fl-name, .fl-tile.miss .fl-note { display: block; -webkit-line-clamp: none; line-clamp: none; overflow: visible; overflow-wrap: break-word; }
-.fl-do { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; margin: -8px -3px -6px; padding: 8px 3px 6px; border: 0; border-radius: 9px; background: none; text-align: left; cursor: pointer; }
-.fl-tile.miss:has(.fl-do):hover { border-color: var(--ink); }
-/* A tile planned for its kit. --brand-tint stays light in dark mode, so its text is --brand-deep in both. */
-.fl-tile.plan { border-color: var(--brand); background: var(--brand-tint); color: var(--brand-deep); }
-.fl-tile.plan :is(.ic, .gain, .fl-note) { color: inherit; }
-.fl-acts { display: grid; gap: 4px; margin-top: 10px; }
-.fl-acts .btn { padding: 2px 4px; font-size: .7rem; line-height: 1.2; }
+
 /* A present tile's button fills its tile. Its item's fields open under the tile's row, across the grid: dense packing
    lets the rest of that row fill in before them. */
 .fl-ed { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; margin: -8px -5px -6px; padding: 8px 5px 6px; border: 0; border-radius: 9px; background: none; text-align: left; cursor: pointer; }
@@ -1963,7 +1953,7 @@ function viewOverview(M) {
     ${group("Everyday", sorted.filter(r => r.hz.group === "everyday"), "Small things that go wrong often. A kit that handles them is one you'll open, and so keep stocked.")}
     ${offCount ? `<div><button class="btn ghost sm" data-act="toggleOff" aria-expanded="${!!S.showOff}">${S.showOff ? "Hide" : "Show"} ${offCount} that ${offCount === 1 ? "doesn't" : "don't"} apply to you</button></div>` : ""}
   </div>
-  ${costsSection(M, sorted.filter(applies))}`;
+  ${costsSection(M)}`;
 }
 /* ---------- what it costs, shown (#138) ---------- */
 const usd = n => "$" + Math.round(n).toLocaleString("en-US");
@@ -1973,21 +1963,18 @@ const unpricedNote = n => n ? ` <span class="muted" title="Prescriptions and ite
 const spentAmt = s => `${s.paid < s.total || s.unpriced ? "about " : ""}<b>${usd(s.total)}</b>`;
 const toGetAmt = s => `about <b>${usd(s.total)}</b>`;
 const costCell = s => `<td class="mono">${usd(s.total)}${s.unpriced ? `<span class="muted small" title="${pl(s.unpriced, "line")} with no price"> +${s.unpriced}</span>` : ""}</td>`;
-/* The Overview's What it costs: each kit's spend and what finishing it would cost, then each emergency that applies at
-   its full cost. Emergencies share supplies, so they aren't summed. */
-function costsSection(M, rs) {
+/* The Overview's What it costs: each kit's spend and what finishing it would cost. An emergency's cost is on its own
+   row (hzRow) and in its opened panel. */
+function costsSection(M) {
   const kits = [...S.kits].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).map(k => [k, kitCost(k, M.kitRes[k.id], M.h)]);
   if (!kits.length) return "";
   const tbl = (h1, h2, h3, rows) => `<table class="cost-t"><thead><tr><th scope="col">${h1}</th><th scope="col">${h2}</th><th scope="col">${h3}</th></tr></thead><tbody>${rows.map(([n, c]) => `<tr><th scope="row">${esc(n)}</th>${costCell(c.spent)}${costCell(c.toGet)}</tr>`).join("")}</tbody></table>`;
-  // The emergencies' list is long, so it is two tables, the first half and the rest
-  const hz = rs.map(r => [r.hz.name, hzCost(r, M.h)]), half = Math.ceil(hz.length / 2), e = rows => rows.length ? tbl("Emergency", "Spent", "To be ready", rows) : "";
   return `<section class="costs stack" aria-labelledby="costs-h">
     <div class="sec-h"><h2 id="costs-h">What it costs</h2><span class="small muted">Spent so far, and the shopping list's prices for the rest</span></div>
     <div class="cost-grid">
       <div class="panel">${tbl("Kit", "Spent", "To finish", kits.map(([k, c]) => [k.name, c]))}</div>
-      ${hz.length ? `<div class="panel cost-2">${e(hz.slice(0, half))}${e(hz.slice(half))}</div>` : ""}
     </div>
-    ${how("costs", "Spent is what you paid where a receipt is saved on the item (type it in Paid $ on the item's row), else its current price where one is saved, else what the shopping list would charge for the same thing. To finish prices what each kit's own checklist is short of. An emergency counts everything it needs in the kits it uses, so supplies shared by several emergencies count in each, and the emergencies don't add up to the household's total. Prescriptions aren't priced.")}
+    ${how("costs", "Spent is what you paid where a receipt is saved on the item (type it in Paid $ on the item's row), else its current price where one is saved, else what the shopping list would charge for the same thing. To finish prices what each kit's own checklist is short of. The dollars on an emergency's row are what it still needs to be ready: it counts everything it needs in the kits it uses, so supplies shared by several emergencies count in each, and they don't add up to the household's total. Prescriptions aren't priced.")}
   </section>`;
 }
 function kitRow(k, r) {
@@ -2144,10 +2131,12 @@ function hzRow(r, h, M = model()) {
   const lockedOff = r.hz.vehicle && h.vehicles === 0;
   const alarm = r.hz.group === "health" && r.rel === "high" && r.score < 50;
   const rows = [...r.rows].sort((a, b) => needRank(a) - needRank(b)), more = rows.length - 6;
+  const c = off || lockedOff ? 0 : hzCost(r, h).toGet;
   return `<div class="hz-row${off ? " off" : ""}${open ? " open" : ""}">
     <span class="hz-nm"><button class="hz-tg" data-act="toggleHz" data-id="${id}" aria-expanded="${open}"${open ? ` aria-controls="hzp-${id}"` : ""} title="${esc(r.hz.name)} · ${esc(modeLine(r.hz))}">${esc(r.hz.name)}</button><span class="mode">${esc(modeLine(r.hz))}</span></span>
     <span class="hz-sc">${lockedOff ? `<span class="small muted">No vehicle</span>` : hzMarks(r.hz, r.rel, off)}<span class="pct"${alarm ? ` style="color:var(--bad)"` : ""}>${r.score}%${alarm ? `<span class="vh">, needs attention</span>` : ""}</span></span>
     <span class="hz-needs">${rows.slice(0, 6).map(x => { const s = needRank(x); return `<span class="need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span class="vh">${NEED_WORD[s]} </span>${esc(catLabel(x.cat))}${s === 1 ? ` <span class="amt">${amount(x, h, "days").replace(/ <span[\s\S]*/, "")}</span>` : ""}</span>`; }).join("")}${more > 0 ? `<span class="need more">+${more} more</span>` : ""}</span>
+    ${c && (c.total || c.unpriced) ? `<span class="hz-cost">${c.total ? usd(c.total) : "Unpriced"}<span class="hz-cost-t"> to be ready</span></span>` : ""}
   </div>${open ? hzPanel(r, h, M, rows) : ""}`;
 }
 /* What an opened emergency involves: where you'd be and with what, how bad it is and why it's rated as it is, each
@@ -2286,7 +2275,7 @@ function kitDetail(kit, ready, M = model()) {
   </div>${get
     ? `<div class="panel stack">${shopTools(M, P, kit)}${shopSection(M, P, kit) || `<p class="small muted">Nothing to get for this kit.</p>`}</div>${reviewBtn}` : `
   <div class="kit-top">${kitReadyPanel(kit, ready, M)}${containerCard(kit, ready.h)}</div>
-  ${contentsPanel(kit, items, list, ready, M)}
+  ${contentsPanel(kit, items, list)}
   ${kitChecklist(kit, ready, M)}
   ${packPanel(kit, ready)}
   ${photos.length ? `<div class="photos">${photos.map(id => `<img src="/_blob/${esc(id)}" alt="Photo of ${esc(kit.name)}" loading="lazy">`).join("")}</div>` : ""}
@@ -2302,15 +2291,12 @@ function kitDetail(kit, ready, M = model()) {
   </div>` : ""}
   ${draft ? draftTable(draft) : ""}`}`;
 }
-/* The Contents panel: Flat-lay, one tile per item in the zones of ZONES, then a dashed tile per missing essential
-   (`ready`'s rows, as the checklist shows them), or List, the item table (`list`). */
-function contentsPanel(kit, items, list, ready, M) {
+/* The Contents panel: Flat-lay, one tile per item in the zones of ZONES, or List, the item table (`list`). It shows
+   what is packed; what is missing is the kit's To get. */
+function contentsPanel(kit, items, list) {
   const seg = (v, label) => `<button type="button" data-act="kitView" data-v="${v}" aria-pressed="${!!list === (v === "list")}">${label}</button>`;
   const byZone = new Map(ZONES.map(z => [z, []]));
   for (const it of [...items].sort((a, b) => String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name)))) byZone.get(zoneOf(it.category)).push(flTile(it));
-  const next = new Map();
-  for (const g of splitListed(M.gaps).off) if (!next.has(gapKey(g))) next.set(gapKey(g), g);
-  for (const row of ready.rows) if (row.ess) for (const e of row.ess) if (!e.have) byZone.get(zoneOf(row.cat)).push(flMiss(M, row.cat, e, next, kit));
   const flat = (items.length ? "" : `<p class="fl-empty muted">Nothing in this kit yet.</p>`)
     + [...byZone].filter(([, ts]) => ts.length).map(([z, ts]) => `<section class="fl-zone"><h3 class="fl-h">${esc(z.label)}</h3><ul class="fl-grid">${ts.join("")}</ul></section>`).join("");
   return `<div class="panel stack">
@@ -2329,31 +2315,6 @@ function flTile(it) {
   const open = S.canWrite && S.flOpen === it.id;
   return `<li class="fl-tile${st ? " " + st : ""}" data-id="${esc(it.id)}">${S.canWrite ? `<button type="button" class="fl-ed" id="fl-${esc(it.id)}" data-act="flEdit" data-id="${esc(it.id)}" aria-expanded="${open}" aria-label="${esc(name + ", edit")}">${body}</button>` : body}</li>`
     + (open ? `<li class="fl-fields">${itemFields(it).filter(f => f[2]).map(([c, l, h]) => `<div class="fl-f ${c}" data-label="${l}">${h}</div>`).join("")}</li>` : "");
-}
-/* A missing essential's dashed tile in `kit`: its icon, label, the points planning it into this kit adds and its line's
-   price (#120). While it is the gap shopAdd would plan (`next`, by gapKey) it is a Plan button; once its line (gapLine)
-   goes in this kit it opens Packed it and Take off plan (S.flOpen), and going elsewhere it says where. With no household
-   gap there is nothing to plan. Prescriptions slots share a key and shopAdd plans the first one off the list, so a later
-   slot says which to plan first. The two words too wide for a phone tile get a soft hyphen, since browsers don't
-   hyphenate a capitalised word themselves; a name too wide breaks before its 's, and "(1 of 2)" stays on one line. */
-const flWord = s => esc(s).replace(/(prescrip)(tions)|(extin)(guisher)/gi, (_, a, b, c, d) => `${a || c}\u00ad${b || d}`)
-  .replace(/&#39;s\b/g, "<wbr>&#39;s").replace(/\((\d+) of (\d+)\)/g, "($1\u00a0of\u00a0$2)");
-function flMiss(M, cat, e, next, kit) {
-  const g = essGap(M, cat, e), gain = gapGain(M, g, kit.id), first = g && next.get(gapKey(g)), w = S.canWrite;
-  const line = g && gapLine(M.gaps, g), to = line && shopKit(line), here = line && to === kit.id;
-  // Its line's price, or the price of the line planning it here would add
-  const p = g && shopInfo(line || shopFromGap(g, M.h, kit.id), M).price, cost = p === null ? "Rx" : money(p);
-  const notes = !g ? [] : here ? ["Planned" + (cost && " · " + cost)]
-    : line ? [to ? `Planned for ${esc(S.kits.find(k => k.id === to).name)}` : "Planned · no kit yet"]
-    : [p === null ? "Rx · pharmacy" : cost, first !== g && w && `Plan ${esc((first.label.match(/\((\d+ of \d+)\)$/) || [, first.label])[1])} first`];
-  const body = `<span class="fl-top">${icon(cat)}${gain ? `<span class="gain" title="Readiness points adding it adds">${pts(gain)}</span>` : ""}</span><span class="fl-name">${flWord(e.label)}</span>`
-    + notes.filter(Boolean).map(n => `<span class="fl-note">${n}</span>`).join("");
-  const id = here && esc(line.id), open = here && S.flOpen === line.id;
-  const tile = !w ? body
-    : here ? `<button type="button" class="fl-do" id="fl-${id}" data-act="flEdit" data-id="${id}" aria-expanded="${open}">${body}</button>`
-      + (open ? `<span class="fl-acts"><button type="button" class="btn sm" data-act="shopPack" data-id="${id}">Packed it</button><button type="button" class="btn ghost sm" data-act="shopDel" data-id="${id}">Take off plan</button></span>` : "")
-    : g && !line && first === g ? `<button type="button" class="fl-do" data-act="shopAdd" data-cat="${esc(cat)}" data-essential="${esc(e.id)}" data-kit="${esc(kit.id)}" aria-label="${esc(`Plan ${e.label} for ${kit.name}`)}">${body}</button>` : body;
-  return `<li class="fl-tile miss${here ? " plan" : ""}">${tile}</li>`;
 }
 function catOptions(sel) { return Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${k === sel ? "selected" : ""}>${v[0]}</option>`).join(""); }
 /* An Essential picker's options for category `cat` with `v` chosen: "Pick one…" (left out once tagged, when `blank` is
@@ -3244,7 +3205,6 @@ const ACT = {
     toast(`Added ${gapName(g)} to your shopping list`);
   },
   // A planned tile's Packed it: ticks its line, so the item goes in the kit (#120)
-  shopPack: b => shopTick(b.dataset.id, true, b.closest?.("li")),
   // An opened emergency's button: every household gap it is short of that isn't on the list yet
   shopAddHz: b => {
     const M = model(), r = M.results.find(x => x.hz.id === b.dataset.id), off = new Set(splitListed(M.gaps).off);
