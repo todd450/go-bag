@@ -45,16 +45,16 @@ const tapItem = (app, kit, id) => {
 // What each field's control must say for an item, from its stored doc
 const expected = (app, it) => app.json(`(it => ({
   name: it.name == null ? "" : String(it.name), qty: String(Math.max(1, num(it.qty))), liters: String(num(it.liters) || ""), kcal: String(num(it.kcal) || ""),
-  grams: num(it.grams) ? String(lb1(num(it.grams))) : "", ml: num(it.ml) ? String(num(it.ml) / 1000) : "", expires: String(it.expires || ""),
+  grams: num(it.grams) ? String(lb1(num(it.grams))) : "", ml: num(it.ml) ? String(num(it.ml) / 1000) : "", expires: String(it.expires || ""), paid: String(dollars(it.paid) ?? ""),
   gramsEst: String(lb1(itemLoad(it).estG)), mlEst: String(Math.round(itemLoad(it).estMl / 100) / 10), ess: essentialList(it.category).length > 0,
 }))(S.items.find(i => i.id === ${JSON.stringify(it)}))`);
-const IDS = { name: "name", category: "cat", essential: "ess", qty: "qty", liters: "l", kcal: "k", grams: "g", ml: "ml", expires: "exp" };
+const IDS = { name: "name", category: "cat", essential: "ess", qty: "qty", liters: "l", kcal: "k", grams: "g", ml: "ml", paid: "paid", expires: "exp" };
 
 function checkFields(app, cs, id, where) {
   const want = expected(app, id);
   assert.ok(cs.filter(c => c.f).every(c => c.change === "item" && c.itemId === id), `${where}: every field is the item's, on data-change="item"`);
   const fs = cs.filter(c => c.f);
-  assert.deepEqual(fs.map(c => c.f), ["name", "category", ...want.ess ? ["essential"] : [], "qty", "liters", "kcal", "grams", "ml", "expires"], `${where}: the fields, in order`);
+  assert.deepEqual(fs.map(c => c.f), ["name", "category", ...want.ess ? ["essential"] : [], "qty", "liters", "kcal", "grams", "ml", "paid", "expires"], `${where}: the fields, in order`);
   for (const c of fs) {
     assert.equal(c.id, `it-${id}-${IDS[c.f]}`, `${where}: ${c.f} id`);
     assert.equal(c.change, "item", `${where}: ${c.f} data-change`);
