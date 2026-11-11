@@ -15,7 +15,7 @@ const text = html => unesc(html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")).t
 const kitHtml = (run, id) => run(`S.view = "kits"; S.openKit = ${JSON.stringify(id)}; viewKits(model())`);
 
 // The flat-lay in a piece of HTML: each zone's heading, how many tiles it shows, and its items' tiles in the order
-// shown. A missing essential's dashed tile (`miss`, tests/flatlay-missing.test.js) is no item's tile.
+// shown.
 function zones(html) {
   return [...html.matchAll(/<section class="fl-zone"[^>]*>([\s\S]*?)<\/section>/g)].map(([, z]) => ({
     label: text((z.match(/<h3[^>]*>([\s\S]*?)<\/h3>/) || ["", ""])[1]),
