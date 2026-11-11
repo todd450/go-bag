@@ -67,3 +67,17 @@ test("a base no loader can read falls back to this change's tabs, with a warning
   assert.deepEqual(tabs(movedPage(), added, { warn: w => warnings.push(w) }), [...load().json("VIEWS"), "extra"]);
   assert.equal(warnings.length, 1);
 });
+
+// A Chrome that starts and never answers once hung the whole check (PR 144): it is replaced, then given up on
+test("a browser that never answers is started again, then fails the run instead of hanging it", async () => {
+  const { openChrome } = require("../tools/screenshots");
+  const fake = path.join(dir, "silent-chrome"), log = path.join(dir, "starts");
+  fs.writeFileSync(fake, `#!/bin/sh\necho x >> "${log}"\nexec sleep 30\n`, { mode: 0o755 });
+  const t0 = Date.now();
+  await assert.rejects(openChrome(fake, { wait: 400, starts: 2 }), /didn't answer within 0\.4s in 2 starts/);
+  assert.ok(Date.now() - t0 < 5000, "it gives up promptly");
+  // The error's own count says both starts were made. The stand-in's log can't be held to exactly two: on a busy
+  // machine a start is stopped before its shell has run, so it only shows the stand-in really was started.
+  const ran = fs.existsSync(log) ? fs.readFileSync(log, "utf8").trim().split("\n").length : 0;
+  assert.ok(ran <= 2, `started ${ran} times, never more than asked`);
+});
