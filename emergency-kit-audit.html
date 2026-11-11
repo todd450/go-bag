@@ -266,16 +266,22 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .exp-row .flag { flex: none; font-size: .75rem; font-weight: 500; }
 
 /* Kits */
-.kits-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 24px; align-items: start; }
-.kits-grid:has(> .plan-bar) { grid-template-columns: 260px minmax(0, 1fr) 220px; }
-/* The plan bar: a sticky card in the third column; on one column, fixed above the bottom nav (its border, padding, icon and label) */
-.plan-bar { position: sticky; top: 124px; display: grid; gap: 12px; background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); }
+/* One column: the kit list is a row of cards across the top with the plan bar at its right end, and the open kit takes
+   the full width below. At phone width the list stacks and the bar is fixed above the bottom nav (further down). */
+.kits-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
+.plan-bar { display: flex; align-items: center; gap: 16px; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 12px 16px; box-shadow: var(--shadow); }
 .plan-bar .stack { gap: 2px; }
-/* Between one column and room for three, the bar sits under the kit list instead, so the kit keeps the width */
-@media (min-width: 861px) and (max-width: 1279px) {
-  .kits-grid:has(> .plan-bar) { grid-template-columns: 260px minmax(0, 1fr); grid-template-rows: auto 1fr; }
-  .kits-grid:has(> .plan-bar) > .kit-main { grid-column: 2; grid-row: 1 / span 2; }
-  .kits-grid > .plan-bar { grid-column: 1; grid-row: 2; align-self: start; z-index: 2; }
+@media (min-width: 861px) {
+  .kits-grid { gap: 16px 24px; }
+  .kits-grid:has(> .plan-bar) { grid-template-columns: minmax(0, 1fr) auto; }
+  .kits-grid > .kit-main { grid-column: 1 / -1; grid-row: 2; }
+  .kits-grid > .plan-bar { grid-column: 2; grid-row: 1; }
+  .kits-list { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+  .kits-list > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .kits-list > .tags { display: contents; }
+  .kits-list .tag { flex: 0 1 280px; min-width: 200px; width: auto; }
+  .kits-list > .add-kit { flex: none; padding-inline: 20px; }
+  .kits-list > form { flex: 1 1 100%; max-width: 420px; }
 }
 /* The open kit: its name, Packed | To get and Delete on one row; readiness and what holds it side by side when there's room */
 .kit-main { container: kit / inline-size; }
@@ -283,6 +289,8 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .kit-hd > .kit-ttl { flex: 1 1 220px; min-width: 0; }
 .kit-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 @container kit (min-width: 640px) { .kit-top:has(> :nth-child(2)) { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
+/* Until a bag or box is named, its card is only as wide as its button, and readiness takes the rest */
+@container kit (min-width: 640px) { .kit-top:has(> .ctr-card > .ctr-add) { grid-template-columns: minmax(0, 1fr) auto; } }
 .kit-serves { display: inline-flex; align-items: center; gap: 8px; }
 .kit-serves input { width: 72px; }
 /* Weight and space: the bag beside what it says, once the panel is wide enough */
@@ -291,9 +299,8 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .pack-body > .pack-txt { display: grid; gap: 10px; min-width: 0; }
 @container (min-width: 600px) { .pack-body { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); } .pack-body > .pack-txt { padding-top: 26px; } }
 @media (max-width: 860px) {
-  .kits-grid, .kits-grid:has(> .plan-bar) { grid-template-columns: 1fr; }
   .kits-grid:has(> .plan-bar) { padding-bottom: 80px; }
-  .plan-bar { position: fixed; z-index: 5; inset: auto 0 0; display: flex; justify-content: space-between; align-items: center; border-width: 1px 0 0; border-radius: 0; padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+  .plan-bar { position: fixed; z-index: 5; inset: auto 0 0; justify-content: space-between; border-width: 1px 0 0; border-radius: 0; padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
 }
 @media (max-width: 640px) { .plan-bar { bottom: calc(46px + 1.05rem + env(safe-area-inset-bottom, 0px)); padding-bottom: 10px; } }
 .tags { display: grid; gap: 8px; }
@@ -2045,7 +2052,7 @@ function viewKits(M) {
   for (const it of S.items) counts[it.kitId] = (counts[it.kitId] || 0) + 1;
   const list = [...S.kits].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   return `<div class="kits-grid"${S.allKits ? " inert" : ""}>
-    <div class="stack">
+    <div class="stack kits-list">
       <h2>Your kits</h2>
       <div class="tags">${list.map(k => `<button class="tag" data-act="openKit" data-id="${esc(k.id)}" aria-pressed="${k.id === S.openKit}">
         <span class="tag-img">${k.photos?.length ? `<img src="/_blob/${esc(k.photos[0])}" alt="" loading="lazy">` : icon(KIT_ICON[k.type])}</span>

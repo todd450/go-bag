@@ -1,7 +1,7 @@
 // The plan bar (issue #122, part of #115): on the Kits tab, whenever the shopping list has open lines, a bar says how many
 // are planned, about what they cost (summed as Review sums them, prescriptions unpriced) and where readiness lands once
 // they're all packed (scoreIfBought of the open lines, Review's own number), with a Review button that opens #121's sheet.
-// On phones it's fixed just above the bottom nav; on a desktop it's a sticky card in a third column beside the kit.
+// On phones it's fixed just above the bottom nav; on a desktop it's a card at the right end of the kit list's row, above the open kit.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -149,8 +149,9 @@ function measurePhone(fixtures) {
   });
 }
 
-// At 1280px: the bar is a card in a third column, right of the kit, and stays in view as the page scrolls
-test("at 1280px the bar is a card in a column right of the kit, and stays in view when the page scrolls", { skip: !chrome && "no Chrome found (set CHROME)" }, async () => {
+// At 1280px the Kits tab is one column: the bar is a card right of the kit list, in its row, and the open kit takes the
+// full width below them both
+test("at 1280px the bar is a card right of the kit list, and the open kit takes the full width below", { skip: !chrome && "no Chrome found (set CHROME)" }, async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-planbar-"));
   const file = path.join(dir, "index.html");
   fs.writeFileSync(file, wrap(undefined, "tests/household"));
@@ -173,14 +174,10 @@ test("at 1280px the bar is a card in a column right of the kit, and stays in vie
       return { bar: bar && box(bar), kit: box(grid.children[1]), list: box(grid.children[0]), h: innerHeight, header: box(document.querySelector(".top")).bottom, scrolled: scrollY, high: document.documentElement.scrollHeight }; })()`);
     const top = await at(0);
     assert.ok(top.bar, "the bar shows");
-    assert.ok(top.bar.left >= top.kit.right, `the bar (${top.bar.left}) is right of the kit (${top.kit.right})`);
-    assert.ok(top.kit.left >= top.list.right, "the kit is right of the kit list, as before");
-    assert.ok(top.bar.top < top.kit.bottom && top.bar.bottom > top.kit.top, "beside the kit, not under it");
-    assert.ok(top.high > top.h + 600, "the page is tall enough to scroll");
-    const down = await at(top.high);
-    assert.ok(down.scrolled > 600, "the page scrolled");
-    assert.ok(down.bar.top >= down.header && down.bar.bottom <= down.h, `the bar stays in view, below the sticky header at ${down.header} (${JSON.stringify(down.bar)})`);
-    assert.ok(down.bar.left >= down.kit.right, "still right of the kit");
+    assert.ok(top.bar.left >= top.list.right, `the bar (${top.bar.left}) is right of the kit list (${top.list.right})`);
+    assert.ok(top.bar.top < top.list.bottom && top.bar.bottom > top.list.top, "beside the kit list, not under it");
+    assert.ok(top.kit.top >= top.list.bottom && top.kit.top >= top.bar.bottom, "the open kit starts below the list and the bar");
+    assert.ok(Math.abs(top.kit.left - top.list.left) <= 1 && Math.abs(top.kit.right - top.bar.right) <= 1, `the open kit spans the row above it (${JSON.stringify(top.kit)})`);
   } finally {
     await page.close();
     fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
