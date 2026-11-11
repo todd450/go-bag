@@ -1,5 +1,8 @@
 #!/bin/sh
-# Stop / SubagentStop hook: a session can't end its turn with the app's checks failing.
+# Stop hook: a session can't end its turn with the app's checks failing.
+# It runs when the session itself stops, not after each agent the session starts (no SubagentStop):
+# in the build of #113 on 11 Nov 2026 it ran after all seven agents, reviewers and tidy included,
+# which was 7 to 9 of the run's 31 minutes spent repeating what the builder and CI already run.
 # If the page, core.js, tests or fixtures differ from origin/main in this checkout (worktrees included),
 # run ./check.sh. On failure, exit 2 so Claude Code hands the output back and the session keeps
 # working. On the second try in a row (stop_hook_active), let it stop but warn the founder,
