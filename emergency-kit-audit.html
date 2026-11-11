@@ -88,6 +88,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .hdr-score { font-size: .8rem; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; background: var(--paper); border-radius: 999px; padding: 4px 14px; }
 .hdr-score:empty { display: none; }
 .hdr-score b { font-family: var(--f-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
+/* On Readiness the ring shows the score: the header's copy fades in as the ring passes under the header (the inset is the header's height), where scroll timelines work */
+@keyframes hs { from { opacity: 0; } }
+body { timeline-scope: --rg; } .sum-score .ring { view-timeline: --rg; view-timeline-inset: 100px 0; }
+body:has(#v-overview:not([hidden])) .hdr-score { animation: hs linear both; animation-timeline: --rg; animation-range: exit; }
 nav.tabs { display: flex; gap: 28px; overflow-x: auto; width: 100%; scrollbar-width: none; }
 nav.tabs button { display: flex; align-items: center; gap: 6px; background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 0 12px; font-weight: 500; font-size: .92rem; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
 nav.tabs button .ic { display: none; }
@@ -98,6 +102,7 @@ nav.tabs button:hover { color: var(--ink); }
   .brand { min-width: 0; }
   .brand h1 { font-size: 1rem; }
   .hdr-score { flex: none; padding: 3px 12px; }
+  .sum-score .ring { view-timeline-inset: calc(56px + env(safe-area-inset-top, 0px)) 0; }
   .hdr-score .eyebrow:first-child { display: none; }
   nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; gap: 0; justify-content: space-around; background: var(--card); border-top: 1px solid var(--rule); padding: 6px max(8px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)); }
   nav.tabs button { flex: 1; flex-direction: column; gap: 3px; padding: 4px 0; border-bottom: 0; font-size: .7rem; position: relative; }
@@ -261,8 +266,10 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 }
 .kit-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px 40px; gap: 2px 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
 .kit-row .kit-miss { grid-column: 1 / -1; margin-top: -2px; }
-/* What it costs (#138): two small tables side by side on a desktop, stacked on a phone */
-.cost-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+/* What it costs (#138): the kits' table, then the emergencies' in two halves: side by side on a desktop, one list on a phone */
+.cost-grid { display: grid; gap: 16px; }
+.cost-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 48px; align-items: start; }
+@media (max-width: 760px) { .cost-2 { display: block; } .cost-2 table + table thead th { font-size: 0; padding: 0; } .cost-2 table:not(:last-child) tbody tr:last-child > * { border-bottom: 1px solid var(--rule); } }
 .cost-t { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .9rem; }
 .cost-t th, .cost-t td { padding: 7px 0; border-bottom: 1px solid var(--rule); text-align: right; font-weight: 400; background: none; color: var(--ink); font-size: inherit; vertical-align: baseline; }
 .cost-t tr:last-child > * { border-bottom: 0; }
@@ -512,8 +519,9 @@ textarea.ed { width: 100%; min-height: 0; resize: none; margin: 0; }
 @media (max-width: 860px) { .hh-plan { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) {
   .hh-sep { display: none; } .hh-place .re { margin-left: 0; } .hh-place { padding: 12px 14px; }
-  .hh-people { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .hh-card { padding: 12px; } .hh-card.wide, .hh-add { grid-column: 1 / -1; } .hh-add { min-height: 0; }
+  /* Two cards a row; one alone on its row fills it */
+  .hh-people { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; }
+  .hh-card { flex: 1 1 40%; padding: 12px; } .hh-card.wide, .hh-add { flex-basis: 100%; } .hh-add { min-height: 0; }
   .hh-who { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; } .av { width: 34px; height: 34px; }
   .route { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .route::before { left: 21px; right: auto; top: 22px; bottom: 22px; border-top: 0; border-left: 2px dashed var(--rule-2); }
@@ -1964,12 +1972,14 @@ const costCell = s => `<td class="mono">${usd(s.total)}${s.unpriced ? `<span cla
 function costsSection(M, rs) {
   const kits = [...S.kits].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).map(k => [k, kitCost(k, M.kitRes[k.id], M.h)]);
   if (!kits.length) return "";
-  const head = (a, b, c) => `<thead><tr><th scope="col">${a}</th><th scope="col">${b}</th><th scope="col">${c}</th></tr></thead>`;
+  const tbl = (h1, h2, h3, rows) => `<table class="cost-t"><thead><tr><th scope="col">${h1}</th><th scope="col">${h2}</th><th scope="col">${h3}</th></tr></thead><tbody>${rows.map(([n, c]) => `<tr><th scope="row">${esc(n)}</th>${costCell(c.spent)}${costCell(c.toGet)}</tr>`).join("")}</tbody></table>`;
+  // The emergencies' list is long, so it is two tables, the first half and the rest
+  const hz = rs.map(r => [r.hz.name, hzCost(r, M.h)]), half = Math.ceil(hz.length / 2), e = rows => rows.length ? tbl("Emergency", "Spent", "To be ready", rows) : "";
   return `<section class="costs stack" aria-labelledby="costs-h">
     <div class="sec-h"><h2 id="costs-h">What it costs</h2><span class="small muted">Spent so far, and the shopping list's prices for the rest</span></div>
     <div class="cost-grid">
-      <div class="panel"><table class="cost-t">${head("Kit", "Spent", "To finish")}<tbody>${kits.map(([k, c]) => `<tr><th scope="row">${esc(k.name)}</th>${costCell(c.spent)}${costCell(c.toGet)}</tr>`).join("")}</tbody></table></div>
-      ${rs.length ? `<div class="panel"><table class="cost-t">${head("Emergency", "Spent", "To be ready")}<tbody>${rs.map(r => { const c = hzCost(r, M.h); return `<tr><th scope="row">${esc(r.hz.name)}</th>${costCell(c.spent)}${costCell(c.toGet)}</tr>`; }).join("")}</tbody></table></div>` : ""}
+      <div class="panel">${tbl("Kit", "Spent", "To finish", kits.map(([k, c]) => [k.name, c]))}</div>
+      ${hz.length ? `<div class="panel cost-2">${e(hz.slice(0, half))}${e(hz.slice(half))}</div>` : ""}
     </div>
     ${how("costs", "Spent is what you paid where a receipt is saved on the item (type it in Paid $ on the item's row), else its current price where one is saved, else what the shopping list would charge for the same thing. To finish prices what each kit's own checklist is short of. An emergency counts everything it needs in the kits it uses, so supplies shared by several emergencies count in each, and the emergencies don't add up to the household's total. Prescriptions aren't priced.")}
   </section>`;
@@ -2024,8 +2034,9 @@ const kgOfLb = lb => Math.round(num(lb) / KG_LB * 100) / 100;
 function bagFig(P, lim, m) {
   const w = m === "g", k = w ? LB_G : 1e3, u = w ? " lb" : " L", max = (w ? lim.kg : lim.L) * 1e3, bagG = w && P.bagG || 0, have = (w ? P.g : P.ml) + bagG, c = lim.container;
   // Bands fill the stack, which sits 4px + 5px inside the bag (.bag-st), so a full bag's bands are exactly its height.
-  const r = Math.max(1, have / max), tall = Math.round(240 * Math.min(r, 1.5)), inner = tall - 9, px = inner / max / r, body = Math.round(tall / r);
-  const xs = P.lines.map(l => [w ? l.g : l.ml, l.it]).sort((a, b) => b[0] - a[0]), sm = xs.filter(x => x[0] * px < 18), n = sm.length > 1 && sm.length;
+  // The bag is 140px tall empty and its full 240px by half full. Bands merge as they would at full height, so it names the same items.
+  const r = Math.max(1, have / max), o = Math.min(r, 1.5), full = Math.round(240 * o) - 9, tall = Math.round((140 + 100 * Math.min(1, 2 * have / max)) * o), inner = tall - 9, px = inner / max / r, body = Math.round(tall / r);
+  const xs = P.lines.map(l => [w ? l.g : l.ml, l.it]).sort((a, b) => b[0] - a[0]), sm = xs.filter(x => x[0] * full / max / r < 18), n = sm.length > 1 && sm.length;
   const rows = n ? xs.filter(x => !sm.includes(x)).concat([[sm.reduce((a, x) => a + x[0], 0)]]) : xs;
   // A band is at least 18px to fit its label; whatever that adds past the stack comes off the biggest item's band, never the bag's.
   const bh = bagG && Math.max(18, Math.round(bagG * px)), hs = rows.map(([v]) => Math.max(18, Math.round(v * px))), extra = hs.reduce((a, h) => a + h, bh) - inner;

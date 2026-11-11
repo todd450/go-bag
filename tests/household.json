@@ -13,7 +13,7 @@
     "vehicles": 1,
     "home": "House"
   },
-  "hazards": { "assessedAt": 1, "levels": {}, "reasons": {} },
+  "hazards": { "assessedAt": 1793563200000, "levels": {}, "reasons": {} },
   "kits": [
     { "id": "go", "name": "Hall closet go-bag", "type": "go", "createdAt": 1 },
     { "id": "home", "name": "Basement bin", "type": "home", "createdAt": 2 },
