@@ -1,5 +1,6 @@
 // The flat-lay's dashed tiles (issue #62): each named essential a kit is missing shows as a dashed tile in its
-// zone, after the zone's present tiles, and tapping it puts it on the shopping list the way the checklist does.
+// zone, after the zone's present tiles, and tapping it plans it into that kit (#120). tests/ghost-tiles.test.js has
+// the tiles' prices and their planned states.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -48,6 +49,13 @@ const chipGains = (app, kit) => {
   }));
 };
 const zoneOfCat = (app, cat) => app.run(`zoneOf(${JSON.stringify(cat)}).label`);
+// A measure for atPhoneWidth that is handed plan(on). plan(true) plans the household's gaps round its kits in turn, then
+// with no kit, leaving every fifth off the list, so a kit's tiles show every state: a price, Planned · price, Planned
+// for another kit and Planned · no kit yet. plan(false) puts the household's own list back.
+const withStates = measure => `() => { const keep = S.shopping, plan = on => { S.shopping = keep; if (!on) return;
+  const M = model(), ids = [...S.kits.map(k => k.id), "none"];
+  S.shopping = { items: M.gaps.flatMap((g, i) => i % 5 === 4 ? [] : [{ ...shopFromGap(g, M.h), kitId: ids[i % ids.length] }]) }; };
+  try { return (${measure})(plan); } finally { plan(false); } }`;
 
 test("every kit in every scenario shows one dashed tile per missing essential, in its category's zone, after the present tiles", () => {
   let seen = 0;
@@ -112,7 +120,7 @@ test("a household name holding markup renders escaped in its prescriptions tile"
   assert.ok(!html.includes("<img src=x"), "no raw markup");
   const t = dashed(html).find(t => t.name === `${evil}'s prescriptions`);
   assert.ok(t, "the tile names the person");
-  assert.equal(t.button.label, `Add ${evil}'s prescriptions to your shopping list`);
+  assert.equal(t.button.label, `Plan ${evil}'s prescriptions for Hall closet go-bag`);
 });
 
 test("an untagged item in an essentials category is a present tile, and its essential is still a dashed tile", () => {
@@ -129,7 +137,7 @@ test("an untagged item in an essentials category is a present tile, and its esse
   assert.ok(tools.tiles.some(t => t.miss && t.name === "Duct tape"));
 });
 
-test("each dashed tile's +N is the checklist chip's gain, and tapping adds that line and exactly those points", () => {
+test("each dashed tile's +N is the checklist chip's gain, and tapping plans that line into the kit for exactly those points", () => {
   for (const fixture of ["tests/household", "fixtures/phone-width/long-essentials", "fixtures/data-and-account-shapes/essential-tags", "fixtures/empty-and-one/big-household"]) {
     const app = load({ fixture });
     for (const kit of app.json("S.kits.map(k => k.id)")) {
@@ -146,7 +154,7 @@ test("each dashed tile's +N is the checklist chip's gain, and tapping adds that 
   let checked = 0;
   for (const kit of ["go", "home", "car"]) {
     for (;;) {
-      const t = dashed(kitHtml(app.run, kit)).find(t => t.button && t.gain);
+      const t = dashed(kitHtml(app.run, kit)).find(t => t.button?.dataset.act === "shopAdd" && t.gain);
       if (!t) break;
       const before = app.json("shopItems()").length;
       const want = +t.gain.slice(1);
@@ -156,6 +164,8 @@ test("each dashed tile's +N is the checklist chip's gain, and tapping adds that 
       const line = after.at(-1);
       assert.equal(line.cat, t.button.dataset.cat);
       assert.equal(line.essential, t.button.dataset.essential);
+      assert.equal(t.button.dataset.kit, kit, `${t.name}: the button names its kit`);
+      assert.equal(line.kitId, kit, `${t.name}: planned into the kit it was tapped in`);
       app.run(`globalThis.LINE = shopItems().at(-1); S.shopping = { items: shopItems().slice(0, -1) }`);
       assert.equal(app.run("(() => { const M = model(); return scoreIfShopped(M, [LINE]) - M.overall; })()"), want, `${t.name}: ticking it adds the points shown`);
       app.run("S.shopping = { items: [...shopItems(), LINE] }");
@@ -165,38 +175,40 @@ test("each dashed tile's +N is the checklist chip's gain, and tapping adds that 
   assert.ok(checked >= 3, "some tiles were tapped");
 });
 
-test("a dashed tile's button is Add to list, named for the essential, and once on the list it says so", () => {
+test("a dashed tile's button is Plan, named for the essential and the kit, and once planned it says so", () => {
   const app = load({ fixture: "tests/household" });
   app.run(`globalThis.WRITES = []; setDoc = ((s) => (...a) => { WRITES.push(a); return s(...a); })(setDoc)`);
   const t = dashed(kitHtml(app.run, "home")).find(t => t.name === "Fire blanket");
   assert.ok(t && t.button, "Fire blanket is a button");
-  assert.deepEqual(t.button.dataset, { act: "shopAdd", cat: "fire_safety", essential: "fire_blanket" });
-  assert.equal(t.button.label, "Add Fire blanket to your shopping list");
+  assert.deepEqual(t.button.dataset, { act: "shopAdd", cat: "fire_safety", essential: "fire_blanket", kit: "home" });
+  assert.equal(t.button.label, "Plan Fire blanket for Basement bin");
   assert.equal((t.body.match(/<button/g) || []).length, 1, "one button");
   app.run(`ACT.shopAdd(${JSON.stringify({ dataset: t.button.dataset })})`);
   assert.deepEqual(app.json("WRITES").map(w => [w[0], w[1]]), [["household", "shopping"]]);
-  assert.equal(app.json("shopItems()").filter(e => e.essential === "fire_blanket").length, 1);
+  assert.deepEqual(app.json("shopItems()").filter(e => e.essential === "fire_blanket").map(e => e.kitId), ["home"]);
 
   const again = dashed(kitHtml(app.run, "home")).find(t => t.name === "Fire blanket");
-  assert.equal(again.button, null, "no button once on the list");
-  assert.match(again.all, /On your list/);
+  assert.ok(again.button, "planned for this kit, it is a button");
+  assert.deepEqual(again.button.dataset, { act: "flEdit", id: app.json("shopItems()[0].id") }, "that opens its line, and plans nothing");
+  assert.equal((again.body.match(/<button/g) || []).length, 1, "one button");
+  assert.match(again.all, /Planned · \$20\b/);
   assert.equal(app.json("shopItems()").filter(e => e.essential === "fire_blanket").length, 1, "rendering again adds nothing");
   // The checklist and the tile agree
   assert.match(app.run(`(() => { const M = model(); return kitChecklist(S.kits[1], M.kitRes.home, M); })()`), /Fire blanket/);
 });
 
-test("with two people on daily medication, tapping one prescriptions tile leaves the other to add", () => {
+test("with two people on daily medication, tapping one prescriptions tile leaves the other to plan", () => {
   const app = load({ fixture: "tests/household" });
   app.run(`S.items = S.items.filter(i => i.category !== "medications"); S.profile.members[0].conditions = ["meds"]`);
   const rx = () => dashed(kitHtml(app.run, "go")).filter(t => /^Prescriptions/.test(t.name));
   const [a] = rx();
   app.run(`ACT.shopAdd(${JSON.stringify({ dataset: a.button.dataset })})`);
   const now = rx();
-  assert.equal(now.filter(t => t.button).length, 1);
-  assert.equal(now.filter(t => /On your list/.test(t.all)).length, 1);
+  assert.equal(now.filter(t => t.button?.dataset.act === "shopAdd").length, 1);
+  assert.equal(now.filter(t => /Planned/.test(t.all)).length, 1);
 });
 
-test("with several people on daily medication, every prescriptions tap adds the tile tapped and flips that tile", () => {
+test("with several people on daily medication, every prescriptions tap plans the tile tapped and flips that tile", () => {
   const cases = [["tests/household", `S.items = S.items.filter(i => i.category !== "medications"); S.profile.members[0].conditions = ["meds"]`],
     ["fixtures/empty-and-one/big-household", ""]];
   for (const [fixture, setup] of cases) {
@@ -207,22 +219,22 @@ test("with several people on daily medication, every prescriptions tap adds the 
       if (rx().length < 2) continue;
       app.run("S.shopping = { items: [] }");
       for (let taps = 0; ; taps++) {
-        const now = rx(), listed = now.filter(t => /On your list/.test(t.all)).map(t => t.name);
-        const t = now.find(t => t.button);
+        const now = rx(), listed = now.filter(t => /Planned/.test(t.all)).map(t => t.name);
+        const t = now.find(t => t.button?.dataset.act === "shopAdd");
         if (!t) {
           assert.equal(listed.length, now.length, `${fixture} ${kit}: every prescriptions tile ends up on the list`);
           assert.ok(taps >= 2, `${fixture} ${kit}: tapped more than one`);
           break;
         }
         // Every tile that can be tapped flips itself, so try each one, last first
-        for (const b of now.filter(x => x.button).reverse()) {
+        for (const b of now.filter(x => x.button?.dataset.act === "shopAdd").reverse()) {
           const where = `${fixture} ${kit} ${b.name}`;
           app.run(`globalThis.SAVED = S.shopping; ACT.shopAdd(${JSON.stringify({ dataset: b.button.dataset })})`);
           assert.equal(app.json("shopItems().at(-1).name"), b.name, `${where}: the new line is the tile tapped`);
           const after = rx(), me = after.find(x => x.name === b.name);
-          assert.match(me.all, /On your list/, `${where}: the tile tapped reads On your list`);
-          assert.equal(me.button, null, `${where}: and has no button`);
-          for (const n of listed) assert.match(after.find(x => x.name === n).all, /On your list/, `${where}: ${n} stays on the list`);
+          assert.match(me.all, /Planned · /, `${where}: the tile tapped reads Planned`);
+          assert.equal(me.button?.dataset.act, "flEdit", `${where}: and no longer plans`);
+          for (const n of listed) assert.match(after.find(x => x.name === n).all, /Planned/, `${where}: ${n} stays planned`);
           app.run("S.shopping = SAVED");
         }
         app.run(`ACT.shopAdd(${JSON.stringify({ dataset: t.button.dataset })})`);
@@ -231,7 +243,7 @@ test("with several people on daily medication, every prescriptions tap adds the 
   }
 });
 
-test("a missing essential that is no household gap shows no add", () => {
+test("a missing essential that is no household gap shows no plan", () => {
   const app = load({ fixture: "tests/household" });
   // Every gap the household has for fire safety is covered: the home kit's fire blanket counts nowhere else
   const noGap = app.json(`(() => { const M = model(); return Object.entries(M.kitRes).flatMap(([k, r]) => r.rows.filter(row => row.ess)
@@ -242,7 +254,7 @@ test("a missing essential that is no household gap shows no add", () => {
     assert.ok(t, `${kit} ${label}`);
     assert.equal(t.button, null, `${kit} ${label}: no add`);
     assert.equal(t.gain, "", `${kit} ${label}: no points`);
-    assert.doesNotMatch(t.all, /On your list/);
+    assert.doesNotMatch(t.all, /Planned/);
   }
 });
 
@@ -272,10 +284,10 @@ test("an empty kit's Contents panel shows only dashed tiles", () => {
 
 test("at 390px kits with many missing essentials don't scroll sideways and keep 4 tiles a row", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
   const fixtures = ["fixtures/phone-width/long-essentials", "fixtures/empty-and-one/big-household", "fixtures/empty-and-one/new-household"];
-  const seen = atPhoneWidth(fixtures, () => {
+  const seen = atPhoneWidth(fixtures, withStates(plan => {
     if (!S.kits.length) S.kits.push({ id: "e", name: "New bag", type: "go", createdAt: 1 }, { id: "h", name: "New bin", type: "home", createdAt: 2 });
     S.profile = S.profile || {};
-    return S.kits.map(k => {
+    return [false, true].flatMap(planned => { plan(planned); return S.kits.map(k => {
       S.view = "kits"; S.openKit = k.id; render();
       const miss = [...document.querySelectorAll("#v-kits .fl-tile.miss")];
       const grids = [...document.querySelectorAll("#v-kits section.fl-zone .fl-grid")].map(g => {
@@ -283,14 +295,15 @@ test("at 390px kits with many missing essentials don't scroll sideways and keep 
         return { n: ts.length, firstRow: ts.filter(r => Math.abs(r.top - ts[0].top) < 1).length };
       });
       return {
-        kit: k.name, width: innerWidth, scroll: document.documentElement.scrollWidth, n: miss.length, grids,
+        kit: k.name + (planned ? ", planned" : ""), width: innerWidth, scroll: document.documentElement.scrollWidth, n: miss.length, grids,
+        states: miss.filter(t => /Planned/.test(t.textContent)).length,
         inside: miss.every(t => { const r = t.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; }),
         whole: miss.every(t => [...t.querySelectorAll(".fl-name, .gain, .fl-note")].every(n => n.scrollWidth <= n.clientWidth + 1)),
         fills: miss.every(t => { const b = t.querySelector("button"); if (!b) return true; const r = t.getBoundingClientRect(), q = b.getBoundingClientRect(); return q.width >= r.width - 3 && q.height >= r.height - 3; }),
       };
-    });
-  });
-  let n = 0;
+    }); });
+  }));
+  let n = 0, states = 0;
   for (const f of fixtures) {
     const kits = seen.get(f);
     assert.ok(kits && kits.length, `${f}: no kits measured`);
@@ -302,19 +315,21 @@ test("at 390px kits with many missing essentials don't scroll sideways and keep 
       assert.ok(k.whole, `${where}: a dashed tile's text runs wider than the tile`);
       assert.ok(k.fills, `${where}: a dashed tile's button doesn't fill the tile`);
       for (const g of k.grids) assert.equal(g.firstRow, Math.min(4, g.n), `${where}: a zone of ${g.n} shows ${g.firstRow} in its first row`);
-      n += k.n;
+      n += k.n; states += k.states;
     }
   }
   assert.ok(n > 0, "dashed tiles were measured");
+  assert.ok(states > 10, "planned tiles were measured");
 });
 
-test("at 390px every dashed tile shows its whole label, breaking inside a word only when the word is wider than the tile", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
+test("at 390px every dashed tile shows its whole label and note, breaking inside a word only when the word is wider than the tile", { skip: !chrome && "no Chrome found (set CHROME)" }, () => {
   const fixtures = ["tests/household", "fixtures/phone-width/long-essentials", "fixtures/empty-and-one/big-household"];
-  const seen = atPhoneWidth(fixtures, () => {
+  const seen = atPhoneWidth(fixtures, withStates(plan => {
     const out = [];
-    for (const k of S.kits) {
+    for (const planned of [false, true]) for (const k of S.kits) {
+      plan(planned);
       S.view = "kits"; S.openKit = k.id; render();
-      for (const n of document.querySelectorAll("#v-kits .fl-tile.miss .fl-name")) {
+      for (const n of document.querySelectorAll("#v-kits .fl-tile.miss :is(.fl-name, .fl-note)")) {
         // Each letter of the label, across its text nodes, with the line it sits on. A label may break at a space, after
         // a hyphen or soft hyphen, and where a <wbr> splits its text: each piece between those that fits on a line stays whole.
         const r = document.createRange(), pieces = [[]], probe = document.createElement("span");
@@ -339,11 +354,11 @@ test("at 390px every dashed tile shows its whole label, breaking inside a word o
           if (probe.getBoundingClientRect().width <= n.clientWidth && new Set(p.map(c => c[1])).size > 1) split.push(probe.textContent);
         }
         probe.remove();
-        out.push({ where: `${k.name}: ${label}`, clipped: n.scrollHeight > n.clientHeight + 1 || n.scrollWidth > n.clientWidth + 1, split });
+        out.push({ where: `${k.name}${planned ? ", planned" : ""}: ${label}`, clipped: n.scrollHeight > n.clientHeight + 1 || n.scrollWidth > n.clientWidth + 1, split });
       }
     }
     return out;
-  });
+  }));
   let n = 0;
   for (const f of fixtures) {
     const names = seen.get(f);

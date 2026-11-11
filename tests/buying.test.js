@@ -88,7 +88,7 @@ test("lines with no essential, and every counted category, keep the category's s
 test("a member label holding markup is escaped on the Shopping tab", () => {
   const { run } = load({ fixture: "tests/household" });
   run(`S.profile.members[1].label = '<img src=x onerror=alert(1)>'; S.profile.members[3].label = '<b>Riley</b>'`);
-  run(`ACT.shopAddAll(); S.view = "shop"`);
+  run(`ACT.shopAddAll(); S.view = "kits"; ACT.allKits()`);
   assert.match(run(`shopItems().filter(e => e.essential === "prescriptions").map(e => shopInfo(e, model()).line).join()`), /<img/);
   const html = run("viewShop(model())");
   assert.doesNotMatch(html, /<img|<b>Riley/);

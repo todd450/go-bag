@@ -147,12 +147,13 @@ test("a visitor with a stored sign-in goes straight to /app; anyone else stays",
 
 // Real layout needs a real browser: each width runs in its own iframe, whose viewport is that wide.
 // The font links are taken out and every host is unresolvable, so the test makes no network calls.
+// Each frame names its theme, light or dark, so the computer's own appearance setting can't decide what is measured.
 function measure(cases) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-landing-"));
   try {
     const attr = s => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
     const offline = out.replace(/<link\b[^>]*>/g, "");
-    const frames = cases.map(([w, theme]) => `<iframe data-k="${w} ${theme}" style="width:${w}px;height:900px;border:0" srcdoc="${attr(theme === "dark" ? offline.replace("<html lang=\"en\">", "<html lang=\"en\" data-theme=\"dark\">") : offline)}"></iframe>`).join("");
+    const frames = cases.map(([w, theme]) => `<iframe data-k="${w} ${theme}" style="width:${w}px;height:900px;border:0" srcdoc="${attr(offline.replace("<html lang=\"en\">", `<html lang="en" data-theme="${theme}">`))}"></iframe>`).join("");
     const probe = String(() => {
       const d = document.documentElement, vw = d.clientWidth;
       const clipped = [...document.querySelectorAll(".btn, h1, h2, h3, p, b")].filter(e => { const r = e.getBoundingClientRect(); return e.scrollWidth > e.clientWidth + 1 || r.right > vw + 0.5 || r.left < -0.5; }).map(e => e.className + ": " + e.textContent.trim().slice(0, 40));

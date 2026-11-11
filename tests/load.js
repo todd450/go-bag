@@ -20,8 +20,8 @@ function appScript({ boot = false } = {}) {
 }
 
 // With `boot`, the page starts the way it does on claude.ai, with `claude` as window.claude (leave it
-// out to start with no capabilities, as it does outside claude.ai).
-function load({ fixture, boot = false, claude } = {}) {
+// out to start with no capabilities, as it does outside claude.ai). `hash` is the address's #part it starts with.
+function load({ fixture, boot = false, claude, hash = "" } = {}) {
   const el = () => ({
     addEventListener() {}, querySelectorAll: () => [], querySelector: () => null, setAttribute() {}, focus() {},
     hidden: false, innerHTML: "", textContent: "", style: {}, dataset: {},
@@ -36,7 +36,7 @@ function load({ fixture, boot = false, claude } = {}) {
     AbortController,
     navigator: {},
     document: { querySelector: el, querySelectorAll: () => [], addEventListener: (type, fn) => { (listeners[type] ||= []).push(fn); }, getElementById: el, createElement: el, body: el() },
-    location: { hash: "" },
+    location: { hash },
     window: { scrollTo() {}, matchMedia: () => ({ matches: true }), claude },
     history: { replaceState() {} },
     // Timers are collected, not run, so toasts and flashes never keep the test process alive.

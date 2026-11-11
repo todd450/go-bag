@@ -108,7 +108,7 @@ test("each tab opens with one short line, and the full explanation sits behind H
   const { run } = load({ fixture: "tests/household" });
   run(`syncDraft(); S.openKit = "go"; ACT.kitView({ dataset: { v: "list" } })`);
   const words = html => html.replace(/<[^>]*>/g, " ").trim().split(/\s+/).length;
-  const pages = { score: "viewOverview(model())", "kit-table": "viewKits(model())", household: "viewHousehold()", shop: "viewShop(model())", plan: "viewPlan(model())", review: "viewPlan(model())" };
+  const pages = { score: "viewOverview(model())", "kit-table": "viewKits(model())", household: "viewHousehold()", shop: "viewShop(model())" };
   for (const [id, view] of Object.entries(pages)) {
     const html = run(view);
     assert.match(html, new RegExp(`<details class="how" data-how="${id}" ><summary>How this works</summary><p>[^<]{60,}`), id);
@@ -131,8 +131,8 @@ function screenshotCase() {
 }
 const unesc = s => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
 const plain = html => unesc(html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")).trim().replace(/ ([·,.:])/g, "$1").replace(/· /g, " · ").replace(/ +/g, " ");
-// Each block in a piece of HTML: its name, its "X of Y", its pills (present or missing, label, points), its
-// Add button's text and data, and all of its text.
+// Each block in a piece of HTML: its name, its "X of Y", its pills (present or missing, label, points), whether it
+// has a button, and all of its text.
 function blocks(html) {
   return [...html.matchAll(/<section class="ess-blk"[^>]*>([\s\S]*?)<\/section>/g)].map(([, blk]) => {
     const head = blk.match(/<div class="ess-h">([\s\S]*?)<\/div>/)[1];
@@ -141,10 +141,8 @@ function blocks(html) {
       const text = plain(p.replace(/^[^>]*>/, "").replace(/<span class="vh">[^<]*<\/span>/g, ""));
       return { have: p.startsWith("full"), label: text.split(" · ")[0], gain: +(p.match(/class="gain"[^>]*>\+(\d+)</) || [0, 0])[1], text };
     });
-    const btn = blk.match(/<button[^>]*data-act="shopAddBlock"[^>]*>([^<]*)<\/button>/);
-    const data = btn ? Object.fromEntries([...btn[0].matchAll(/data-([a-z]+)="([^"]*)"/g)].map(m => [m[1], unesc(m[2])]).filter(([k]) => k !== "act")) : null;
     return { name: plain(head.replace(/<span class="of">[\s\S]*$/, "")), of: plain((head.match(/<span class="of">([^<]*)</) || ["", ""])[1]),
-      pills, button: btn ? plain(btn[1]) : null, data, text: plain(blk.replace(/<span class="vh">[^<]*<\/span>/g, "")) };
+      pills, button: /<button/.test(blk), text: plain(blk.replace(/<span class="vh">[^<]*<\/span>/g, "")) };
   });
 }
 const hzHtml = (run, id) => run(`(M => hzRow(M.results.find(r => r.hz.id === ${JSON.stringify(id)}), M.h, M))(model())`);
@@ -297,11 +295,11 @@ test("no block or essentials line reads more than it needs, in any scenario, eme
   }
 });
 
-test("a kit's missing pills show the points their shopping line adds, and a pill worth 0 shows none", () => {
+test("a kit's missing pills show the points their shopping line adds, planned into that kit, and a pill worth 0 shows none", () => {
   const { run, json } = screenshotCase();
   const bs = blocks(goKit(run));
   const points = Object.fromEntries(json(`(() => { const M = model();
-    return M.gaps.filter(g => g.essential).map(g => [g.cat + "|" + g.label, Math.max(0, scoreIfShopped(M, [shopFromGap(g, M.h)]) - M.overall)]); })()`));
+    return M.gaps.filter(g => g.essential).map(g => [g.cat + "|" + g.label, Math.max(0, scoreIfShopped(M, [shopFromGap(g, M.h, "go")]) - M.overall)]); })()`));
   const cats = json(`Object.fromEntries(Object.keys(ESSENTIALS).map(c => [catLabel(c), c]))`);
   let shown = 0;
   for (const b of bs) for (const p of b.pills.filter(p => !p.have)) {
@@ -311,6 +309,7 @@ test("a kit's missing pills show the points their shopping line adds, and a pill
     shown += p.gain > 0;
   }
   assert.ok(shown > 0, "some pill is worth points");
+  assert.ok(bs.every(b => !b.button), "no block has a button: the kit's tiles plan its gaps");
   // Present pills come first, then missing ones by points
   for (const b of bs) {
     const firstMiss = b.pills.findIndex(p => !p.have);
@@ -318,21 +317,6 @@ test("a kit's missing pills show the points their shopping line adds, and a pill
     const gains = b.pills.filter(p => !p.have).map(p => p.gain);
     assert.deepEqual(gains, [...gains].sort((x, y) => y - x), b.name);
   }
-});
-
-test("Add N to list adds a kit block's unlisted missing essentials once, each with its essential", () => {
-  const { run, json } = screenshotCase();
-  run(`ACT.shopAdd({ dataset: { cat: "documents", essential: "insurance" } })`);
-  const docs = blocks(goKit(run)).find(b => b.name === "Documents & cash");
-  assert.equal(docs.button, "Add 2 to list");
-  const before = json("shopItems().length");
-  run(`ACT.shopAddBlock({ dataset: ${JSON.stringify(docs.data)} })`);
-  const added = json("shopItems()").slice(before);
-  assert.deepEqual(added.map(e => [e.cat, e.essential]).sort(), [["documents", "id_copies"], ["documents", "records"]]);
-  run(`ACT.shopAddBlock({ dataset: ${JSON.stringify(docs.data)} })`);
-  assert.equal(json("shopItems().length"), before + 2, "a second tap adds nothing");
-  assert.equal(blocks(goKit(run)).find(b => b.name === "Documents & cash").button, null, "no button once every one is listed");
-  assert.doesNotMatch(goKit(run), /Add 0 to list/);
 });
 
 test("in a kit, counted categories stay chips under Counted by amount", () => {

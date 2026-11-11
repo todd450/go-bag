@@ -47,7 +47,7 @@ test("buying suggestions follow the household", () => {
 
 test("a budget keeps the list to what it can buy, best value first", () => {
   const { run } = load({ fixture: "tests/household" });
-  run(`ACT.shopAddAll(); S.view = "shop"; S.budget = 60;`);
+  run(`ACT.shopAddAll(); S.view = "kits"; ACT.allKits(); S.budget = 60;`);
   const html = run("viewShop(model())");
   assert.match(html, /Over your budget/);
 });

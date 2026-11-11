@@ -11,6 +11,16 @@ trap 'rm -rf "$tmp"' EXIT
 awk '/<script>/{f=1;next}/<\/script>/{f=0}f' emergency-kit-audit.html > "$tmp/app.js"
 node --check "$tmp/app.js"
 
+# The script runs in four sections: core, prompts, views, actions (issue #112). The core (data tables, the household
+# model, scoring, shopping, packing) sits between its "core begins" and "core ends" comments, and never touches the
+# page, the screen's state S or markup, so it can become a file of its own (#113). tests/core.test.js runs it alone.
+awk '/core begins ---/{f=1} f; /core ends ---/{f=0}' "$tmp/app.js" > "$tmp/core.js"
+grep -q 'core ends ---' "$tmp/core.js" || { echo "check: the page's script needs its \"core begins\" and \"core ends\" comments"; exit 1; }
+# (`document` as code: not the word in a sentence, such as "a waterproof document pouch".)
+if grep -nE '(^|[^A-Za-z0-9_$])(document($|[^A-Za-z0-9_$ ]| +[^A-Za-z ])|S(\?\.|\.|\[))|</?[A-Za-z][A-Za-z0-9-]*( [^<>]*)?/?>' "$tmp/core.js"; then
+  echo "check: the core section mentions document, S or an HTML tag (lines above, counted from its start). Move screen code to the views and saving to the actions."; exit 1
+fi
+
 # The Vercel version (issue #48): the runtime that stands in for window.claude, its build, and its
 # functions parse. Their behaviour is in tests/web-runtime.test.js.
 for f in web/runtime.js tools/build-web.js api/*.mjs; do node --check "$f"; done
@@ -28,7 +38,11 @@ for f in web/runtime.js tools/build-web.js api/*.mjs; do node --check "$f"; done
 # Raised to 80,000 on 5 Nov 2026 for item pictures on the flat-lay tiles: the cutout (keyOut, cutThumb) and
 # "Add item pictures" took the page to about 79.3 KB. Waiting on the founder's yes in the PR.
 # Raised to 83,000 on 6 Nov 2026 by the founder's choice (#96), for each kit's real container: the container card and its editor, the bag's empty weight and the box outline.
-budget=83000
+# Raised to 85,000 for #115 step 2: Review, the plan bar and ghost tiles; the founder raised it on 10 Nov 2026. The page
+# measured 83,764 bytes with #121's Review sheet (macOS gzip -9), against main's 82,975.
+# Raised to 90,000 on 10 Nov 2026 by the founder's choice (#133), for the one Household tab (Household and Plan as one,
+# edited in place): it took the page to about 89.0 KB, against main's 84,612.
+budget=90000
 size=$(gzip -9c emergency-kit-audit.html | wc -c | tr -d ' ')
 echo "check: page is $size bytes gzipped, budget $budget"
 [ "$size" -le "$budget" ] || { echo "check: the page is over its size budget by $((size - budget)) bytes gzipped. Make it smaller, or raise the budget in check.sh in its own line and say why in the PR."; exit 1; }
