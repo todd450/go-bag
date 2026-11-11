@@ -27,6 +27,22 @@ test("an item costs what was paid, else its current price times its quantity, el
   assert.equal(cost(app, { ...jugs, paid: -4 }).src, "estimate");
 });
 
+test("water or food saved with no litres or calories (a filter, purification tablets) is unpriced, not $0", () => {
+  const app = load({ fixture: "tests/household" });
+  assert.deepEqual(cost(app, { category: "water", qty: 1, name: "Water filter" }), { price: null, src: "estimate" });
+  assert.deepEqual(cost(app, { category: "food", qty: 2 }), { price: null, src: "estimate" });
+  assert.equal(cost(app, { category: "water", qty: 1, paid: 20 }).price, 20, "a receipt still prices it");
+  const s = app.json(`spentOn([{ category: "water", qty: 1, kitId: "go" }], household())`);
+  assert.deepEqual(s, { total: 0, unpriced: 1, paid: 0, n: 1 });
+});
+
+test("a kit short only of things from home says the rest is from home, not that it's finished", () => {
+  const app = load({ fixture: "tests/household" });
+  const line = app.run(`costLine({ spent: { total: 10, unpriced: 0, paid: 0 }, toGet: { total: 0, unpriced: 0, free: 2 } }, "what's in it", "to finish it")`);
+  assert.match(line, /the rest is from home/);
+  assert.match(app.run(`costLine({ spent: { total: 10, unpriced: 0, paid: 0 }, toGet: { total: 0, unpriced: 0, free: 0 } }, "what's in it", "to finish it")`), /nothing more to buy/);
+});
+
 test("the estimate follows the kit: water in a go-bag is priced as bottles, in a home bin as containers", () => {
   const app = load({ fixture: "tests/household" });
   const w = { category: "water", qty: 1, liters: 12 };
@@ -37,6 +53,7 @@ test("the estimate follows the kit: water in a go-bag is priced as bottles, in a
 test("a named essential is priced as that essential, and prescriptions and Other are left unpriced", () => {
   const app = load({ fixture: "tests/household" });
   assert.equal(cost(app, { category: "fire_safety", essential: "escape_ladder", qty: 1 }).price, 45);
+  assert.equal(cost(app, { category: "fire_safety", essential: "extinguisher", qty: 2 }).price, 2 * cost(app, { category: "fire_safety", essential: "extinguisher", qty: 1 }).price, "two extinguishers cost two");
   assert.deepEqual(cost(app, { category: "medications", essential: "prescriptions", qty: 1 }), { price: null, src: "estimate" });
   assert.deepEqual(cost(app, { category: "other", qty: 3 }), { price: null, src: "estimate" });
   const s = app.json(`spentOn([{ category: "medications", essential: "prescriptions", qty: 1, kitId: "go" }, { category: "light", qty: 2, kitId: "go" }], household())`);
@@ -57,7 +74,7 @@ test("a kit's spend is its items'; what it still needs prices its own checklist'
       items: spentOn(S.items.filter(i => i.kitId === k.id), M.h) })); })()`);
     for (const k of kits) {
       assert.deepEqual(k.c.spent, k.items, `${name} ${k.id}: spend is its own items'`);
-      if (k.score === 100) assert.deepEqual(k.c.toGet, { total: 0, unpriced: 0 }, `${name} ${k.id}: a full kit needs nothing`);
+      if (k.score === 100) assert.deepEqual(k.c.toGet, { total: 0, unpriced: 0, free: 0 }, `${name} ${k.id}: a full kit needs nothing`);
       assert.ok(k.c.toGet.total >= 0);
     }
   }
@@ -66,11 +83,11 @@ test("a kit's spend is its items'; what it still needs prices its own checklist'
 test("tests/household: what the go-bag still needs is what each short line of its checklist costs at the list's prices", () => {
   const app = load({ fixture: "tests/household" });
   const got = app.json(`(() => { const M = model(), k = S.kits.find(k => k.id === "go"); return kitCost(k, M.kitRes.go, M.h).toGet; })()`);
-  const want = app.json(`(() => { const M = model(), r = M.kitRes.go; let total = 0, unpriced = 0;
+  const want = app.json(`(() => { const M = model(), r = M.kitRes.go; let total = 0, unpriced = 0, free = 0;
     for (const row of r.rows) { if (row.cov >= 1) continue;
       const ps = row.ess ? row.ess.filter(e => !e.have).map(e => essentialGuide(e.id, r.kh).price) : [buyGuide(row.cat, row.need - row.have, row.unit || "", "go", r.kh).price];
-      for (const p of ps) p == null ? unpriced++ : total += p; }
-    return { total, unpriced }; })()`);
+      for (const p of ps) p == null ? unpriced++ : (total += p, free += !p); }
+    return { total, unpriced, free }; })()`);
   assert.deepEqual(got, want);
   assert.ok(got.total > 0);
 });
@@ -97,7 +114,7 @@ test("an emergency counts what's in the kits it uses and the categories it needs
   const want = app.json(`spentOn(itemsIn(${JSON.stringify(r.kits)}).filter(i => ${JSON.stringify(r.cats)}.includes(i.category)), household())`);
   assert.deepEqual(by.earthquake.spent, want);
   const full = app.json(`(() => { const M = model(); return M.results.filter(r => r.score === 100).map(r => hzCost(r, M.h).toGet); })()`);
-  for (const t of full) assert.deepEqual(t, { total: 0, unpriced: 0 });
+  for (const t of full) assert.deepEqual(t, { total: 0, unpriced: 0, free: 0 });
 });
 
 test("the overview shows the household's spend and to-get, each kit's, and each emergency that applies", () => {

@@ -1373,7 +1373,11 @@ function itemCost(it, kt, h) {
   const c = it.category;
   if (!Object.hasOwn(CATS, c) || c === "other") return { price: null, src: "estimate" };
   const [amt, u] = c === "water" ? [num(it.liters), "L"] : c === "food" ? [num(it.kcal), "kcal"] : [n, ""];
-  return { price: buyGuide(c, amt, u, kt, h, essentialOf(it)).price ?? null, src: "estimate" };
+  // Water or food with no litres or calories (a filter, purification tablets) says nothing of how much: unpriced, not $0
+  if (!amt) return { price: null, src: "estimate" };
+  const ess = essentialOf(it), p = buyGuide(c, amt, u, kt, h, ess).price ?? null;
+  // A named essential is priced for one, so two extinguishers cost two
+  return { price: p != null && essentialList(c).some(x => x.id === ess) ? p * n : p, src: "estimate" };
 }
 const kitTypeOf = it => HOUSEHOLD.kits.find(k => k.id === it.kitId)?.type || "home";
 /* What a set of items cost: the total of the priced ones, how many nothing prices, and how much of it was from receipts. */
@@ -1391,8 +1395,8 @@ function spentOn(items, h) {
 /* What checklist rows are short, at the shopping list's prices for a kit of type `kt`: each counted row's shortfall
    and each missing essential. Prescriptions have no price, so they are counted, not added. */
 function shortOf(rows, kt, h) {
-  const s = { total: 0, unpriced: 0 };
-  const add = p => { if (p == null) s.unpriced++; else s.total += p; };
+  const s = { total: 0, unpriced: 0, free: 0 };
+  const add = p => { if (p == null) s.unpriced++; else { s.total += p; if (!p) s.free++; } };
   for (const r of rows) {
     if (r.cov >= 1) continue;
     if (r.ess) r.ess.filter(e => !e.have).forEach(e => add(essentialGuide(e.id, h).price));
@@ -2000,7 +2004,7 @@ function kitReadyPanel(kit, r, M = model()) {
 }
 /* A kit's or an emergency's spend and what the rest costs, in one line. */
 function costLine({ spent, toGet }, on, rest) {
-  const left = toGet.total || toGet.unpriced ? `${toGetAmt(toGet)} more ${rest}${unpricedNote(toGet.unpriced)}` : "nothing more to buy";
+  const left = toGet.total || toGet.unpriced ? `${toGetAmt(toGet)} more ${rest}${unpricedNote(toGet.unpriced)}` : toGet.free ? "the rest is from home, nothing to buy" : "nothing more to buy";
   return `<p class="small kit-cost">${cap(spentAmt(spent))} spent on ${on}${spent.paid && spent.paid < spent.total ? ` (${usd(spent.paid)} from receipts)` : ""}${unpricedNote(spent.unpriced)} · ${left}</p>`;
 }
 function kitChecklist(kit, r, M = model()) {
