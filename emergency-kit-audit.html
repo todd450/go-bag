@@ -281,7 +281,8 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
   .kits-list > .tags { display: contents; }
   .kits-list .tag { flex: 0 1 280px; min-width: 200px; width: auto; }
   .kits-list > .add-kit { flex: none; padding-inline: 20px; }
-  .kits-list > form { flex: 1 1 100%; max-width: 420px; }
+  /* The add form takes a line of its own under the cards: its right margin fills the line, so no card stretches to its height */
+  .kits-list > form { flex: 0 0 min(420px, 100%); margin-right: max(0px, calc(100% - 420px)); }
 }
 /* The open kit: its name, Packed | To get and Delete on one row; readiness and what holds it side by side when there's room */
 .kit-main { container: kit / inline-size; }
@@ -289,8 +290,8 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .kit-hd > .kit-ttl { flex: 1 1 220px; min-width: 0; }
 .kit-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 @container kit (min-width: 640px) { .kit-top:has(> :nth-child(2)) { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
-/* Until a bag or box is named, its card is only as wide as its button, and readiness takes the rest */
-@container kit (min-width: 640px) { .kit-top:has(> .ctr-card > .ctr-add) { grid-template-columns: minmax(0, 1fr) auto; } }
+/* At desktop width, until a bag or box is named, its card is only as wide as its button, and readiness takes the rest */
+@media (min-width: 861px) { @container kit (min-width: 640px) { .kit-top:has(> .ctr-card > .ctr-add) { grid-template-columns: minmax(0, 1fr) auto; } } }
 .kit-serves { display: inline-flex; align-items: center; gap: 8px; }
 .kit-serves input { width: 72px; }
 /* Weight and space: the bag beside what it says, once the panel is wide enough */
