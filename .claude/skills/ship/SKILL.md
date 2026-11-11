@@ -1,15 +1,18 @@
 ---
 name: ship
-description: Ready approved go-bag pull requests for the founder to merge, which deploys them to production on Vercel, and check what production is running. Use when the founder says merge, land, ship or publish, or asks whether production is up to date.
+description: Ready reviewed go-bag pull requests and merge them with auto-merge, which deploys them to production on Vercel, and check what production is running. Use when a pull request has been reviewed and is ready to land, when the founder says merge, land, ship or publish, or asks whether production is up to date.
 ---
 
 # Ship go-bag
 
 Production is https://go-bag.vercel.app, the Vercel project `go-bag` (team `todd450s-projects`),
 with its data in Supabase project `go-bag` (`jltxxtjlnzpxdozxovmz`). Vercel builds every push to
-`main` and makes it production, so **merging to `main` is publishing**. The founder merges; no
-agent or session does. The integrator readies each PR and hands it over. (Decided by the founder
-on 5 Nov 2026, issue #48.)
+`main` and makes it production, so **merging to `main` is publishing**. The integrator merges,
+without asking the founder: it readies each reviewed PR and turns on auto-merge, and GitHub merges
+it once the required `check` passes. The team's reviewers are the review. (Decided by the founder
+on 11 Nov 2026; before that, from 5 Nov 2026 and issue #48, the founder merged every PR.) A merge
+that GitHub or Claude Code refuses comes back to the founder and is never worked around. A bad
+deploy is undone with Vercel's Instant Rollback.
 
 The old claude.ai Artifact (https://claude.ai/artifact/DXn8SMGiZhuKuQFGgKHenz) is retired: it
 shows a page that points to Vercel (version 28, renamed for Go Bag on 6 Nov 2026), and its database is a frozen copy as of 5 Nov 2026. Never
@@ -26,9 +29,10 @@ branch between two of your commands. So:
 
 ## Ready pull requests
 
-Ready only PRs the founder has approved: their "merge" in chat, an approving review, or the
-`decided` label on the PR's issue. Ready them one at a time, oldest first, because almost every PR
-edits the same `emergency-kit-audit.html`, and each merge goes live at once.
+Ready only PRs that have been reviewed: the reviewers' latest verdict comments on the PR all say
+Approve (as `build` posts them), or the founder said "merge" in chat. A PR made in a chat session
+has no verdicts yet, so run the reviewers on it first. Ready them one at a time, oldest first,
+because almost every PR edits the same `emergency-kit-audit.html`, and each merge goes live at once.
 
 For each PR:
 
@@ -41,9 +45,10 @@ For each PR:
    the session; elsewhere use `gh pr checks <n> --watch`. Never merge with `--admin`.
 3. **Check its Vercel preview.** Vercel builds every branch. The PR's Vercel check links its
    preview; a failed Vercel build means the merge would break production, so it isn't ready.
-4. **Hand it to the founder.** Tell them it's ready, with the PR link and one line on what goes
-   live when they merge it. They merge it on GitHub (squash). Wait for their merge before readying
-   the next PR that touches the same files.
+4. **Turn on auto-merge.** Run `gh pr merge <n> --auto --squash`. GitHub merges the PR when the
+   required `check` passes; if it is already green, it merges at once. Confirm it merged
+   (`gh pr view <n> --json state`) before readying the next PR that touches the same files. If a
+   check fails, fix it on the branch and push; don't merge another way.
 
 ## After a merge: check production
 
