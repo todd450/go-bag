@@ -1882,7 +1882,7 @@ function essBlock(M, row, items, kitId) {
     const btn = S.canWrite && kitName != null && g && first.get(gapKey(g)) === g;
     const body = `${btn ? `<b aria-hidden="true">+</b>` : icon("no", "ic ic-s")}<span class="vh">Missing </span>${esc(e.label)}${g && !off.has(g) ? ` · <span class="muted">on your list</span>` : gain ? ` · <span class="gain" title="Readiness points adding it adds">${pts(gain)}</span>` : ""}`;
     return btn
-      ? `<button type="button" class="chip ess miss" data-act="shopAdd" data-cat="${esc(row.cat)}" data-essential="${esc(e.id)}" data-kit="${esc(kitId)}" aria-label="${esc(`Add ${e.label} to your list for ${kitName}`)}">${body}</button>`
+      ? `<button type="button" class="chip ess miss" data-act="shopAdd" data-cat="${esc(row.cat)}" data-essential="${esc(e.id)}" data-kit="${esc(kitId)}" aria-label="${esc(`${e.label}: add to your list for ${kitName}`)}">${body}</button>`
       : `<span class="chip ess miss">${body}</span>`;
   });
   const foot = essNotes(row.cat, items).map(n => `<span class="small muted">${n}</span>`);

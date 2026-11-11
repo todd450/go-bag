@@ -328,18 +328,18 @@ test("every missing essential that is a household gap can be planned from the ki
   assert.ok(seen > 50, `${seen} buttons compared`);
 });
 
-test("tapping a missing essential's chip plans it for that kit: the chip then says it is on the list, and ticking it raises readiness by the points shown", () => {
+test("tapping a missing essential's chip plans it for that kit: the chip then says it is on the list, and ticking it raises readiness by the points shown", async () => {
   const app = household();
   // One that the household routes to another kit (QA, PR 142): the go-bag's emergency radio
   const b = planBtns(app, "go").find(b => b.essential === "radio");
   assert.ok(b, "the go-bag's checklist offers the radio");
-  assert.match(b.label, /^Add Emergency radio to your list for /);
+  assert.match(b.label, /^Emergency radio: add to your list for /, "its spoken name starts with what it shows");
   const gain = chips(app, "go").get("Emergency radio"), before = app.json("model().overall");
   app.run(`ACT.shopAdd({ dataset: ${JSON.stringify({ cat: b.cat, essential: b.essential, kit: b.kit })} })`);
   assert.equal(app.json("shopItems().at(-1).kitId"), "go");
   assert.ok(!planBtns(app, "go").some(x => x.essential === "radio"), "no longer a button");
   assert.match(app.run(`viewKits(model())`), /Emergency radio · <span class="muted">on your list<\/span>/);
-  pack(app, app.json("shopItems().at(-1).id"));
+  await pack(app, app.json("shopItems().at(-1).id"));
   assert.equal(app.json("model().overall") - before, gain, "the points the chip showed");
 });
 
