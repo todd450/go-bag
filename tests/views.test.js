@@ -15,7 +15,7 @@ test("the Readiness tab groups emergencies, with filled stars on raised ones", (
   run(`S.hazards.importance = { burns: "most" }; S.openHz = new Set(["burns"]);`);
   const html = run("viewOverview(model())");
   for (const label of ["Disasters and outages", "Health emergencies", "Everyday"]) assert.ok(html.includes(label), label);
-  assert.deepEqual([...html.matchAll(/<span class="imp up"[^>]*><span class="vh">([^<]*)<\/span><span aria-hidden="true">([^<]*)</g)].map(m => [m[1], m[2]]), [["One of our top priorities", "★★"]]);
+  assert.deepEqual([...html.matchAll(/<span class="imp up"[^>]*><span class="vh">([^<]*)<\/span><span aria-hidden="true">([^<]*)</g)].map(m => [m[1], m[2]]), [["Matters: One of our top priorities", "★★"]]);
 });
 
 test("names people type are escaped", () => {
@@ -182,7 +182,7 @@ test("an emergency row names what it needs, missing first, then some, then what 
 
 // An emergency's two ratings. On its row they are marks to read; its pickers are in the opened emergency.
 const marks = html => { const row = html.split('id="hzp-')[0];
-  return { selects: (row.match(/<select/g) || []).length, likely: plain((row.match(/<span class="pick ro"[^>]*>([\s\S]*?)<\/span><\/span>/) || ["", ""])[1].replace(/<span class="lik"[\s\S]*?<\/span>/, m => ` ${(m.match(/<i class="on">/g) || []).length} bars `)),
+  return { selects: (row.match(/<select/g) || []).length, likely: plain((row.match(/<span class="hz-mk" title[^>]*>([\s\S]*?)<\/span><\/span><\/span>/) || ["", ""])[1].replace(/<span class="lik"[\s\S]*?<\/span>/, m => ` ${(m.match(/<i class="on">/g) || []).length} bars `)),
     stars: (row.match(/<span class="imp up"[^>]*><span class="vh">[^<]*<\/span><span aria-hidden="true">([^<]*)</) || [])[1] || "" }; };
 const picks = html => [...html.slice(html.indexOf('id="hzp-')).matchAll(/<label class="f">([^<]*)<select id="([^"]+)"([^>]*)>([\s\S]*?)<\/select>/g)]
   .map(([, label, id, attrs, options]) => ({ id, label, chosen: (options.match(/<option value="([^"]+)" selected>/) || [])[1], disabled: /\bdisabled\b/.test(attrs) }));
@@ -193,7 +193,7 @@ test("an emergency's row shows its two ratings as marks, and they are changed in
   let html = hzHtml(run, "housefire");
   assert.doesNotMatch(html, /hz-panel/, "closed");
   // Closed: no control on the row, how likely in bars and a word, and no star while it matters as much as the others
-  assert.deepEqual(marks(html), { selects: 0, likely: "How likely: 2 bars Moderate", stars: "" });
+  assert.deepEqual(marks(html), { selects: 0, likely: "How likely: Moderate 2 bars Moderate", stars: "" });
   run(`S.openHz = new Set(["housefire"])`);
   html = hzHtml(run, "housefire");
   assert.equal(marks(html).selects, 0, "opened, the row still has no control");
@@ -206,7 +206,7 @@ test("an emergency's row shows its two ratings as marks, and they are changed in
   assert.equal(json("S.hazards.importance.housefire"), "most");
   html = hzHtml(run, "housefire");
   assert.deepEqual(picks(html).map(p => p.chosen), ["high", "most"]);
-  assert.deepEqual(marks(html), { selects: 0, likely: "How likely: 3 bars High", stars: "★★" });
+  assert.deepEqual(marks(html), { selects: 0, likely: "How likely: High 3 bars High", stars: "★★" });
   // Back to "As much as the others" drops the saved importance instead of storing the default, and the star goes
   await fire("change", { dataset: { change: "importance", id: "housefire" }, value: "normal" });
   assert.equal(json("Object.hasOwn(S.hazards.importance, 'housefire')"), false);
@@ -220,7 +220,7 @@ test("an emergency that doesn't apply keeps its likelihood picker, at Not releva
   const { run } = load({ fixture: "tests/household" });
   let quake = hzHtml(run, "earthquake");
   assert.match(quake, /^<div class="hz-row off">/);
-  assert.deepEqual(marks(quake), { selects: 0, likely: "How likely: 0 bars Not relevant", stars: "" });
+  assert.deepEqual(marks(quake), { selects: 0, likely: "How likely: Not relevant 0 bars Not relevant", stars: "" });
   run(`S.openHz = new Set(["earthquake"])`);
   quake = hzHtml(run, "earthquake");
   assert.deepEqual(picks(quake).map(p => [p.id, p.chosen]), [["lv-earthquake", "none"]], "and no importance picker");

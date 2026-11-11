@@ -120,6 +120,8 @@ test("the ⋯ menu opens on a tap, closes on a tap elsewhere, and stays on scree
     assert.ok(r.tap >= 32, `the ⋯ is big enough to tap (${r.tap}px)`);
     await ev(`document.querySelector("h1, .top").click()`);
     assert.equal(await ev(`document.querySelector("details.more").open`), false, "a tap elsewhere closes it");
+    await ev(`document.querySelector("details.more summary").click(); document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`);
+    assert.equal(await ev(`document.querySelector("details.more").open`), false, "and so does Escape");
     // Delete kit in the menu asks first
     await ev(`document.querySelector("details.more summary").click(); document.querySelector('.more-m [data-act="askConfirm"]').click()`);
     assert.equal(await ev(`S.confirm`), "kit:go");
@@ -145,19 +147,16 @@ test("an empty field on Household is a box with grey hint text, and a filled one
 });
 
 test("water reads in gallons first, with litres after", () => {
-  const { run, json } = load({ fixture: "tests/household" });
+  const { json } = load({ fixture: "tests/household" });
   const row = json(`(() => { const M = model(); for (const r of M.results) for (const x of r.rows) if (x.unit === "L" && x.need > 0) return { have: x.have, need: x.need, html: amount(x, household(), "days") }; })()`);
   const f1 = n => String(Math.round(n * 10) / 10);
   assert.equal(text(row.html), `${f1(row.have / 3.785)} of ${f1(row.need / 3.785)} gal (${f1(row.have)} of ${row.need} L)`);
   // The shopping line, too: gallons in its title, litres in its detail
   const line = json(`(() => { const M = model(), g = M.gaps.find(g => g.cat === "water"); const p = g && gapPlan(g, M.h); return p && { title: p.title, detail: p.detail, text: p.text }; })()`);
   assert.ok(line, "the household is short of water");
-  {
-    assert.match(line.title, /^Add [\d.]+ gallons of drinking water$/);
-    assert.match(line.detail, /^[\d.]+ L: /);
-    assert.match(line.text, /^Drinking water: [\d.]+ gal \([\d.]+ L\)$/);
-  }
-  void run;
+  assert.match(line.title, /^Add [\d.]+ gallons of drinking water$/);
+  assert.match(line.detail, /^[\d.]+ L: /);
+  assert.match(line.text, /^Drinking water: [\d.]+ gal \([\d.]+ L\)$/);
 });
 
 // A stand-in claude.ai whose database answers every subscription with what `docs` holds
@@ -199,4 +198,17 @@ test("a first visit that has moved to another tab stays there when more data arr
   run(`S.view = "kits"`);
   answer();
   assert.equal(json("S.view"), "kits");
+});
+
+// The row's toggle covers the whole row, and the marks sit under it
+test("a tap on an emergency's likelihood mark, its star or its score opens the emergency", { skip }, async () => {
+  for (const width of [390, 1440]) await onPage("tests/household", width, "overview", async ev => {
+    await ev(`S.hazards = { ...S.hazards, importance: { housefire: "most" } }; S.openHz = new Set(); render()`);
+    for (const sel of [".hz-mk .lik", ".imp.up", ".pct"]) {
+      const r = await ev(`(() => { const row = document.querySelector('[data-act="toggleHz"][data-id="housefire"]').closest(".hz-row"), e = row.querySelector(${JSON.stringify(sel)});
+        e.scrollIntoView({ block: "center" }); const b = e.getBoundingClientRect(), hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+        hit.click(); const open = S.openHz.has("housefire"); S.openHz = new Set(); render(); return { hit: hit.className, open }; })()`);
+      assert.equal(r.open, true, `${width}px: a tap on ${sel} (lands on "${r.hit}") opens House fire`);
+    }
+  });
 });

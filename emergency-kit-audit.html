@@ -196,14 +196,8 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .hz-sc .pct { min-width: 42px; }
 /* A picker on a row: its skin (bars or stars, a word, a chevron) with the real select lying invisibly over it, so a
    tap anywhere on it opens the browser's own list. 16px text stops phones zooming in on it. */
-.pick { position: relative; z-index: 1; display: inline-flex; gap: 6px; align-items: center; height: 24px; padding: 0 8px; border: 1px solid var(--rule-2); border-radius: 999px; background: var(--card); font-size: .78rem; white-space: nowrap; }
-.pick::after { content: ""; width: 5px; height: 5px; margin: -3px 0 0 1px; border: solid var(--ink-2); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
-.pick:hover { border-color: var(--ink-2); }
-.pick:focus-within { outline: 2px solid var(--brand); outline-offset: 1px; }
-.pick > span { display: inline-flex; gap: 6px; align-items: center; }
-.pick select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
-.pick.ro { border-color: transparent; background: none; }
-.pick.ro::after { display: none; }
+/* An emergency's marks are only to read, and sit under the row's toggle, so a tap on them opens the emergency */
+.hz-mk { display: inline-flex; gap: 6px; align-items: center; font-size: .78rem; white-space: nowrap; }
 .hzp-set { gap: 12px 20px; align-items: end; }
 /* The "⋯" menu: rarely used, destructive things, away from the everyday controls */
 .more { position: relative; } .more summary { list-style: none; letter-spacing: .1em; } .more summary::-webkit-details-marker { display: none; }
@@ -211,7 +205,6 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .more-m .btn { border-color: transparent; color: var(--bad); }
 .pick-t { min-width: 4.7em; }
 .imp, .imp-k { color: var(--ink-2); letter-spacing: -.1em; }
-.pick > .imp { min-width: 1.7em; }
 .imp.up, .imp-k { color: var(--brand); }
 /* Positioned so it clips its hidden words on a phone; clicks pass through it to the row's button. */
 .hz-cost { grid-column: 2; grid-row: 2; justify-self: end; font-size: .78rem; color: var(--ink-2); white-space: nowrap; }
@@ -2117,8 +2110,8 @@ const STARS = { normal: "☆", more: "★", most: "★★" };
 const impOf = hz => Object.hasOwn(IMPORTANCE, S.hazards?.importance?.[hz.id] || "") ? S.hazards.importance[hz.id] : "normal";
 function hzMarks(hz, rel, off) {
   const imp = impOf(hz);
-  return `<span class="pick ro" title="How likely: ${LEVELS[rel][0]}"><span class="vh">How likely: </span>${lik(rel)}<span class="pick-t">${LEVELS[rel][0]}</span></span>`
-    + (off || imp === "normal" ? "" : `<span class="imp up" title="How much it matters: ${IMPORTANCE[imp][0]}"><span class="vh">${IMPORTANCE[imp][0]}</span><span aria-hidden="true">${STARS[imp]}</span></span>`);
+  return `<span class="hz-mk" title="How likely: ${LEVELS[rel][0]}"><span class="vh">How likely: ${LEVELS[rel][0]}</span><span class="hz-mk" aria-hidden="true">${lik(rel)}<span class="pick-t">${LEVELS[rel][0]}</span></span></span>`
+    + (off || imp === "normal" ? "" : `<span class="imp up" title="How much it matters: ${IMPORTANCE[imp][0]}"><span class="vh">Matters: ${IMPORTANCE[imp][0]}</span><span aria-hidden="true">${STARS[imp]}</span></span>`);
 }
 function hzSet(hz, rel, off) {
   const sel = (id, act, label, o, on) => `<label class="f">${label}<select id="${id}-${hz.id}" data-change="${act}" data-id="${hz.id}" ${D()}>${opts(o, on)}</select></label>`;
@@ -3254,8 +3247,10 @@ const ACT = {
   },
 };
 document.addEventListener("click", e => { const b = e.target.closest("[data-act]"); if (b && !b.disabled && ACT[b.dataset.act]) { e.preventDefault(); ACT[b.dataset.act](b); } });
-// A "⋯" menu closes on a click anywhere else
-document.addEventListener("click", e => document.querySelectorAll("details.more[open]").forEach(d => d.contains(e.target) || (d.open = false)));
+// A "⋯" menu closes on a click anywhere else, and on Escape
+const shutMenus = t => document.querySelectorAll("details.more[open]").forEach(d => d.contains(t) || (d.open = false));
+document.addEventListener("click", e => shutMenus(e.target));
+document.addEventListener("keydown", e => e.key === "Escape" && shutMenus());
 document.addEventListener("input", e => {
   const t = e.target;
   if (t.dataset.input === "draft") {
@@ -3479,7 +3474,7 @@ render();
   const timer = setTimeout(() => { S.slow = true; render(); }, 10000);
   const seen = new Set();
   const all = Object.keys(COLS).length + HOUSEHOLD_DOCS.length;
-  // Someone with nothing saved yet, who opened no tab by its link, starts where setting up starts: Household
+  // Someone with no household and no kits yet, who opened no tab by its link, starts where setting up starts: Household
   const done = (k, snap) => { if (!snap.metadata?.fromCache) seen.add(k); if (seen.size >= all) { if (!S.loaded && !location.hash && !S.profile && !S.kits.length) S.view = "household"; S.loaded = true; S.slow = false; clearTimeout(timer); } };
   const fail = () => { clearTimeout(timer); S.loaded = true; render(); };
   for (const [key, col] of Object.entries(COLS)) {

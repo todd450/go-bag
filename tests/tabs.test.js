@@ -136,7 +136,7 @@ test("from an old #shop link to a household with no kits, the first kit added op
 });
 
 // Every emergency's Add button, as Readiness draws it with every emergency open: its emergency's id and its label
-const OPEN = `S.view = "overview"; S.showOff = true; S.view = "overview"; S.openHz = new Set(model().results.map(r => r.hz.id)); render(); SHOWN["#v-overview"].innerHTML`;
+const OPEN = `S.view = "overview"; S.showOff = true; S.openHz = new Set(model().results.map(r => r.hz.id)); render(); SHOWN["#v-overview"].innerHTML`;
 const addButtons = app => [...app.run(OPEN).matchAll(/<button [^>]*data-act="shopAddHz"[^>]*>([^<]*)</g)].map(([b, label]) => ({ id: b.match(/ data-id="([^"]*)"/)[1], label }));
 // Taps an emergency's Add, then the toast's action: the toast shows the action, which opens Kits on All kits and writes nothing
 function addThenSeeList(app, writes, id, at) {
