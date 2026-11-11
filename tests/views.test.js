@@ -149,7 +149,7 @@ const hzHtml = (run, id) => run(`(M => hzRow(M.results.find(r => r.hz.id === ${J
 const houseFire = run => { run(`S.openHz = new Set(["housefire"])`); return hzHtml(run, "housefire"); };
 const goKit = run => { run(`S.openKit = "go"`); return run("viewKits(model())"); };
 // An emergency row's need tags, in order: state (miss, part, have, or more for "+N more") and text.
-const tags = html => (html.match(/<span class="hz-needs">([\s\S]*?)<\/span>\s*<\/div>/) || ["", ""])[1]
+const tags = html => (html.match(/<span class="hz-needs">([\s\S]*?)<\/span>\s*(?:<span class="hz-cost">|<\/div>)/) || ["", ""])[1]
   .split('<span class="need ').slice(1).map(p => ({ state: p.slice(0, p.indexOf('"')), text: plain(p.replace(/^[^>]*>/, "").replace(/<span class="vh">[^<]*<\/span>/g, "")) }));
 // An opened emergency's needs, one line each: state, name with what's missing, notes, and the amount.
 const needs = html => [...html.matchAll(/<div class="hzp-need (\w+)">([\s\S]*?)<\/div>/g)].map(([, state, body]) => {

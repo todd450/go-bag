@@ -3,8 +3,7 @@
 //   back once the ring has scrolled under the header. On the other tabs it always shows.
 // - A bag under half full is drawn shorter (140px empty, the full 240px from half full), with the same bands.
 // - At phone width a household card left alone on its row fills the row, and two on a row are equally tall.
-// - What it costs is the kits' table and under it the emergencies', whose long list is two halves side by side on a
-//   desktop and one list on a phone, so no short table sits beside a long one.
+// - What it costs is the kits' table. An emergency's cost is on its own row (say each thing once, 11 Nov 2026).
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -151,66 +150,53 @@ for (const fixture of ["tests/household", "fixtures/empty-and-one/big-household"
   });
 }
 
-// What it costs: the emergencies' rows, table by table
+// What it costs: its tables
 const costTables = html => [...html.match(/<section class="costs[\s\S]*?<\/section>/)[0].matchAll(/<table class="cost-t">([\s\S]*?)<\/table>/g)].map(t => ({
   head: [...t[1].matchAll(/<th scope="col">([^<]*)</g)].map(m => m[1]),
   rows: [...t[1].matchAll(/<th scope="row">([^<]*)</g)].map(m => m[1]) }));
-const APPLIES = `M.results.filter(r => LEVELS[r.rel][1] > 0 && !(r.hz.vehicle && M.h.vehicles === 0))`;
 
-test("What it costs lists the kits in one table and every emergency once, in two halves", () => {
+test("What it costs is the kits' table alone: an emergency's cost is on its own row", () => {
   const app = load({ fixture: "tests/household" });
-  const names = app.json(`(() => { const M = model(); return ${APPLIES}.map(r => r.hz.name); })()`);
-  assert.ok(names.length > 10, "the standard household faces many emergencies");
-  const [kits, a, b, ...more] = costTables(app.run(`viewOverview(model())`));
-  assert.deepEqual(more, [], "three tables");
+  const [kits, ...more] = costTables(app.run(`viewOverview(model())`));
+  assert.deepEqual(more, [], "one table");
   assert.deepEqual(kits.head, ["Kit", "Spent", "To finish"]);
   assert.deepEqual([...kits.rows].sort(), app.json(`S.kits.map(k => k.name)`).sort());
-  for (const t of [a, b]) assert.deepEqual(t.head, ["Emergency", "Spent", "To be ready"], "each half has its own headings");
-  assert.deepEqual([...a.rows, ...b.rows].sort(), [...names].sort(), "every emergency once");
-  assert.ok(a.rows.length - b.rows.length === 0 || a.rows.length - b.rows.length === 1, `the halves are ${a.rows.length} and ${b.rows.length} rows`);
 });
 
-test("What it costs splits any number of emergencies evenly and in the order given, and one emergency is one table with no empty second half", () => {
-  const app = load({ fixture: "tests/household" });
-  const names = app.json(`(() => { const M = model(); return ${APPLIES}.map(r => r.hz.name); })()`);
-  for (const n of [0, 1, 2, 3, 4, 7]) {
-    const [kits, ...hz] = costTables(app.run(`(() => { const M = model(); return costsSection(M, ${APPLIES}.slice(0, ${n})); })()`));
-    assert.equal(kits.head[0], "Kit");
-    assert.deepEqual(hz.map(t => t.rows.length), n === 0 ? [] : n === 1 ? [1] : [Math.ceil(n / 2), Math.floor(n / 2)], `${n} emergencies`);
-    assert.deepEqual(hz.flatMap(t => t.rows), names.slice(0, n), `${n} emergencies, the first half then the rest`);
+// Each emergency's row: what it says it costs to be ready, beside what hzCost works out
+const ROW_COSTS = `(() => { const M = model(), h = household(); return M.results.map(r => { const c = hzCost(r, h).toGet;
+  return { id: r.hz.id, off: LEVELS[r.rel][1] === 0 || !!(r.hz.vehicle && h.vehicles === 0), total: Math.round(c.total), unpriced: c.unpriced,
+    shown: (hzRow(r, h, M).match(/<span class="hz-cost">([\\s\\S]*?)<\\/span><\\/span>/) || [])[1] ?? null }; }); })()`;
+const plain = h => h.replace(/<[^>]*>/g, "");
+
+test("an emergency's row says what it still costs to be ready, as its opened panel does, and nothing when there is nothing to buy", () => {
+  for (const fixture of ["tests/household", "fixtures/empty-and-one/big-household", "fixtures/empty-and-one/one-person"]) {
+    const app = load({ fixture });
+    const rows = app.json(ROW_COSTS);
+    let shown = 0;
+    for (const r of rows) {
+      const want = r.off || !(r.total || r.unpriced) ? null : `${r.total ? "$" + r.total.toLocaleString("en-US") : "Unpriced"} to be ready`;
+      assert.equal(r.shown === null ? null : plain(r.shown), want, `${fixture} ${r.id}`);
+      shown += want !== null;
+    }
+    assert.ok(shown > 3, `${fixture}: ${shown} rows show a cost`);
   }
+  // An emergency that doesn't apply shows no cost
+  const app = load({ fixture: "tests/household" });
+  app.run(`S.hazards = { ...S.hazards, levels: Object.fromEntries(HAZARDS.map(z => [z.id, "none"])) }`);
+  assert.deepEqual(app.json(ROW_COSTS).filter(r => r.off && r.shown !== null), [], "no cost on a row that is off");
 });
 
-// The cost section's boxes: each panel, each table, and the second half's heading row
-const COSTS = `(() => { const box = e => { const r = e.getBoundingClientRect(); return { l: r.left, t: r.top + scrollY, w: r.width, h: r.height, b: r.bottom + scrollY }; };
-  const sec = document.querySelector("section.costs"), ts = [...sec.querySelectorAll(".cost-2 table")];
-  return JSON.stringify({ grid: box(sec.querySelector(".cost-grid")), panels: [...sec.querySelectorAll(".panel")].map(box), halves: ts.map(box),
-    head2: box(ts[1].tHead), first2: box(ts[1].tBodies[0].rows[0]), last1: box([...ts[0].tBodies[0].rows].pop()), row: box(ts[0].tBodies[0].rows[0]).h,
-    scroll: document.documentElement.scrollWidth, w: innerWidth }); })()`;
-
-test("at 1440px the kits' costs sit above the emergencies', whose halves are side by side, with no empty space beside either", { skip }, async () => {
-  await onPage("tests/household", 1440, "overview", async ev => {
-    const c = JSON.parse(await ev(COSTS));
-    assert.equal(c.panels.length, 2);
-    for (const p of c.panels) assert.ok(Math.abs(p.w - c.grid.w) <= 1 && Math.abs(p.l - c.grid.l) <= 1, `each panel is the section's full width (${p.w} of ${c.grid.w})`);
-    assert.ok(c.panels[1].t >= c.panels[0].b, "the emergencies are under the kits");
-    const [a, b] = c.halves;
-    assert.ok(Math.abs(a.t - b.t) <= 1 && b.l >= a.l + a.w, "the halves are side by side");
-    assert.ok(Math.abs(a.w - b.w) <= 1, `and equally wide (${a.w}, ${b.w})`);
-    assert.ok(Math.abs(a.h - b.h) <= c.row + 1, `and within a row of each other's height (${a.h}, ${b.h})`);
-    assert.ok(c.head2.h > 20, "the second half shows its headings");
-  });
-});
-
-test("at 390px the emergencies' halves read as one list: one under the other, the second's headings taking no room", { skip }, async () => {
-  await onPage("tests/household", 390, "overview", async ev => {
-    const c = JSON.parse(await ev(COSTS));
-    const [a, b] = c.halves;
-    assert.ok(Math.abs(a.l - b.l) <= 1 && Math.abs(a.w - b.w) <= 1, "the halves line up");
-    assert.ok(c.head2.h <= 1, `the second half's headings take ${c.head2.h}px`);
-    assert.ok(Math.abs(c.first2.t - c.last1.b) <= 1, `the second half's first row follows the first half's last (${c.last1.b} to ${c.first2.t})`);
-    assert.equal(await ev(`getComputedStyle(document.querySelectorAll(".cost-2 table")[0].tBodies[0].lastElementChild.cells[0]).borderBottomWidth`), "1px", "with a rule between them like any two rows");
-    assert.equal(await ev(`document.querySelectorAll(".cost-2 table")[1].tHead.rows[0].cells.length`), 3, "the headings are still there for a screen reader");
-    assert.ok(c.scroll <= c.w, `the page scrolls sideways (${c.scroll}px)`);
+test("an emergency's cost sits under its score, clear of its needs, at phone and desktop width", { skip }, async () => {
+  for (const width of [390, 1440]) await onPage("tests/household", width, "overview", async ev => {
+    const rows = JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll(".hz-row")].filter(r => r.querySelector(".hz-cost")).map(r => { const b = s => { const x = r.querySelector(s).getBoundingClientRect(); return { l: x.left, r: x.right, t: x.top, b: x.bottom }; };
+      return { cost: b(".hz-cost"), pct: b(".pct"), needs: b(".hz-needs") }; }))`));
+    assert.ok(rows.length > 3, `${width}px: ${rows.length} rows with a cost`);
+    for (const [i, r] of rows.entries()) {
+      assert.ok(Math.abs(r.cost.r - r.pct.r) <= 1, `${width}px row ${i}: the cost ends where the score does (${r.cost.r}, ${r.pct.r})`);
+      assert.ok(r.cost.t >= r.pct.b - 1, `${width}px row ${i}: under the score`);
+      assert.ok(r.needs.r <= r.cost.l + 1, `${width}px row ${i}: the needs stop before it (${r.needs.r} then ${r.cost.l})`);
+    }
+    assert.ok(await ev(`document.documentElement.scrollWidth <= innerWidth`), `${width}px: the page doesn't scroll sideways`);
   });
 });

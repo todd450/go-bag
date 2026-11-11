@@ -117,7 +117,7 @@ test("an emergency counts what's in the kits it uses and the categories it needs
   for (const t of full) assert.deepEqual(t, { total: 0, unpriced: 0, free: 0 });
 });
 
-test("the overview shows the household's spend and to-get, each kit's, and each emergency that applies", () => {
+test("the overview shows the household's spend and to-get, and each kit's in What it costs", () => {
   const app = load({ fixture: "tests/household" });
   const html = app.run(`viewOverview(model())`), t = text(html);
   const hh = app.json(`householdCost(model())`);
@@ -126,10 +126,8 @@ test("the overview shows the household's spend and to-get, each kit's, and each 
   const sec = text(html.match(/<section class="costs[^"]*"[\s\S]*?<\/section>/)?.[0] || "");
   assert.ok(sec, "a What it costs section");
   for (const k of app.json(`S.kits.map(k => k.name)`)) assert.ok(sec.includes(k), `lists ${k}`);
-  const applies = app.json(`(() => { const M = model(); return M.results.filter(r => LEVELS[r.rel][1] > 0 && !(r.hz.vehicle && M.h.vehicles === 0)).map(r => r.hz.name); })()`);
-  for (const n of applies) assert.ok(sec.includes(n), `lists ${n}`);
-  const off = app.json(`(() => { const M = model(); return M.results.filter(r => LEVELS[r.rel][1] === 0).map(r => r.hz.name); })()`);
-  for (const n of off) assert.ok(!sec.includes(n), `leaves out ${n}, which doesn't apply`);
+  // An emergency's cost is on its own row, not listed again here
+  for (const n of app.json(`model().results.map(r => r.hz.name)`)) assert.ok(!sec.includes(n), `leaves out ${n}`);
 });
 
 test("a kit's readiness panel and an opened emergency say what's been spent and what the rest costs", () => {

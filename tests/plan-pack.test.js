@@ -49,7 +49,7 @@ test("the standard household starts at readiness 17 with nothing on the list", (
 test("a kit's flat-lay shows only what is packed: a tile per item, and none for what is missing", () => {
   const page = fs.readFileSync(PAGE, "utf8");
   for (const gone of ["flMiss", "fl-tile miss", "shopPack", "Take off plan"]) assert.ok(!page.includes(gone), `${gone} is not in the page`);
-  let kits = 0, empty = 0;
+  let kits = 0;
   for (const name of households) {
     const app = load({ fixture: name });
     for (const w of [true, false]) for (const lines of ["null", "{ items: model().gaps.map((g, i) => shopFromGap(g, model().h, S.kits[i % S.kits.length]?.id)) }"]) {
@@ -62,12 +62,17 @@ test("a kit's flat-lay shows only what is packed: a tile per item, and none for 
         const at = `${name} ${kit}`;
         assert.deepEqual(tiles.map(t => unesc((t[2].match(/data-id="([^"]*)"/) || [])[1] || "")).sort(), [...out.items].sort(), `${at}: one tile per item, each an item's`);
         assert.doesNotMatch(panel.slice(0, panel.indexOf("kit-ck")), /Planned|class="gain"|data-act="shopAdd"/, `${at}: nothing planned or missing in the flat-lay`);
-        if (!out.items.length) { assert.match(text(panel), /Nothing in this kit yet\./, at); empty++; }
+        if (!out.items.length) { assert.match(text(panel), /Nothing in this kit yet\./, at); }
         kits++;
       }
     }
   }
-  assert.ok(kits > 100 && empty > 0, `${kits} kits, ${empty} of them empty`);
+  assert.ok(kits > 100, `${kits} kits`);
+  // An empty kit says so, and still has no tile
+  const app = load({ fixture: "tests/household" });
+  const panel = app.run(`S.items = []; S.canWrite = true; S.view = "kits"; S.openKit = "go"; (k => kitDetail(k, model().kitRes[k.id], model()))(S.kits[0])`);
+  assert.match(text(panel), /Nothing in this kit yet\./);
+  assert.doesNotMatch(panel, /<li class="fl-tile/);
 });
 
 test("a chip reads the points ticking its line into this kit adds: the pain reliever is +3, +2 and +1", () => {
