@@ -264,6 +264,15 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 }
 .kit-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px 40px; gap: 2px 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
 .kit-row .kit-miss { grid-column: 1 / -1; margin-top: -2px; }
+/* What it costs (#138): two small tables side by side on a desktop, stacked on a phone */
+.cost-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+.cost-t { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .9rem; }
+.cost-t th, .cost-t td { padding: 7px 0; border-bottom: 1px solid var(--rule); text-align: right; font-weight: 400; background: none; color: var(--ink); font-size: inherit; vertical-align: baseline; }
+.cost-t tr:last-child > * { border-bottom: 0; }
+.cost-t th:first-child { text-align: left; font-weight: 600; padding-right: 8px; }
+.cost-t thead th { font-size: .75rem; color: var(--ink-2); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.cost-t th:not(:first-child), .cost-t td { width: 84px; padding-left: 8px; }
+.kit-cost b, .cost-sum b { font-variant-numeric: tabular-nums; }
 .kit-pct { font-family: var(--f-display); font-size: 2rem; font-weight: 700; line-height: 1; letter-spacing: -.03em; }
 .exp-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .88rem; }
 .exp-row .flag { flex: none; font-size: .75rem; font-weight: 500; }
@@ -1353,6 +1362,69 @@ function kitReadiness(kit, h, active, items = HOUSEHOLD.items.filter(i => i.kitI
   return { std, serves, whole, h, kh, rows, score: scoreRows(rows), drivers };
 }
 
+/* ---------- what it costs (#138) ---------- */
+/* Dollars saved on an item, or null when the field is empty, cleared or not a price. $0 is a price: a gift. */
+const dollars = x => x === "" || x == null || !Number.isFinite(+x) || +x < 0 ? null : +x;
+const cents = n => Math.round(n * 100) / 100;
+/* What an owned item cost, in a kit of type `kt`: `paid` (from a receipt), else `unitPrice` (its current price, Amazon by
+   default) × qty, else what the shopping list would charge for the same category and amount. Both fields are found and
+   saved from a Claude session, the way amazonUrl is: the page never reads Amazon or a bank. null prices nothing. */
+function itemCost(it, kt, h) {
+  const paid = dollars(it.paid);
+  if (paid != null) return { price: paid, src: "paid" };
+  const n = Math.max(1, num(it.qty)), unit = dollars(it.unitPrice);
+  if (unit != null) return { price: cents(unit * n), src: "price" };
+  const c = it.category;
+  if (!Object.hasOwn(CATS, c) || c === "other") return { price: null, src: "estimate" };
+  const [amt, u] = c === "water" ? [num(it.liters), "L"] : c === "food" ? [num(it.kcal), "kcal"] : [n, ""];
+  // Water or food with no litres or calories (a filter, purification tablets) says nothing of how much: unpriced, not $0
+  if (!amt) return { price: null, src: "estimate" };
+  const ess = essentialOf(it), p = buyGuide(c, amt, u, kt, h, ess).price ?? null;
+  // A named essential is priced for one, so two extinguishers cost two
+  return { price: p != null && essentialList(c).some(x => x.id === ess) ? p * n : p, src: "estimate" };
+}
+const kitTypeOf = it => HOUSEHOLD.kits.find(k => k.id === it.kitId)?.type || "home";
+/* What a set of items cost: the total of the priced ones, how many nothing prices, and how much of it was from receipts. */
+function spentOn(items, h) {
+  const s = { total: 0, unpriced: 0, paid: 0, n: 0 };
+  for (const it of items) {
+    if (it.example) continue;
+    const c = itemCost(it, kitTypeOf(it), h);
+    s.n++;
+    if (c.price == null) s.unpriced++;
+    else { s.total = cents(s.total + c.price); if (c.src === "paid") s.paid = cents(s.paid + c.price); }
+  }
+  return s;
+}
+/* What checklist rows are short, at the shopping list's prices for a kit of type `kt`: each counted row's shortfall
+   and each missing essential. Prescriptions have no price, so they are counted, not added. */
+function shortOf(rows, kt, h) {
+  const s = { total: 0, unpriced: 0, free: 0 };
+  const add = p => { if (p == null) s.unpriced++; else { s.total += p; if (!p) s.free++; } };
+  for (const r of rows) {
+    if (r.cov >= 1) continue;
+    if (r.ess) r.ess.filter(e => !e.have).forEach(e => add(essentialGuide(e.id, h).price));
+    else add(buyGuide(r.cat, r.need - r.have, r.unit || "", kt, h).price);
+  }
+  return s;
+}
+/* A list line's price, for the kit it goes in, as Review and the plan bar price it (undefined outside CATS). */
+const lineCost = (e, h) => CATS[e.cat] ? buyGuide(e.cat, e.qty, e.unit, HOUSEHOLD.kits.find(k => k.id === shopKit(e))?.type || (Array.isArray(e.kits) && e.kits[0]) || "home", h, e.essential).price : undefined;
+/* A kit: what its items cost, and what taking its own checklist (`r`, from kitReadiness) to 100% would. */
+const kitCost = (kit, r, h) => ({ spent: spentOn(HOUSEHOLD.items.filter(i => i.kitId === kit.id), h), toGet: shortOf(r.rows, kit.type, r.kh) });
+/* An emergency, at its full cost: what's in the kits it counts, in the categories it needs, and what it's short.
+   Supplies serve several emergencies, so emergencies don't add up to the household's total. */
+function hzCost(r, h) {
+  const cats = new Set(r.rows.map(x => x.cat)), kits = kitsFor(r.hz);
+  return { spent: spentOn(itemsIn(kits).filter(i => cats.has(i.category)), h), toGet: shortOf(r.rows, kits[0], h) };
+}
+/* The household: every item in a kit, and every gap bought once, as planning them all would price them. */
+function householdCost(M) {
+  const kits = new Set(HOUSEHOLD.kits.map(k => k.id)), toGet = { total: 0, unpriced: 0 };
+  for (const g of M.gaps) { const p = lineCost(shopFromGap(g, M.h), M.h); if (p === null) toGet.unpriced++; else toGet.total += p || 0; }
+  return { spent: spentOn(HOUSEHOLD.items.filter(i => kits.has(i.kitId)), M.h), toGet };
+}
+
 /* ---------- weight and space ---------- */
 /* One unit of each category weighs about `g` grams and takes `ml` of bag space; an item with its own
    grams or ml uses those. Water and food are estimated from their litres and calories. `lite` is a
@@ -1846,6 +1918,7 @@ function viewOverview(M) {
   const sorted = [...results].sort((a, b) => b.wt - a.wt || a.score - b.score);
   const applies = r => LEVELS[r.rel][1] > 0 && !(r.hz.vehicle && h.vehicles === 0);
   const offCount = results.filter(r => !applies(r)).length;
+  const hc = householdCost(M);
   const group = (label, rows, note) => { rows = S.showOff ? rows : rows.filter(applies); return rows.length ? `<div class="grp">
     <div class="grp-h"><span class="eyebrow">${label}</span>${note ? `<span class="small muted">${note}</span>` : ""}</div>
     <div class="hz-grid">${rows.map(r => hzRow(r, h, M)).join("")}</div></div>` : ""; };
@@ -1859,6 +1932,7 @@ function viewOverview(M) {
       </div>
       ${overall == null ? "" : bandTag(sc)}
       <p class="mono small muted">${pl(h.people, "person", "people")} · ${pl(h.pets, "pet")} · ${pl(S.kits.length, "kit")} · ${pl(S.items.length, "item")}${exp.length ? ` · <span style="color:var(--warn)">${exp.length} expiring</span>` : ""}</p>
+      <p class="small cost-sum">${cap(spentAmt(hc.spent))} spent${unpricedNote(hc.spent.unpriced)} · ${toGetAmt(hc.toGet)} to close every gap${unpricedNote(hc.toGet.unpriced)}</p>
       <p class="small muted">${hzNote}</p>
       ${how("score", "Your score is averaged across the emergencies that apply to you, weighted by how likely each one is, how bad it is to face unprepared and how much it matters to you.")}
     </div>
@@ -1878,7 +1952,31 @@ function viewOverview(M) {
     ${group("Health emergencies", sorted.filter(r => r.hz.group === "health"), "Set from who lives here and their health on the Household tab. A first-aid course matters more than any kit.")}
     ${group("Everyday", sorted.filter(r => r.hz.group === "everyday"), "Small things that go wrong often. A kit that handles them is one you'll open, and so keep stocked.")}
     ${offCount ? `<div><button class="btn ghost sm" data-act="toggleOff" aria-expanded="${!!S.showOff}">${S.showOff ? "Hide" : "Show"} ${offCount} that ${offCount === 1 ? "doesn't" : "don't"} apply to you</button></div>` : ""}
-  </div>`;
+  </div>
+  ${costsSection(M, sorted.filter(applies))}`;
+}
+/* ---------- what it costs, shown (#138) ---------- */
+const usd = n => "$" + Math.round(n).toLocaleString("en-US");
+const cap = s => s.replace(/^[a-z]/, c => c.toUpperCase());
+const unpricedNote = n => n ? ` <span class="muted" title="Prescriptions and items in Other have no price">(+ ${n} unpriced)</span>` : "";
+/* What was spent: "about" unless every dollar of it is from receipts. What's left is always the list's estimate. */
+const spentAmt = s => `${s.paid < s.total || s.unpriced ? "about " : ""}<b>${usd(s.total)}</b>`;
+const toGetAmt = s => `about <b>${usd(s.total)}</b>`;
+const costCell = s => `<td class="mono">${usd(s.total)}${s.unpriced ? `<span class="muted small" title="${pl(s.unpriced, "line")} with no price"> +${s.unpriced}</span>` : ""}</td>`;
+/* The Overview's What it costs: each kit's spend and what finishing it would cost, then each emergency that applies at
+   its full cost. Emergencies share supplies, so they aren't summed. */
+function costsSection(M, rs) {
+  const kits = [...S.kits].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).map(k => [k, kitCost(k, M.kitRes[k.id], M.h)]);
+  if (!kits.length) return "";
+  const head = (a, b, c) => `<thead><tr><th scope="col">${a}</th><th scope="col">${b}</th><th scope="col">${c}</th></tr></thead>`;
+  return `<section class="costs stack" aria-labelledby="costs-h">
+    <div class="sec-h"><h2 id="costs-h">What it costs</h2><span class="small muted">Spent so far, and the shopping list's prices for the rest</span></div>
+    <div class="cost-grid">
+      <div class="panel"><table class="cost-t">${head("Kit", "Spent", "To finish")}<tbody>${kits.map(([k, c]) => `<tr><th scope="row">${esc(k.name)}</th>${costCell(c.spent)}${costCell(c.toGet)}</tr>`).join("")}</tbody></table></div>
+      ${rs.length ? `<div class="panel"><table class="cost-t">${head("Emergency", "Spent", "To be ready")}<tbody>${rs.map(r => { const c = hzCost(r, M.h); return `<tr><th scope="row">${esc(r.hz.name)}</th>${costCell(c.spent)}${costCell(c.toGet)}</tr>`; }).join("")}</tbody></table></div>` : ""}
+    </div>
+    ${how("costs", "Spent is what you paid where a receipt is saved on the item (type it in Paid $ on the item's row), else its current price where one is saved, else what the shopping list would charge for the same thing. To finish prices what each kit's own checklist is short of. An emergency counts everything it needs in the kits it uses, so supplies shared by several emergencies count in each, and the emergencies don't add up to the household's total. Prescriptions aren't priced.")}
+  </section>`;
 }
 function kitRow(k, r) {
   const c = statusColor(r.score);
@@ -1905,7 +2003,13 @@ function kitReadyPanel(kit, r, M = model()) {
       ${S.canWrite ? `<label class="small muted kit-serves">People this kit is for<input type="number" min="1" max="50" id="kit-serves-${esc(kit.id)}" value="${r.serves}" data-change="serves" data-id="${esc(kit.id)}"></label>` : ""}
     </div>
     <div class="bar" style="--c:${c}"><span style="width:${r.score}%"></span></div>
+    ${costLine(kitCost(kit, r, M.h), "what's in it", "to finish it")}
   </div>`;
+}
+/* A kit's or an emergency's spend and what the rest costs, in one line. */
+function costLine({ spent, toGet }, on, rest) {
+  const left = toGet.total || toGet.unpriced ? `${toGetAmt(toGet)} more ${rest}${unpricedNote(toGet.unpriced)}` : toGet.free ? "the rest is from home, nothing to buy" : "nothing more to buy";
+  return `<p class="small kit-cost">${cap(spentAmt(spent))} spent on ${on}${spent.paid && spent.paid < spent.total ? ` (${usd(spent.paid)} from receipts)` : ""}${unpricedNote(spent.unpriced)} · ${left}</p>`;
 }
 function kitChecklist(kit, r, M = model()) {
   return `<div class="panel stack kit-ck">
@@ -2043,6 +2147,7 @@ function hzPanel(r, h, M, rows) {
   return `<div class="panel hz-panel" id="hzp-${hz.id}">
     <p class="small">${esc(where)} Counts ${kitsFor(hz).map(k => KIT_TYPES[k].toLowerCase().replace(/y$/, "ie") + "s").join(", ").replace(/, ([^,]*)$/, " and $1")}.</p>
     <p class="small muted"><b>${sev} if you're unprepared:</b> ${what}${mult > 1 ? `, so it counts ${mult}× in your score` : ""}.${why ? ` ${esc(why)}` : ""}</p>
+    ${costLine(hzCost(r, h), "what it needs", "to be ready")}
     <div class="hzp-needs">${rows.map(x => { const s = needRank(x), miss = x.ess ? x.ess.filter(e => !e.have).map(e => essWord(x.cat, e.label)) : [];
       return `<div class="hzp-need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span><span class="vh">${NEED_WORD[s]}: </span><b>${esc(catLabel(x.cat))}</b>${miss.length ? `<span class="muted"> · missing ${esc(orList(miss, "and"))}</span>` : ""}${x.ess ? essNotes(x.cat, items).map(n => `<span class="hzp-note muted">${n}</span>`).join("") : ""}</span><span class="amt">${amount(x, h)}</span></div>`; }).join("")}</div>
     ${add.length ? `<div><button class="btn sm" data-act="shopAddHz" data-id="${hz.id}" ${D()}>${add.length === 1 ? `Add ${esc(gapName(add[0]))} to your shopping list` : `Add the ${add.length} missing to your shopping list`}</button></div>`
@@ -2082,13 +2187,15 @@ function viewKits(M) {
 function planBar(M) {
   const left = shopItems().filter(e => !e.done);
   if (!left.length) return "";
-  const price = e => CATS[e.cat] ? buyGuide(e.cat, e.qty, e.unit, HOUSEHOLD.kits.find(k => k.id === shopKit(e))?.type || (Array.isArray(e.kits) && e.kits[0]) || "home", M.h, e.essential).price || 0 : 0;
+  const price = e => lineCost(e, M.h) || 0;
   return `<aside class="plan-bar" aria-label="Your plan"><div class="stack"><b>${left.length} planned · about $${left.reduce((a, e) => a + price(e), 0).toLocaleString()}</b>${M.overall == null ? "" : `<span class="small">Readiness ${M.overall} → <b>${scoreIfBought(left)}</b> once packed</span>`}</div><button class="btn sm" id="plan-review" data-act="allKits">${icon("cart")}Review<span class="vh"> the plan</span></button></aside>`;
 }
 /* An item's fields, as [class, label, html]: its List row's cells and its opened tile's fields, so the two never drift.
    Each writes through the data-change="item" handler. The Essential html is empty outside the five checklist categories. */
 function itemFields(it) {
   const st = expState(it), ld = itemLoad(it), a = f => `data-change="item" data-id="${esc(it.id)}" data-f="${f}"`;
+  // Paid $ shows the item's price without a receipt in grey, as lb and Size L show their estimates
+  const est = itemCost({ ...it, paid: null }, kitTypeOf(it), household()).price;
   return [
     ["", "Item", `<input type="text" id="it-${esc(it.id)}-name" value="${esc(it.name)}" ${a("name")} aria-label="Item name" ${D()}>${it.note ? `<div class="small muted" style="padding:0 6px">${esc(it.note)}</div>` : ""}${amazonA(it)}`],
     ["cat-td", "Category", `${icon(it.category)}<select id="it-${esc(it.id)}-cat" ${a("category")} aria-label="Category" ${D()}>${catOptions(it.category)}</select>`],
@@ -2098,6 +2205,7 @@ function itemFields(it) {
     ["num", "Food kcal", `<input type="number" min="0" step="50" id="it-${esc(it.id)}-k" value="${num(it.kcal) || ""}" ${a("kcal")} aria-label="Food calories" ${D()}>`],
     ["num", "lb", `<input type="number" min="0" step="0.1" id="it-${esc(it.id)}-g" value="${num(it.grams) ? lb1(num(it.grams)) : ""}" placeholder="${lb1(ld.estG)}" ${a("grams")} aria-label="Weight in pounds" ${D()}>`],
     ["num", "Size L", `<input type="number" min="0" step="0.1" id="it-${esc(it.id)}-ml" value="${num(it.ml) ? num(it.ml) / 1000 : ""}" placeholder="${Math.round(ld.estMl / 100) / 10}" ${a("ml")} aria-label="Size in litres" ${D()}>`],
+    ["num", "Paid $", `<input type="number" min="0" step="0.01" id="it-${esc(it.id)}-paid" value="${dollars(it.paid) ?? ""}" placeholder="${est == null ? "" : Math.round(est)}" ${a("paid")} aria-label="What you paid for the whole line, in dollars" ${D()}>`],
     ["", "Expires", `<input type="month" id="it-${esc(it.id)}-exp" value="${esc(it.expires || "")}" ${a("expires")} aria-label="Expiry month" ${D()}>${st ? `<span class="flag ${st}">${st === "expired" ? "expired" : "expiring soon"}</span>` : ""}`],
   ];
 }
@@ -2124,7 +2232,7 @@ function kitDetail(kit, ready, M = model()) {
     <button class="btn ghost sm" data-act="clearSel">Cancel</button>
   </div>` : ""}
   <div class="tbl-wrap"><table class="inv">
-    <thead><tr>${S.canWrite ? `<th class="sel"><input type="checkbox" id="sel-all" data-change="selAll" aria-label="Select all items" ${items.length && items.every(i => S.sel.has(i.id)) ? "checked" : ""} ${items.length ? "" : "disabled"}></th>` : ""}<th>Item</th><th style="width:136px">${sortTh("cat", "Category")}</th><th style="width:136px">Essential</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px" title="Weight of the whole line in pounds. Grey numbers are estimates.">lb</th><th style="width:56px" title="Packed size of the whole line. Grey numbers are estimates.">Size L</th><th style="width:136px">Expires</th><th style="width:100px" title="Kit readiness points this item earns. Every item's points add up to the kit's score.">${sortTh("value", "Value")}</th><th style="width:28px"></th></tr></thead>
+    <thead><tr>${S.canWrite ? `<th class="sel"><input type="checkbox" id="sel-all" data-change="selAll" aria-label="Select all items" ${items.length && items.every(i => S.sel.has(i.id)) ? "checked" : ""} ${items.length ? "" : "disabled"}></th>` : ""}<th>Item</th><th style="width:136px">${sortTh("cat", "Category")}</th><th style="width:136px">Essential</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px" title="Weight of the whole line in pounds. Grey numbers are estimates.">lb</th><th style="width:56px" title="Packed size of the whole line. Grey numbers are estimates.">Size L</th><th style="width:64px" title="What you paid for the whole line. Grey numbers are its current price or the shopping list's.">Paid $</th><th style="width:136px">Expires</th><th style="width:100px" title="Kit readiness points this item earns. Every item's points add up to the kit's score.">${sortTh("value", "Value")}</th><th style="width:28px"></th></tr></thead>
     <tbody>
       ${items.map(it => { const on = S.sel.has(it.id); return `<tr class="${on ? "picked" : ""}">
         ${S.canWrite ? `<td class="sel"><input type="checkbox" id="sel-${esc(it.id)}" data-change="sel" data-id="${esc(it.id)}" aria-label="Select ${esc(it.name)}" ${on ? "checked" : ""}></td>` : ""}
@@ -2142,6 +2250,7 @@ function kitDetail(kit, ready, M = model()) {
         <td class="num" data-label="Food kcal"><input type="number" id="add-k" min="0" step="50" aria-label="New item calories"></td>
         <td class="num" data-label="lb"><input type="number" id="add-g" min="0" step="0.1" aria-label="New item weight in pounds"></td>
         <td class="num" data-label="Size L"><input type="number" id="add-ml" min="0" step="0.1" aria-label="New item size in litres"></td>
+        <td class="num" data-label="Paid $"></td>
         <td data-label="Expires"><input type="month" id="add-exp" aria-label="New item expiry"></td>
         <td></td>
         <td class="x-td"><button class="btn sm" data-act="addItem" aria-label="Add item">+</button></td>
@@ -3192,7 +3301,7 @@ document.addEventListener("change", async e => {
     const it = S.items.find(i => i.id === t.dataset.id); if (!it) return;
     const f = t.dataset.f;
     let v = t.value;
-    if (f === "qty") v = Math.max(1, Math.round(num(v) || 1)); else if (f === "liters" || f === "kcal") v = num(v); else if (f === "grams") v = gOfLb(v); else if (f === "ml") v = Math.round(num(v) * 1000); else if (f === "name") { v = v.trim(); if (!v) { t.value = it.name; return; } }
+    if (f === "qty") v = Math.max(1, Math.round(num(v) || 1)); else if (f === "liters" || f === "kcal") v = num(v); else if (f === "grams") v = gOfLb(v); else if (f === "ml") v = Math.round(num(v) * 1000); else if (f === "paid") v = dollars(v) == null ? null : cents(dollars(v)); else if (f === "name") { v = v.trim(); if (!v) { t.value = it.name; return; } }
     else if (f === "essential" && !essentialOk(it.category, v)) { t.value = essentialOf(it); return; }
     if (it[f] === v) return;
     await setDoc("items", it.id, { ...strip(it), [f]: v }).catch(() => {});

@@ -42,7 +42,9 @@ for f in web/runtime.js tools/build-web.js api/*.mjs; do node --check "$f"; done
 # measured 83,764 bytes with #121's Review sheet (macOS gzip -9), against main's 82,975.
 # Raised to 90,000 on 10 Nov 2026 by the founder's choice (#133), for the one Household tab (Household and Plan as one,
 # edited in place): it took the page to about 89.0 KB, against main's 84,612.
-budget=90000
+# Raised to 94,000 on 11 Nov 2026 for what it costs (#138), which the founder asked to have built: spend and what's
+# left per kit and per emergency, and Paid $ on items, took the page to about 92.1 KB against main's 89,619.
+budget=94000
 size=$(gzip -9c emergency-kit-audit.html | wc -c | tr -d ' ')
 echo "check: page is $size bytes gzipped, budget $budget"
 [ "$size" -le "$budget" ] || { echo "check: the page is over its size budget by $((size - budget)) bytes gzipped. Make it smaller, or raise the budget in check.sh in its own line and say why in the PR."; exit 1; }
