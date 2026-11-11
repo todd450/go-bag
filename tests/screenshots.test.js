@@ -3,15 +3,17 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { load, PAGE, ROOT } = require("./load");
+const { load, PAGE, CORE, ROOT } = require("./load");
 const { tabs } = require("../tools/screenshots");
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-tabs-"));
 test.after(() => fs.rmSync(dir, { recursive: true, force: true }));
 
-// A copy of `file` changed by `edit`, in a fresh scratch folder; it fails if the edit changed nothing.
+// A copy of `file` changed by `edit`, in a fresh scratch folder with core.js beside it, as the page has it;
+// it fails if the edit changed nothing.
 function copyWith(file, edit) {
-  const out = path.join(fs.mkdtempSync(path.join(dir, "copy-")), path.basename(file));
+  const folder = fs.mkdtempSync(path.join(dir, "copy-")), out = path.join(folder, path.basename(file));
+  fs.copyFileSync(CORE, path.join(folder, "core.js"));
   const text = fs.readFileSync(file, "utf8");
   const next = edit(text);
   assert.notEqual(next, text, `the edit found nothing to change in ${path.basename(file)}`);

@@ -13,7 +13,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { execFileSync, spawn } = require("node:child_process");
-const { wrap, ROOT } = require("./page.js");
+const { wrap, coreTag, ROOT } = require("./page.js");
 
 const SIZES = { phone: { width: 390, height: 844, mobile: true }, desktop: { width: 1440, height: 900, mobile: false } };
 const MAX_HEIGHT = 8000;
@@ -137,7 +137,12 @@ async function main([outArg, fixture = "tests/household", base = "origin/main"])
   const dirs = { before: path.join(out, "before"), after: path.join(out, "after") };
   for (const dir of Object.values(dirs)) fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(out, "base-page.html"), execFileSync("git", ["-C", ROOT, "show", `${base}:emergency-kit-audit.html`]));
-  fs.writeFileSync(path.join(dirs.before, "index.html"), wrap(path.join(out, "base-page.html"), fixture));
+  // The base's core.js goes beside its page (where tests/load.js looks for it), and runs before it. A base from
+  // before the split (#113) has none: its core is inline in its page.
+  const baseCore = path.join(out, "core.js");
+  fs.rmSync(baseCore, { force: true });
+  try { fs.writeFileSync(baseCore, execFileSync("git", ["-C", ROOT, "show", `${base}:core.js`], { stdio: ["ignore", "pipe", "ignore"] })); } catch (_) {}
+  fs.writeFileSync(path.join(dirs.before, "index.html"), wrap(path.join(out, "base-page.html"), fixture, "", fs.existsSync(baseCore) ? coreTag(baseCore) : ""));
   fs.writeFileSync(path.join(dirs.after, "index.html"), wrap(undefined, fixture));
 
   // The base ref's own loader reads the base page's tabs; a ref from before tests/load.js has none.

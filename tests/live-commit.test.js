@@ -44,6 +44,25 @@ test("a merge that changed neither the page nor the scripts leaves the commit be
   assert.deepStrictEqual(liveCommit(live("<p>page one</p>\n", "// runtime one\n"), "HEAD", dir), { commit: c1 }, "production behind main");
 });
 
+// After #113 the page loads core.js too: a merge that only changes the core must still be found.
+test("a merge that only changed core.js is the live commit, not the page's older one", () => {
+  const { dir, c3 } = history();
+  const put = (f, s) => fs.writeFileSync(path.join(dir, f), s);
+  const commit = m => { g(dir, "add", "-A"); g(dir, "commit", "-qm", m); return g(dir, "rev-parse", "HEAD"); };
+  put("core.js", "// core one\n");
+  const c4 = commit("core split out");
+  put("core.js", "// core two\n");
+  const c5 = commit("core only");
+  const live = core => ({ page: Buffer.from("<p>page one</p>\n"), "runtime.js": Buffer.from("// runtime two\n"), "signin.js": Buffer.from("// signin\n"), "core.js": Buffer.from(core) });
+  assert.deepStrictEqual(liveCommit(live("// core two\n"), "HEAD", dir), { commit: c5 });
+  assert.deepStrictEqual(liveCommit(live("// core one\n"), "HEAD", dir), { commit: c4 }, "production behind main");
+  const r = liveCommit(live("// core three\n"), "HEAD", dir);
+  assert.strictEqual(r.commit, null);
+  assert.strictEqual(r.files["core.js"], null, "the core matches no commit");
+  assert.notStrictEqual(r.files.page, undefined);
+  assert.ok(c3);
+});
+
 test("when nothing matches, it says which file matches no commit", () => {
   const { dir, c2, live } = history();
   const r = liveCommit(live("<p>page one</p>\n", "// runtime three\n"), "HEAD", dir);
@@ -60,6 +79,7 @@ test("a built dist/ gives back the page and both scripts byte for byte", async (
   assert.ok(live.page.equals(fs.readFileSync(path.join(ROOT, "emergency-kit-audit.html"))));
   assert.ok(live["runtime.js"].equals(fs.readFileSync(path.join(ROOT, "web/runtime.js"))));
   assert.ok(live["signin.js"].equals(fs.readFileSync(path.join(ROOT, "web/signin.js"))));
+  assert.ok(live["core.js"].equals(fs.readFileSync(path.join(ROOT, "core.js"))));
 });
 
 test("from a URL it fetches /app and the scripts it names, with their ?v= stamps", async t => {
@@ -80,7 +100,8 @@ test("from a URL it fetches /app and the scripts it names, with their ?v= stamps
   const live = await readLive(base + "/app");
   assert.ok(live.page.equals(fs.readFileSync(path.join(ROOT, "emergency-kit-audit.html"))));
   assert.ok(live["runtime.js"].equals(fs.readFileSync(path.join(ROOT, "web/runtime.js"))));
-  assert.ok(asked.some(u => /^\/runtime\.js\?v=[0-9a-f]{10}$/.test(u)), asked.join(" "));
+  assert.ok(live["core.js"].equals(fs.readFileSync(path.join(ROOT, "core.js"))));
+  for (const name of ["runtime", "signin", "core"]) assert.ok(asked.some(u => new RegExp(`^/${name}\\.js\\?v=[0-9a-f]{10}$`).test(u)), asked.join(" "));
   await assert.rejects(readLive(base + "/"), /landing is at \//, "the landing is refused with a pointer to /app");
   await assert.rejects(readLive(base + "/nope"), /404/);
 });
