@@ -17,18 +17,6 @@
           }
         ]
       }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "f=\"$(git rev-parse --show-toplevel 2>/dev/null)/.claude/hooks/check-on-stop.sh\"; [ ! -f \"$f\" ] || sh \"$f\"",
-            "timeout": 120,
-            "statusMessage": "Running ./check.sh"
-          }
-        ]
-      }
     ]
   }
 }
