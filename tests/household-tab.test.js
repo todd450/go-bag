@@ -8,7 +8,8 @@ const { load } = require("./load");
 const tab = app => { app.run(`syncDraft(); S.view = "household"`); return app.run("viewHousehold()"); };
 // Each person's or pet's card, in order
 const cards = html => html.split(`<div class="hh-card`).slice(1).filter(c => !c.startsWith(` hh-add`));
-const inDays = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+// The local calendar date n days on, as the page counts days: toISOString would give the UTC date, a day ahead in the evening west of UTC
+const inDays = n => { const d = new Date(); d.setDate(d.getDate() + n); return [d.getFullYear(), d.getMonth() + 1, d.getDate()].map(v => String(v).padStart(2, "0")).join("-"); };
 const ids = html => [...html.matchAll(/ id="([^"]+)"/g)].map(m => m[1]);
 
 test("a card for each person and pet, with health needs as chips, and no form or Save button", () => {
