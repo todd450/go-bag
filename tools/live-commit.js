@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Which commit is live on Vercel? Reads production's /app (or a built dist/ folder, or a saved copy of
 // /app), takes the page back out of the wrapper tools/build-web.js puts around it, fetches the
-// runtime.js and signin.js it loads, and prints the newest commit on <ref> whose page, runtime.js and
-// signin.js all match what is served, byte for byte. A merge that only changes web/runtime.js (such as
-// #95) is found too, which matching the page alone would miss. The landing at / is not checked.
+// runtime.js, signin.js and core.js it loads, and prints the newest commit on <ref> whose page and those
+// scripts all match what is served, byte for byte. A merge that only changes web/runtime.js (such as
+// #95) or core.js (#113) is found too, which matching the page alone would miss. The landing at / is not checked.
 // Exits 0 with the commit, 1 when no commit matches (saying which file doesn't), 2 when it can't read
 // the site.
 //   node tools/live-commit.js [url, dist/ folder or saved app page; default https://go-bag.vercel.app/app] [ref, default origin/main]
@@ -13,7 +13,7 @@ const { execFileSync } = require("node:child_process");
 
 const PROD = "https://go-bag.vercel.app/app";
 // What is served, and the file in the repo it is built from, byte for byte.
-const FILES = { page: "emergency-kit-audit.html", "runtime.js": "web/runtime.js", "signin.js": "web/signin.js" };
+const FILES = { page: "emergency-kit-audit.html", "runtime.js": "web/runtime.js", "signin.js": "web/signin.js", "core.js": "core.js" };
 const OPEN = "</head><body>", CLOSE = "</body></html>";
 
 // The page out of tools/page.js's wrapper, and the paths of the scripts the wrapper loads.
@@ -22,7 +22,7 @@ function unwrap(html) {
   if (!html.startsWith("<!doctype html><html><head>") || open < 0 || close < open)
     throw new Error("that isn't the app page built by tools/build-web.js (the landing is at /, the app at /app)");
   const scripts = {};
-  for (const m of html.slice(0, open).matchAll(/<script src="(\/(runtime|signin)\.js[^"]*)"><\/script>/g)) scripts[m[2] + ".js"] = m[1];
+  for (const m of html.slice(0, open).matchAll(/<script src="(\/(runtime|signin|core)\.js[^"]*)"><\/script>/g)) scripts[m[2] + ".js"] = m[1];
   return { page: html.slice(open + OPEN.length, close), scripts };
 }
 
@@ -42,7 +42,7 @@ async function readLive(src = PROD) {
   const dir = fs.existsSync(src) && fs.statSync(src).isDirectory();
   const html = fs.readFileSync(dir ? path.join(src, "app", "index.html") : src, "utf8");
   const live = { page: Buffer.from(unwrap(html).page) };
-  if (dir) for (const name of ["runtime.js", "signin.js"]) live[name] = fs.readFileSync(path.join(src, name));
+  if (dir) for (const name of ["runtime.js", "signin.js", "core.js"]) live[name] = fs.readFileSync(path.join(src, name));
   return live;
 }
 

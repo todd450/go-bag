@@ -57,10 +57,13 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
   changed and how. Send the founder its `compare.html` (both versions side by side, in one file).
   Never commit the shots: they are scratch.
 - **This product's own rules:**
-  - The whole app is `emergency-kit-audit.html`: markup, one inline `<script>` and its styles,
-    with no build step (`check.sh` fails on a second `<script>`). Builders working at the same
-    time will touch the same file, so run `build` on one issue at a time until the founder
-    decides whether to split it.
+  - The whole app is `emergency-kit-audit.html` (markup, one inline `<script>` and its styles)
+    plus `core.js` (issue #113): data tables, the household model, scoring, shopping and packing,
+    with no screen code (`check.sh` holds it to that). `core.js` runs before the page's script:
+    served as `/core.js?v=…` on Vercel, inline in previews and screenshots (`tools/page.js`), and
+    through `require("./core.js")` in Node. There is no build step for either, and `check.sh` fails
+    on a second `<script>` in the page. Builders working at the same time will touch the same
+    files, so run `build` on one issue at a time.
   - The page is written to claude.ai's Artifact runtime contract 0.2.96 (`window.claude` with
     `db`, `sample`, `assets` and `user`), which `web/runtime.js` provides on Vercel. Data lives in
     Supabase, not in this repo: collections `kits` and `items`, and the `household` docs

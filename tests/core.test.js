@@ -1,6 +1,6 @@
-// The page's core (issue #112): data tables, the household model, scoring, shopping and packing, between the
-// "core begins" and "core ends" comments. It runs with no page and no stand-in DOM, which is what lets it move
-// into a file of its own (#113), and it scores every household exactly as the whole page does.
+// The core (issues #112 and #113): data tables, the household model, scoring, shopping and packing, in core.js.
+// It runs with no page and no stand-in DOM, in the browser before the page's script and in Node through require(),
+// and it scores every household exactly as the whole page does.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -8,12 +8,8 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { load, appScript, ROOT } = require("./load");
 
-function coreScript() {
-  const js = appScript({ boot: true });
-  const from = js.indexOf("core begins"), to = js.indexOf("core ends");
-  assert.ok(from >= 0 && to > from, "the core's start and end comments are in the page's script");
-  return js.slice(js.lastIndexOf("\n", from) + 1, js.lastIndexOf("\n", to) + 1);
-}
+const CORE = path.join(ROOT, "core.js");
+const coreScript = () => fs.readFileSync(CORE, "utf8");
 
 // Only the core, in a context with nothing but JavaScript's own globals (and crypto, for a shopping line's id).
 function loadCore() {
@@ -68,4 +64,32 @@ test("the saved household has one owner: S's fields of the same names read and w
     assert.equal(run(`S.${k}.mark`), "from the core", `S.${k} follows HOUSEHOLD.${k}`);
   }
   assert.equal(run(`Object.keys(HOUSEHOLD).sort().join()`), [...run(`HOUSEHOLD_DOCS`), "kits", "items"].sort().join(), "the core keeps the saved household and nothing else");
+});
+
+test("the page's own script holds none of the core: core.js is its one copy", () => {
+  const page = appScript({ boot: true });
+  for (const name of topLevel(coreScript())) {
+    assert.ok(!new RegExp(`^(const|let|var|function|async function|class) ${name.replace(/\$/g, "\\$")}\\b`, "m").test(page), `${name} is declared only in core.js`);
+  }
+});
+
+// Every name core.js declares at its top level: in the browser each is a global the page's script uses, and
+// in Node each is in what require("core.js") gives back.
+function topLevel(js) {
+  return [...js.matchAll(/^(?:const|let|var|function|async function|class) ([A-Za-z_$][\w$]*)/gm)].map(m => m[1]);
+}
+
+test("in Node, require('core.js') gives every name the core declares, and scores a household as the page does", () => {
+  const core = require(CORE);
+  const names = topLevel(coreScript());
+  assert.ok(names.length > 50, `found the core's declarations (${names.length})`);
+  assert.deepEqual(Object.keys(core).sort(), [...names].sort());
+  for (const name of households) {
+    const f = fixture(name);
+    for (const k of core.HOUSEHOLD_DOCS) core.HOUSEHOLD[k] = f[k] || null;
+    core.HOUSEHOLD.kits = f.kits || []; core.HOUSEHOLD.items = f.items || [];
+    const M = core.model();
+    assert.equal(M.overall, load({ fixture: name }).json("model().overall"), name);
+    assert.deepEqual(JSON.parse(JSON.stringify(M.gaps.map(g => core.shopFromGap(g, M.h).text))), load({ fixture: name }).json("(M => M.gaps.map(g => shopFromGap(g, M.h).text))(model())"), name);
+  }
 });

@@ -6,19 +6,20 @@ cd "$(dirname "$0")"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-# The whole app is one page with one inline script, which Vercel serves as built by tools/build-web.js.
-[ "$(grep -c '<script' emergency-kit-audit.html)" = 1 ] || { echo "check: the page must have exactly one <script>"; exit 1; }
+# The whole app is two files: the page with one inline script, and core.js, the core's one script, which
+# tools/page.js and tools/build-web.js load ahead of it (issue #113). Vercel serves them as built by tools/build-web.js.
+[ "$(grep -c '<script' emergency-kit-audit.html)" = 1 ] || { echo "check: the page must have exactly one <script>, its own; the core's is core.js"; exit 1; }
+if grep -n '<script' core.js; then echo "check: core.js is plain script, with no <script> of its own"; exit 1; fi
 awk '/<script>/{f=1;next}/<\/script>/{f=0}f' emergency-kit-audit.html > "$tmp/app.js"
 node --check "$tmp/app.js"
+node --check core.js
 
 # The script runs in four sections: core, prompts, views, actions (issue #112). The core (data tables, the household
-# model, scoring, shopping, packing) sits between its "core begins" and "core ends" comments, and never touches the
-# page, the screen's state S or markup, so it can become a file of its own (#113). tests/core.test.js runs it alone.
-awk '/core begins ---/{f=1} f; /core ends ---/{f=0}' "$tmp/app.js" > "$tmp/core.js"
-grep -q 'core ends ---' "$tmp/core.js" || { echo "check: the page's script needs its \"core begins\" and \"core ends\" comments"; exit 1; }
+# model, scoring, shopping, packing) is core.js (#113), and never touches the page, the screen's state S or markup,
+# so it runs in the browser and in Node alike. tests/core.test.js runs it alone.
 # (`document` as code: not the word in a sentence, such as "a waterproof document pouch".)
-if grep -nE '(^|[^A-Za-z0-9_$])(document($|[^A-Za-z0-9_$ ]| +[^A-Za-z ])|S(\?\.|\.|\[))|</?[A-Za-z][A-Za-z0-9-]*( [^<>]*)?/?>' "$tmp/core.js"; then
-  echo "check: the core section mentions document, S or an HTML tag (lines above, counted from its start). Move screen code to the views and saving to the actions."; exit 1
+if grep -nE '(^|[^A-Za-z0-9_$])(document($|[^A-Za-z0-9_$ ]| +[^A-Za-z ])|S(\?\.|\.|\[))|</?[A-Za-z][A-Za-z0-9-]*( [^<>]*)?/?>' core.js; then
+  echo "check: core.js mentions document, S or an HTML tag (lines above). Move screen code to the page's views and saving to its actions."; exit 1
 fi
 
 # The Vercel version (issue #48): the runtime that stands in for window.claude, its build, and its
@@ -44,10 +45,14 @@ for f in web/runtime.js tools/build-web.js api/*.mjs; do node --check "$f"; done
 # edited in place): it took the page to about 89.0 KB, against main's 84,612.
 # Raised to 94,000 on 11 Nov 2026 for what it costs (#138), which the founder asked to have built: spend and what's
 # left per kit and per emergency, and Paid $ on items, took the page to about 92.1 KB against main's 89,619.
+# Since #113 the app travels as two files, the page and core.js, each gzipped on its own: the budget covers both.
+# The split cost about 1.5 KB, since each file compresses alone (92,330 as one page; 65,294 + 28,602 as two).
 budget=94000
-size=$(gzip -9c emergency-kit-audit.html | wc -c | tr -d ' ')
-echo "check: page is $size bytes gzipped, budget $budget"
-[ "$size" -le "$budget" ] || { echo "check: the page is over its size budget by $((size - budget)) bytes gzipped. Make it smaller, or raise the budget in check.sh in its own line and say why in the PR."; exit 1; }
+page=$(gzip -9c emergency-kit-audit.html | wc -c | tr -d ' ')
+core=$(gzip -9c core.js | wc -c | tr -d ' ')
+size=$((page + core))
+echo "check: page and core.js are $size bytes gzipped ($page + $core), budget $budget"
+[ "$size" -le "$budget" ] || { echo "check: the page and core.js are over their size budget by $((size - budget)) bytes gzipped. Make them smaller, or raise the budget in check.sh in its own line and say why in the PR."; exit 1; }
 
 # Behaviour: scoring, sizing, shopping, health, car kits and every tab rendering, on the fixtures.
 node --test tests/*.test.js

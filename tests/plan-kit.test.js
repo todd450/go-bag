@@ -7,7 +7,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
-const { load, appScript, ROOT } = require("./load");
+const { load, ROOT } = require("./load");
 
 const households = ["tests/household", ...fs.readdirSync(path.join(ROOT, "fixtures"), { recursive: true })
   .filter(f => f.endsWith(".json")).map(f => path.join("fixtures", f.slice(0, -5)))];
@@ -136,11 +136,10 @@ test("'Add the top 5' with a kit that names no kit adds what it adds with none",
   for (const kit of ["nope", "none", '"><b>', ""]) assert.deepEqual(top({ kit }), plain, JSON.stringify(kit));
 });
 
-// The core on its own, as core.test.js runs it: what lies between the "core begins" and "core ends" comments
+// The core on its own, as core.test.js runs it: core.js
 function loadCore(name) {
-  const js = appScript({ boot: true }), from = js.indexOf("core begins"), to = js.indexOf("core ends");
   const ctx = vm.createContext({ crypto: globalThis.crypto });
-  vm.runInContext(js.slice(js.lastIndexOf("\n", from) + 1, js.lastIndexOf("\n", to) + 1), ctx, { filename: "core" });
+  vm.runInContext(fs.readFileSync(path.join(ROOT, "core.js"), "utf8"), ctx, { filename: "core.js" });
   const f = JSON.parse(fs.readFileSync(path.join(ROOT, name + ".json"), "utf8"));
   vm.runInContext(`(f => { for (const k of HOUSEHOLD_DOCS) HOUSEHOLD[k] = f[k] || null; HOUSEHOLD.kits = f.kits || []; HOUSEHOLD.items = f.items || []; })(${JSON.stringify(f)})`, ctx);
   return code => JSON.parse(vm.runInContext(`JSON.stringify(${code})`, ctx));

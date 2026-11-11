@@ -1,4 +1,4 @@
-// Runs the app's script in a fresh Node context with a stand-in DOM, so tests can call its functions.
+// Runs the app's script (core.js, then the page's own) in a fresh Node context with a stand-in DOM, so tests can call its functions.
 // Top-level const/let/function declarations stay reachable through run(), which evaluates code in that context.
 const fs = require("node:fs");
 const path = require("node:path");
@@ -6,6 +6,10 @@ const vm = require("node:vm");
 
 const ROOT = path.join(__dirname, "..");
 const PAGE = process.env.GO_BAG_PAGE || path.join(ROOT, "emergency-kit-audit.html");
+// The core (#113), which the page loads before its own script: core.js beside the page. A page from before the
+// split has none and carries its core inline.
+const CORE = process.env.GO_BAG_CORE || path.join(path.dirname(PAGE), "core.js");
+const coreScript = () => (fs.existsSync(CORE) ? fs.readFileSync(CORE, "utf8") : "");
 
 // The page's script. Without `boot` it stops before the boot sequence (first render and the claude.ai
 // capability wiring), and tests drive state themselves.
@@ -43,6 +47,7 @@ function load({ fixture, boot = false, claude, hash = "" } = {}) {
     setTimeout: fn => later.push(fn),
     clearTimeout() {},
   });
+  vm.runInContext(coreScript(), ctx, { filename: "core.js" });
   vm.runInContext(appScript({ boot }), ctx, { filename: "emergency-kit-audit.html" });
   const run = code => vm.runInContext(code, ctx);
   // Values built inside the context have that context's prototypes; JSON gives plain ones for deep asserts.
@@ -66,4 +71,4 @@ function useFixture(app, name) {
   return f;
 }
 
-module.exports = { load, useFixture, appScript, PAGE, ROOT };
+module.exports = { load, useFixture, appScript, PAGE, CORE, ROOT };

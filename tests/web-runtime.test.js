@@ -470,25 +470,27 @@ test("the build needs Supabase's address and key", () => {
 
 test("the build puts the landing at / and the page, wrapped byte for byte, at /app", () => {
   withBuild({ ...BASE, SUPABASE_PUBLISHABLE_KEY: "pk</script><script>alert(1)</script>", CONTACT_EMAIL: "hello@go-bag.example" }, ({ dist, read, render }) => {
-    assert.deepEqual(walk(dist).sort(), ["app/index.html", "index.html", "runtime.js", "signin.js", "supabase.js"]);
+    assert.deepEqual(walk(dist).sort(), ["app/index.html", "core.js", "index.html", "runtime.js", "signin.js", "supabase.js"]);
 
     const html = read("app/index.html");
     const page = fs.readFileSync(path.join(ROOT, "emergency-kit-audit.html"), "utf8");
     assert.ok(html.includes(`<body>${page}</body>`), "the page is copied unchanged");
     const head = html.slice(0, html.indexOf("<body>"));
-    const at = ["window.GO_BAG_CONFIG", "/supabase.js?v=", "/signin.js?v=", "/runtime.js?v="].map(s => head.indexOf(s));
-    assert.ok(at.every(i => i >= 0), "config, supabase-js, the sign-in card and the runtime all load");
-    assert.deepEqual([...at].sort((a, b) => a - b), at, "in that order: config, supabase, signin, runtime");
-    assert.equal(head.match(/<\/script>/g).length, 4, "config values can't close the script tag");
+    const at = ["window.GO_BAG_CONFIG", "/supabase.js?v=", "/signin.js?v=", "/runtime.js?v=", "/core.js?v="].map(s => head.indexOf(s));
+    assert.ok(at.every(i => i >= 0), "config, supabase-js, the sign-in card, the runtime and the core all load");
+    assert.deepEqual([...at].sort((a, b) => a - b), at, "in that order: config, supabase, signin, runtime, core");
+    assert.equal(head.match(/<\/script>/g).length, 5, "config values can't close the script tag");
+    assert.equal((head.match(/<script>/g) || []).length, 1, "the core is served as its own file, not inlined: only the config is inline");
     assert.equal(configOf(html).supabaseKey, "pk</script><script>alert(1)</script>", "the value still arrives whole");
 
-    for (const name of ["supabase.js", "signin.js", "runtime.js"]) {
+    for (const name of ["supabase.js", "signin.js", "runtime.js", "core.js"]) {
       const v = head.match(new RegExp(`/${name.replace(".", "\\.")}\\?v=([0-9a-f]+)"`))[1];
       const hash = require("node:crypto").createHash("sha256").update(fs.readFileSync(path.join(dist, name))).digest("hex");
       assert.ok(hash.startsWith(v) && v.length >= 8, `${name} is loaded by its content hash`);
     }
     assert.equal(read("signin.js"), fs.readFileSync(path.join(ROOT, "web", "signin.js"), "utf8"));
     assert.equal(read("runtime.js"), fs.readFileSync(path.join(ROOT, "web", "runtime.js"), "utf8"));
+    assert.equal(read("core.js"), fs.readFileSync(path.join(ROOT, "core.js"), "utf8"));
 
     const landing = read("index.html");
     assert.equal(landing, render({ contactEmail: "hello@go-bag.example" }));

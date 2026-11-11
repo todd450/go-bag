@@ -1,6 +1,6 @@
 #!/bin/sh
 # Serves the page at http://127.0.0.1:8765/ wrapped the way claude.ai wraps it (doctype, charset,
-# viewport). Outside claude.ai there is no window.claude: nothing saves, and the Claude features are off.
+# viewport), with core.js inline ahead of the page's script (tools/page.js). Outside claude.ai there is no window.claude: nothing saves, and the Claude features are off.
 # Pass a fixture to start with that made-up household in it, served from memory:
 #   sh preview.sh tests/household      (or fixtures/empty-and-one/big-household, ...)
 # PORT changes the port.
