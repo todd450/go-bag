@@ -25,8 +25,11 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
   is `tests/household.json`.
 - **Shipping:** changes reach `main` only through a pull request. Merging to `main` deploys to
   production: yes. Vercel builds every push to `main` and makes it production at
-  https://go-bag.vercel.app, so the founder merges: the integrator readies each PR (up to date,
-  checks green, Vercel preview built) and hands it to them. The `ship` skill
+  https://go-bag.vercel.app. The integrator merges even though merging deploys (the founder,
+  11 Nov 2026): once a PR's reviewers have approved it, the integrator readies it (up to date,
+  Vercel preview built) and turns on auto-merge, and GitHub merges it when the required `check`
+  passes. Never merge around a failing check. A bad deploy is undone with Vercel's Instant
+  Rollback. The `ship` skill
   (`.claude/skills/ship/`) is the step-by-step, and `live-commit.sh` there tells which commit is
   live. The old claude.ai Artifact (https://claude.ai/artifact/DXn8SMGiZhuKuQFGgKHenz) is retired
   (issue #48, 5 Nov 2026): it points to Vercel, and its data is a frozen copy. Never publish the
