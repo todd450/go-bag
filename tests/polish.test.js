@@ -166,7 +166,7 @@ test("What it costs is the kits' table alone: an emergency's cost is on its own 
 // Each emergency's row: what it says it costs to be ready, beside what hzCost works out
 const ROW_COSTS = `(() => { const M = model(), h = household(); return M.results.map(r => { const c = hzCost(r, h).toGet;
   return { id: r.hz.id, off: LEVELS[r.rel][1] === 0 || !!(r.hz.vehicle && h.vehicles === 0), total: Math.round(c.total), unpriced: c.unpriced,
-    shown: (hzRow(r, h, M).match(/<span class="hz-cost">([\\s\\S]*?)<\\/span><\\/span>/) || [])[1] ?? null }; }); })()`;
+    shown: (hzRow(r, h, M).match(/<span class="hz-cost">([\\s\\S]*?)<\\/span>\\s*<\\/div>/) || [])[1] ?? null }; }); })()`;
 const plain = h => h.replace(/<[^>]*>/g, "");
 
 test("an emergency's row says what it still costs to be ready, as its opened panel does, and nothing when there is nothing to buy", () => {
@@ -175,7 +175,7 @@ test("an emergency's row says what it still costs to be ready, as its opened pan
     const rows = app.json(ROW_COSTS);
     let shown = 0;
     for (const r of rows) {
-      const want = r.off || !(r.total || r.unpriced) ? null : `${r.total ? "$" + r.total.toLocaleString("en-US") : "Unpriced"} to be ready`;
+      const want = r.off || !(r.total || r.unpriced) ? null : r.total ? `$${r.total.toLocaleString("en-US")}${r.unpriced ? ` +${r.unpriced}` : ""} to be ready` : "Not priced yet";
       assert.equal(r.shown === null ? null : plain(r.shown), want, `${fixture} ${r.id}`);
       shown += want !== null;
     }

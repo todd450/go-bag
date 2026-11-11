@@ -17,7 +17,7 @@ const SWITCH = /<div class="seg[^"]*" role="group"[^>]*><button [^>]*>Packed · 
 
 /* Packed, byte for byte main's. Each kit of each household is drawn on Packed in eight ways (no lines or every gap
    planned, writer or read-only, Flat-lay or List) with the clock fixed, so an expiry date never moves what it says, and
-   new ids counted, so a planned tile's line id is the same on every run (#120). Main's drawings are recorded as hashes in MAIN, so CI compares against them with no git history. A change that
+   new ids counted, so a planned line's id is the same on every run (#120). Main's drawings are recorded as hashes in MAIN, so CI compares against them with no git history. A change that
    alters Packed on purpose records them again, from that change's page:
      GO_BAG_PAGE=<page.html> node tests/kit-toget.test.js --record */
 function packed() {
@@ -39,37 +39,37 @@ function packed() {
 }
 if (process.argv.includes("--record")) { console.log(JSON.stringify(packed(), null, 1)); process.exit(0); }
 const MAIN = {
- "tests/household go": "445ea83189ce7468a821",
- "tests/household home": "5ab875b705af0a9dd4c1",
- "tests/household car": "1b802978cf764851e6a5",
- "fixtures/data-and-account-shapes/essential-tags go": "8f83538ad3968d886be0",
- "fixtures/data-and-account-shapes/essential-tags home": "4eebec888fc91b42c154",
- "fixtures/data-and-account-shapes/essential-tags car": "957ccdea4ce2f6bd1967",
- "fixtures/data-and-account-shapes/odd-container c-null": "4dc6f7d3e9c22a2e2e37",
- "fixtures/data-and-account-shapes/odd-container c-array": "52e56888f87a93bf6671",
- "fixtures/data-and-account-shapes/odd-container c-string": "632f8359b9f06622e888",
- "fixtures/data-and-account-shapes/odd-container c-boat": "fc7f832e10a33229a783",
- "fixtures/data-and-account-shapes/odd-container c-neg": "86547e6437934c236777",
- "fixtures/data-and-account-shapes/odd-container c-long": "25d056b7d7fa5fbdd76d",
- "fixtures/data-and-account-shapes/odd-container c-home": "23e83fe2c486cf5c22b7",
- "fixtures/data-and-account-shapes/odd-values k": "bf01b9503cbcc6238cc5",
- "fixtures/data-and-account-shapes/odd-values g": "0bc804176d7091474ec0",
- "fixtures/empty-and-one/big-household g": "b070852d8c0de18e190d",
- "fixtures/empty-and-one/big-household h": "7c59bba84dbd0260728c",
- "fixtures/empty-and-one/big-household c": "6a4a74e000357964a8f6",
- "fixtures/empty-and-one/one-person k": "df54ffa1200b78b115f5",
- "fixtures/phone-width/box-container car": "dda1f9f5065361c1b3c1",
- "fixtures/phone-width/box-container go": "4ff8dae98a8b6b1231df",
- "fixtures/phone-width/box-container home": "38533cb3f52f7e2b9dbc",
- "fixtures/phone-width/long-container go": "43915849fc11994d9a24",
- "fixtures/phone-width/long-container car": "9ca2029cabc4acc28a90",
- "fixtures/phone-width/long-container home": "e8b769dee573babf8e25",
- "fixtures/phone-width/long-essentials go": "5617d2dd80d97dc7d6a2",
- "fixtures/phone-width/long-essentials home": "0e13712d569de0bbe8e6",
- "fixtures/phone-width/long-essentials car": "7905e33905638bab429f",
- "fixtures/phone-width/long-kit-name home": "0255a9258dc0b020bbb0",
- "fixtures/phone-width/long-kit-name car": "57e98a651c5ad7b94cf8",
- "fixtures/phone-width/long-kit-name go": "2f15d331ab7d1a97bc96"
+ "tests/household go": "569342e81302ba58e611",
+ "tests/household home": "834528248e054b629394",
+ "tests/household car": "38b8bac397be0a5464b8",
+ "fixtures/data-and-account-shapes/essential-tags go": "9f33a1f1fc0980e32202",
+ "fixtures/data-and-account-shapes/essential-tags home": "c8628c9712845cb13abb",
+ "fixtures/data-and-account-shapes/essential-tags car": "2e0ce1d7db9b9383c27e",
+ "fixtures/data-and-account-shapes/odd-container c-null": "aab8e8453266cac00c41",
+ "fixtures/data-and-account-shapes/odd-container c-array": "d8cc2f0f824ddabe541b",
+ "fixtures/data-and-account-shapes/odd-container c-string": "a3e450b0a8afd90ed359",
+ "fixtures/data-and-account-shapes/odd-container c-boat": "f6f4354f5b8f807aa9d1",
+ "fixtures/data-and-account-shapes/odd-container c-neg": "b5b251048e36fb9bc74e",
+ "fixtures/data-and-account-shapes/odd-container c-long": "6288001823f14b5fa843",
+ "fixtures/data-and-account-shapes/odd-container c-home": "f6780563696503df8974",
+ "fixtures/data-and-account-shapes/odd-values k": "d75c97e0718f56360659",
+ "fixtures/data-and-account-shapes/odd-values g": "ad39a1d71f32f0be6534",
+ "fixtures/empty-and-one/big-household g": "473e6b3568f0b82048e5",
+ "fixtures/empty-and-one/big-household h": "550d647e6c77f3928731",
+ "fixtures/empty-and-one/big-household c": "edcfdf7d0671c51a33c5",
+ "fixtures/empty-and-one/one-person k": "4f24c03ce10cc4c74413",
+ "fixtures/phone-width/box-container car": "fbc09a8b26d268fe5bed",
+ "fixtures/phone-width/box-container go": "43157c60ca16d937ba1b",
+ "fixtures/phone-width/box-container home": "a8b2cc9d67af203603e6",
+ "fixtures/phone-width/long-container go": "f158350a63984cb222af",
+ "fixtures/phone-width/long-container car": "bac9465b2db50d159518",
+ "fixtures/phone-width/long-container home": "a6aa079fe39393bb927a",
+ "fixtures/phone-width/long-essentials go": "b20c829914db19273646",
+ "fixtures/phone-width/long-essentials home": "05ba565a39f249922b78",
+ "fixtures/phone-width/long-essentials car": "ebc8b19fa4677fa701ea",
+ "fixtures/phone-width/long-kit-name home": "95c1b457c4fc293eee66",
+ "fixtures/phone-width/long-kit-name car": "6bbc578f327e47df6395",
+ "fixtures/phone-width/long-kit-name go": "c5620f7bfcf7da34b13b"
 };
 
 const { chrome, atPhoneWidth } = require("./phone");

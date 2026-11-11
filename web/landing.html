@@ -113,8 +113,6 @@ a { color: var(--ink); text-underline-offset: 2px; overflow-wrap: anywhere; }
 .fl-tile.expired { border-color: var(--bad); box-shadow: inset 0 0 0 1px var(--bad); }
 .fl-tile.expired .fl-name { text-decoration: line-through; }
 .fl-tile.expired .fl-exp { color: var(--bad); font-weight: 500; }
-.fl-tile.miss { padding-inline: 3px; border-style: dashed; border-color: var(--rule-2); background: var(--card); color: var(--ink-2); }
-.fl-tile.miss .gain { font-size: .72rem; }
 .kit-row { display: grid; grid-template-columns: minmax(0, 1fr) 56px 36px; gap: 2px 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
 .kit-row:last-child { border-bottom: 0; }
 .kr-n { display: flex; gap: 10px; align-items: center; min-width: 0; }
@@ -202,7 +200,6 @@ footer { padding-block: 8px 48px; display: grid; gap: 14px; justify-items: start
           <li class="fl-tile"><span class="fl-top"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5h6v2M12 10.5v6M9 13.5h6"/></svg></span><span class="fl-name">First-aid kit</span></li>
           <li class="fl-tile"><span class="fl-top"><svg class="ic" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span class="fl-q">×2</span></span><span class="fl-name">Headlamp</span></li>
           <li class="fl-tile expired"><span class="fl-top"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M10 9.1l4 5.8"/></svg></span><span class="fl-name">Old ibuprofen</span><span class="fl-exp">Expired 2020-01</span></li>
-          <li class="fl-tile miss"><span class="fl-top"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8l10-5M6.5 12.5h3M6.5 15.5h3"/><circle cx="15" cy="14" r="2.5"/></svg><span class="gain">+1</span></span><span class="fl-name">Emergency radio</span><span class="fl-note">Add to list</span></li>
         </ul>
       </div>
       <h3><span class="n">1</span>Photograph your kits</h3>
