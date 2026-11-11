@@ -137,8 +137,8 @@ function blocks(html) {
   return [...html.matchAll(/<section class="ess-blk"[^>]*>([\s\S]*?)<\/section>/g)].map(([, blk]) => {
     const head = blk.match(/<div class="ess-h">([\s\S]*?)<\/div>/)[1];
     const chips = (blk.match(/<div class="chips">([\s\S]*?)<\/div>/) || ["", ""])[1];
-    const pills = chips.split('<span class="chip ess ').slice(1).map(p => {
-      const text = plain(p.replace(/^[^>]*>/, "").replace(/<span class="vh">[^<]*<\/span>/g, ""));
+    const pills = chips.split(/<(?:span|button type="button") class="chip ess /).slice(1).map(p => {
+      const text = plain(p.replace(/^[^>]*>/, "").replace(/<b aria-hidden="true">\+<\/b>|<span class="vh">[^<]*<\/span>/g, ""));
       return { have: p.startsWith("full"), label: text.split(" · ")[0], gain: +(p.match(/class="gain"[^>]*>\+(\d+) pts?</) || [0, 0])[1], text };
     });
     return { name: plain(head.replace(/<span class="of">[\s\S]*$/, "")), of: plain((head.match(/<span class="of">([^<]*)</) || ["", ""])[1]),
@@ -315,7 +315,9 @@ test("a kit's missing pills show the points their shopping line adds, planned in
     shown += p.gain > 0;
   }
   assert.ok(shown > 0, "some pill is worth points");
-  assert.ok(bs.every(b => !b.button), "no block has a button: the kit's tiles plan its gaps");
+  // The missing pills are the buttons that plan them for this kit (tests/plan-pack.test.js); a block has no other
+  assert.ok(bs.some(b => b.button), "missing pills are buttons");
+  assert.doesNotMatch(goKit(run), />Add \d+ to list</);
   // Present pills come first, then missing ones by points
   for (const b of bs) {
     const firstMiss = b.pills.findIndex(p => !p.have);

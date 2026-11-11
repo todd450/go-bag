@@ -206,9 +206,10 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .pick-t { min-width: 4.7em; }
 .imp, .imp-k { color: var(--ink-2); letter-spacing: -.1em; }
 .imp.up, .imp-k { color: var(--brand); }
-/* Positioned so it clips its hidden words on a phone; clicks pass through it to the row's button. */
+/* What the emergency still costs, under its score */
 .hz-cost { grid-column: 2; grid-row: 2; justify-self: end; font-size: .78rem; color: var(--ink-2); white-space: nowrap; }
 .hz-row:has(.hz-cost) .hz-needs { grid-column: 1; }
+/* Positioned so it clips its hidden words on a phone; clicks pass through it to the row's button. */
 .hz-needs { grid-column: 1 / -1; position: relative; pointer-events: none; display: flex; flex-wrap: wrap; gap: 3px 12px; font-size: .78rem; }
 /* Likelihood as three bars, and a need as its icon and name: missing in ink, some in amber with the amount, have in green with a check. */
 .lik { display: inline-flex; gap: 2px; align-items: flex-end; height: 11px; flex: none; }
@@ -249,6 +250,8 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .chip.ess .ic { stroke-width: 2; }
 .chip.ess.miss { background: var(--card); border-color: var(--rule-2); }
 .chip.ess .gain { font-size: inherit; }
+button.chip { min-height: 32px; font-family: inherit; cursor: pointer; }
+button.chip:hover { border-color: var(--ink); }
 /* One checklist category of named essentials: icon, name, "1 of 4" and a bar, its pills, then its button and notes. */
 .ess-blk { display: grid; gap: 8px; padding: 10px 0 12px; border-top: 1px solid var(--rule); min-width: 0; }
 .ess-h { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto 72px; gap: 8px; align-items: center; font-size: .9rem; }
@@ -265,7 +268,7 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 }
 .kit-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px 40px; gap: 2px 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
 .kit-row .kit-miss { grid-column: 1 / -1; margin-top: -2px; }
-/* What it costs (#138): the kits' table, then the emergencies' in two halves: side by side on a desktop, one list on a phone */
+/* What it costs (#138): the kits' table */
 .cost-grid { display: grid; gap: 16px; }
 .cost-t { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .9rem; }
 .cost-t th, .cost-t td { padding: 7px 0; border-bottom: 1px solid var(--rule); text-align: right; font-weight: 400; background: none; color: var(--ink); font-size: inherit; vertical-align: baseline; }
@@ -1306,11 +1309,6 @@ function splitListed(gaps, lines = shopItems().filter(x => !x.done)) {
   for (const g of gaps) { const k = gapKey(g), left = n.get(k) || 0; if (left) { n.set(k, left - 1); on.push(g); } else off.push(g); }
   return { on, off };
 }
-// The open line a gap is on the list as, else null: as splitListed counts, the nth of `gaps` with a key is the nth line with it
-function gapLine(gaps, g, lines = shopItems().filter(x => !x.done)) {
-  const k = gapKey(g);
-  return lines.filter(e => gapKey(e) === k)[gaps.filter(x => gapKey(x) === k).indexOf(g)] || null;
-}
 // A gap inside a sentence: an essential as named, a category lower-cased unless it starts with an acronym ("CPR & airway")
 const gapName = g => g.essential ? g.label : catLabel(g.cat).replace(/^[A-Z](?=[a-z])/, c => c.toLowerCase());
 // A gap's shopping line. Planned from a kit (#116), the line keeps that kit's id, so ticking it puts the item there.
@@ -1743,7 +1741,7 @@ const S = {
   live: false, loaded: false, slow: false, canWrite: true,
   openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   listKit: null, // the kit whose Contents panel shows List; any other kit shows Flat-lay. Memory only: never saved
-  flOpen: null, // the item whose flat-lay tile shows its fields, or the planned line whose tile shows its actions, cleared when a kit is opened. Memory only
+  flOpen: null, // the item whose flat-lay tile shows its fields, cleared when a kit is opened. Memory only
   toGet: null, // the kit whose switch is on To get; any other kit shows Packed. Memory only
   allKits: location.hash === "#shop" || null, // true while the Review sheet is open (#121). Memory only
   ctr: null, // the open container editor: { id, ...typed }
@@ -1857,7 +1855,9 @@ function essNotes(cat, items) {
     old.length && `${esc(itemNames(old))} expired${old.length === 1 ? " " + esc(old[0].expires) : ""}, so ${old.length === 1 ? "it doesn't" : "they don't"} count`].filter(Boolean);
 }
 /* One of the five categories as a block in kit `kitId`'s panel: the essentials in (each once, however many items fill
-   it), the ones missing with the points adding each to this kit is worth, the most first, and its notes (essNotes). */
+   it), the ones missing with the points adding each to this kit is worth, the most first, and its notes (essNotes).
+   A missing one that is a household gap not yet on the list is a button that plans it for this kit; of two
+   prescriptions only the first off the list is, since shopAdd plans that one. One already on the list says so. */
 function essBlock(M, row, items, kitId) {
   const live = items.filter(it => it.category === row.cat && expState(it) !== "expired");
   const off = new Set(splitListed(M.gaps).off);
@@ -1867,11 +1867,17 @@ function essBlock(M, row, items, kitId) {
     const its = live.filter(it => essentialOf(it) === e.id);
     return `<span class="chip ess full" title="${esc(its.map(i => i.name).join(", "))}">${icon("yes", "ic ic-s")}<span class="vh">Have </span>${esc(e.label)}${its.length > 1 && slots(e.id) === 1 ? `<span class="muted"> · ${its.length} items, counts once</span>` : ""}</span>`;
   });
-  const lacks = miss.map(({ e, gain }) => `<span class="chip ess miss">${icon("no", "ic ic-s")}<span class="vh">Missing </span>${esc(e.label)}${gain ? ` · <span class="gain" title="Readiness points adding it adds">${pts(gain)}</span>` : ""}</span>`);
-  const foot = [
-    miss.some(x => x.g) && !miss.some(x => off.has(x.g)) ? `<span class="small muted">On your shopping list</span>` : "",
-    ...essNotes(row.cat, items).map(n => `<span class="small muted">${n}</span>`),
-  ].filter(Boolean);
+  const first = new Map();
+  for (const g of M.gaps) if (off.has(g) && !first.has(gapKey(g))) first.set(gapKey(g), g);
+  const kitName = S.kits.find(k => k.id === kitId)?.name;
+  const lacks = miss.map(({ e, g, gain }) => {
+    const btn = S.canWrite && kitName != null && g && first.get(gapKey(g)) === g;
+    const body = `${btn ? `<b aria-hidden="true">+</b>` : icon("no", "ic ic-s")}<span class="vh">Missing </span>${esc(e.label)}${g && !off.has(g) ? ` · <span class="muted">on your list</span>` : gain ? ` · <span class="gain" title="Readiness points adding it adds">${pts(gain)}</span>` : ""}`;
+    return btn
+      ? `<button type="button" class="chip ess miss" data-act="shopAdd" data-cat="${esc(row.cat)}" data-essential="${esc(e.id)}" data-kit="${esc(kitId)}" aria-label="${esc(`Add ${e.label} to your list for ${kitName}`)}">${body}</button>`
+      : `<span class="chip ess miss">${body}</span>`;
+  });
+  const foot = essNotes(row.cat, items).map(n => `<span class="small muted">${n}</span>`);
   const pct = Math.round(row.cov * 100);
   return `<section class="ess-blk">
     <div class="ess-h">${icon(row.cat)}<b>${esc(catLabel(row.cat))}</b><span class="of">${row.have} of ${row.need}</span><div class="bar" style="--c:${statusColor(pct)}"><span style="width:${pct}%"></span></div></div>
@@ -2129,7 +2135,7 @@ function hzRow(r, h, M = model()) {
     <span class="hz-nm"><button class="hz-tg" data-act="toggleHz" data-id="${id}" aria-expanded="${open}"${open ? ` aria-controls="hzp-${id}"` : ""} title="${esc(r.hz.name)} · ${esc(modeLine(r.hz))}">${esc(r.hz.name)}</button><span class="mode">${esc(modeLine(r.hz))}</span></span>
     <span class="hz-sc">${lockedOff ? `<span class="small muted">No vehicle</span>` : hzMarks(r.hz, r.rel, off)}<span class="pct"${alarm ? ` style="color:var(--bad)"` : ""}>${r.score}%${alarm ? `<span class="vh">, needs attention</span>` : ""}</span></span>
     <span class="hz-needs">${rows.slice(0, 6).map(x => { const s = needRank(x); return `<span class="need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span class="vh">${NEED_WORD[s]} </span>${esc(catLabel(x.cat))}${s === 1 ? ` <span class="amt">${amount(x, h, "days").replace(/ <span[\s\S]*/, "")}</span>` : ""}</span>`; }).join("")}${more > 0 ? `<span class="need more">+${more} more</span>` : ""}</span>
-    ${c && (c.total || c.unpriced) ? `<span class="hz-cost">${c.total ? usd(c.total) : "Unpriced"}<span class="hz-cost-t"> to be ready</span></span>` : ""}
+    ${c && (c.total || c.unpriced) ? `<span class="hz-cost">${c.total ? `${usd(c.total)}${c.unpriced ? ` <span title="${c.unpriced} more with no price">+${c.unpriced}</span>` : ""} to be ready` : "Not priced yet"}</span>` : ""}
   </div>${open ? hzPanel(r, h, M, rows) : ""}`;
 }
 /* What an opened emergency involves: where you'd be and with what, how bad it is and why it's rated as it is, each
@@ -3197,7 +3203,6 @@ const ACT = {
     saveShop([...shopItems(), shopFromGap(g, M.h, b.dataset.kit)]);
     toast(`Added ${gapName(g)} to your shopping list`);
   },
-  // A planned tile's Packed it: ticks its line, so the item goes in the kit (#120)
   // An opened emergency's button: every household gap it is short of that isn't on the list yet
   shopAddHz: b => {
     const M = model(), r = M.results.find(x => x.hz.id === b.dataset.id), off = new Set(splitListed(M.gaps).off);

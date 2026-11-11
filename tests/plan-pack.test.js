@@ -17,9 +17,9 @@ const text = html => unesc(html.replace(/<wbr>/g, "").replace(/<[^>]*>/g, " ").r
 // The checklist's missing chips for a kit, label → points
 const chips = (app, kit) => {
   const html = app.run(`(() => { const M = model(); return kitChecklist(S.kits.find(k => k.id === ${JSON.stringify(kit)}), M.kitRes[${JSON.stringify(kit)}], M); })()`);
-  return new Map([...html.matchAll(/<span class="chip ess miss">([\s\S]*?)<\/span>(?=<span class="chip|<\/div>)/g)].map(([, body]) => {
+  return new Map([...html.matchAll(/<(span|button)[^>]*class="chip ess miss"[^>]*>([\s\S]*?)<\/\1>(?=<(?:span|button)[^>]*class="chip|<\/div>)/g)].map(([, , body]) => {
     const g = body.match(/<span class="gain"[^>]*>\+(\d+) pts?<\/span>/);
-    return [text(body.replace(/<span class="vh">[^<]*<\/span>/, "").replace(/ · <span class="gain"[\s\S]*$/, "")), g ? +g[1] : 0];
+    return [text(body.replace(/<b aria-hidden="true">\+<\/b>/, "").replace(/<span class="vh">[^<]*<\/span>/, "").replace(/ · <span class="(?:gain|muted)"[\s\S]*$/, "")), g ? +g[1] : 0];
   }));
 };
 // Plans a missing essential into a kit, as "Add to list" in that kit's To get does, and returns its line's id
@@ -254,22 +254,6 @@ test("with two people on daily medication, each Add to list plans one person's p
   assert.deepEqual(app.json("shopItems().map(l => l.kitId)"), ["go", "car"], "each into the kit it was added in");
 });
 
-test("gapLine finds the open line splitListed matches a gap to, in every household", () => {
-  for (const name of households) {
-    const app = load({ fixture: name });
-    for (const lines of ["[]", "model().gaps.map(g => shopFromGap(g, model().h))", "model().gaps.filter((g, i) => i % 2).map(g => shopFromGap(g, model().h))"]) {
-      app.run(`S.shopping = { items: ${lines} }; S.shopping.items.forEach((e, i) => { if (i % 3 === 0) e.done = true; })`);
-      const out = app.json(`(() => { const M = model(), { on } = splitListed(M.gaps), open = shopItems().filter(x => !x.done);
-        const got = M.gaps.map(g => gapLine(M.gaps, g));
-        return { on: M.gaps.map(g => on.includes(g)), got: got.map(e => e ? open.indexOf(e) : -1), keys: got.map((e, i) => !e || gapKey(e) === gapKey(M.gaps[i])) }; })()`);
-      assert.deepEqual(out.got.map(i => i >= 0), out.on, `${name}: a line exactly for the gaps on the list`);
-      const used = out.got.filter(i => i >= 0);
-      assert.equal(new Set(used).size, used.length, `${name}: no line is two gaps'`);
-      assert.ok(out.keys.every(Boolean), `${name}: each line is its gap's essential`);
-    }
-  }
-});
-
 test("every kit's chips show the points for that kit, in every household, planned or not", () => {
   let seen = 0;
   for (const name of households) {
@@ -281,7 +265,7 @@ test("every kit's chips show the points for that kit, in every household, planne
         // What ticking each missing essential's line into this kit adds, worked out here from scoreIfShopped
         const want = new Map(app.json(`(() => { const M = model(), r = M.kitRes[${JSON.stringify(kit)}];
           return r.rows.filter(row => row.ess).flatMap(row => row.ess.filter(e => !e.have).map(e => { const g = essGap(M, row.cat, e);
-            return [e.label, g ? Math.max(0, scoreIfShopped(M, [shopFromGap(g, M.h, ${JSON.stringify(kit)})]) - M.overall) : 0]; })); })()`));
+            return [e.label, g && splitListed(M.gaps).off.includes(g) ? Math.max(0, scoreIfShopped(M, [shopFromGap(g, M.h, ${JSON.stringify(kit)})]) - M.overall) : 0]; })); })()`));
         assert.deepEqual([...cs.keys()].sort(), [...want.keys()].sort(), `${name} ${kit} (${state}): a chip per missing essential`);
         for (const [label, n] of want) { assert.equal(cs.get(label), n, `${name} ${kit} ${label} (${state}): the points for this kit`); seen++; }
       }
@@ -290,7 +274,7 @@ test("every kit's chips show the points for that kit, in every household, planne
   assert.ok(seen > 100, "chips were compared");
 });
 
-test("the checklist's Add N to list is gone, and a block whose every missing essential is planned says so", () => {
+test("the checklist's Add N to list is gone, and a missing essential that is planned says so on its chip", () => {
   const page = fs.readFileSync(PAGE, "utf8");
   assert.ok(!page.includes("shopAddBlock"), "shopAddBlock is not in the page");
   for (const name of households) {
@@ -303,11 +287,12 @@ test("the checklist's Add N to list is gone, and a block whose every missing ess
   }
   const app = household();
   const docs = () => app.run(`S.view = "kits"; S.openKit = "go"; viewKits(model())`).match(/<section class="ess-blk">(?:(?!<\/section>)[\s\S])*Documents &amp; cash[\s\S]*?<\/section>/)[0];
-  assert.doesNotMatch(docs(), /On your shopping list/);
+  const marked = () => (docs().match(/on your list/g) || []).length;
+  assert.equal(marked(), 0);
   for (const e of ["id_copies", "insurance", "cash"]) app.run(`ACT.shopAdd({ dataset: { cat: "documents", essential: "${e}", kit: "go" } })`);
-  assert.doesNotMatch(docs(), /On your shopping list/, "one still to plan");
+  assert.equal(marked(), 3, "the three planned");
   app.run(`ACT.shopAdd({ dataset: { cat: "documents", essential: "records", kit: "car" } })`);
-  assert.match(docs(), /On your shopping list/, "every one planned, wherever it goes");
+  assert.equal(marked(), 4, "every one planned, wherever it goes");
 });
 
 test("a kit's name holding markup is escaped wherever its To get names it", () => {
@@ -319,4 +304,48 @@ test("a kit's name holding markup is escaped wherever its To get names it", () =
     const html = app.run(`S.view = "kits"; S.openKit = "${kit}"; S.toGet = ${side}; viewKits(model())`);
     assert.ok(!html.includes("<img src=x"), `${kit} ${side}: no raw markup`);
   }
+});
+
+// The checklist's buttons in a kit: [aria-label, cat, essential, kit] for each
+const planBtns = (app, kit) => [...app.run(`S.view = "kits"; S.openKit = ${JSON.stringify(kit)}; S.toGet = null; viewKits(model())`)
+  .matchAll(/<button type="button" class="chip ess miss" data-act="shopAdd" data-cat="([^"]*)" data-essential="([^"]*)" data-kit="([^"]*)" aria-label="([^"]*)">/g)].map(m => ({ cat: m[1], essential: m[2], kit: m[3], label: m[4] }));
+
+test("every missing essential that is a household gap can be planned from the kit whose checklist shows it, into that kit", () => {
+  let seen = 0;
+  for (const name of households) {
+    const app = load({ fixture: name });
+    for (const kit of app.json("S.kits.map(k => k.id)")) {
+      // The gaps this kit's checklist shows as missing and not on the list, one per key (the first, as shopAdd plans)
+      const want = app.json(`(() => { const M = model(), r = M.kitRes[${JSON.stringify(kit)}], off = splitListed(M.gaps).off, keys = new Set();
+        return r.rows.filter(row => row.ess).flatMap(row => row.ess.filter(e => !e.have).map(e => essGap(M, row.cat, e)))
+          .filter(g => g && off.find(x => gapKey(x) === gapKey(g)) === g && !keys.has(gapKey(g)) && keys.add(gapKey(g))).map(g => gapKey(g)); })()`);
+      const got = planBtns(app, kit);
+      assert.deepEqual(got.map(b => `${b.cat}|${b.essential}`).sort(), [...want].sort(), `${name} ${kit}`);
+      assert.ok(got.every(b => b.kit === kit), `${name} ${kit}: each plans into this kit`);
+      seen += got.length;
+    }
+  }
+  assert.ok(seen > 50, `${seen} buttons compared`);
+});
+
+test("tapping a missing essential's chip plans it for that kit: the chip then says it is on the list, and ticking it raises readiness by the points shown", () => {
+  const app = household();
+  // One that the household routes to another kit (QA, PR 142): the go-bag's emergency radio
+  const b = planBtns(app, "go").find(b => b.essential === "radio");
+  assert.ok(b, "the go-bag's checklist offers the radio");
+  assert.match(b.label, /^Add Emergency radio to your list for /);
+  const gain = chips(app, "go").get("Emergency radio"), before = app.json("model().overall");
+  app.run(`ACT.shopAdd({ dataset: ${JSON.stringify({ cat: b.cat, essential: b.essential, kit: b.kit })} })`);
+  assert.equal(app.json("shopItems().at(-1).kitId"), "go");
+  assert.ok(!planBtns(app, "go").some(x => x.essential === "radio"), "no longer a button");
+  assert.match(app.run(`viewKits(model())`), /Emergency radio · <span class="muted">on your list<\/span>/);
+  pack(app, app.json("shopItems().at(-1).id"));
+  assert.equal(app.json("model().overall") - before, gain, "the points the chip showed");
+});
+
+test("a viewer who can't write gets the checklist's chips as plain labels", () => {
+  const app = household();
+  app.run("S.canWrite = false");
+  assert.deepEqual(planBtns(app, "go"), []);
+  assert.ok(chips(app, "go").size > 5);
 });
