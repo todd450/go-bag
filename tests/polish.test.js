@@ -200,3 +200,24 @@ test("an emergency's cost sits under its score, clear of its needs, at phone and
     assert.ok(await ev(`document.documentElement.scrollWidth <= innerWidth`), `${width}px: the page doesn't scroll sideways`);
   });
 });
+
+// Photos as the hero (the founder, 11 Nov 2026): a kit with a photo leads its card with it, an item's own picture
+// fills the top of its tile, and the photo prompt sits above Contents.
+test("a kit's photo runs across the top of its card, clear of its name and score, and an item's picture is wider than an icon", { skip }, async () => {
+  for (const width of [390, 1440]) await onPage("tests/household", width, "kits", async ev => {
+    await ev(`(() => { const k = S.kits.find(k => k.id === "go"); k.photos = ["p1"]; S.openKit = "go"; S.items.find(i => i.kitId === "go").thumb = "t1"; render(); })()`);
+    const c = JSON.parse(await ev(`JSON.stringify((() => { const b = e => { const r = e.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom, w: r.width, h: r.height }; };
+      const card = document.querySelector(".tag.ph"), plain = document.querySelector(".tag:not(.ph)");
+      return { card: b(card), img: b(card.querySelector(".tag-img")), name: b((r => (r.selectNodeContents(card.querySelector("b")), r))(document.createRange())), pct: b(card.querySelector(".tag-pct")),
+        plainImg: b(plain.querySelector(".tag-img")), pic: b(document.querySelector(".fl-pic")), icon: b(document.querySelector(".fl-tile .ic")), tile: b(document.querySelector(".fl-pic").closest(".fl-tile")),
+        prompt: b(document.querySelector('[data-drop="photos"]')), zone: b(document.querySelector(".fl-zone")), wide: document.documentElement.scrollWidth <= innerWidth }; })())`));
+    assert.ok(Math.abs(c.img.w - c.card.w) <= 3 && c.img.t - c.card.t <= 2, `${width}px: the photo spans the card's top (${c.img.w} of ${c.card.w})`);
+    assert.ok(c.img.h >= 80, `${width}px: the photo is ${c.img.h}px tall`);
+    assert.ok(c.name.t >= c.img.b && c.pct.t >= c.img.b && c.pct.b <= c.card.b, `${width}px: the name and score sit under the photo, inside the card`);
+    assert.ok(c.name.r <= c.pct.l, `${width}px: the name stops before the score`);
+    assert.equal(c.plainImg.w, 48, `${width}px: a kit with no photo keeps its small icon`);
+    assert.ok(c.pic.w > c.icon.w * 2 && c.pic.r <= c.tile.r && c.pic.l >= c.tile.l, `${width}px: an item's picture is ${c.pic.w}px wide, inside its tile`);
+    assert.ok(c.prompt.b <= c.zone.t, `${width}px: the photo prompt is above the contents`);
+    assert.ok(c.wide, `${width}px: the page doesn't scroll sideways`);
+  });
+});
