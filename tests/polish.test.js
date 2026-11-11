@@ -205,7 +205,9 @@ test("an emergency's cost sits under its score, clear of its needs, at phone and
 // fills the top of its tile, and the photo prompt sits above Contents.
 test("a kit's photo runs across the top of its card, clear of its name and score, and an item's picture is wider than an icon", { skip }, async () => {
   for (const width of [390, 1440]) await onPage("tests/household", width, "kits", async ev => {
-    await ev(`(() => { const k = S.kits.find(k => k.id === "go"); k.photos = ["p1"]; S.openKit = "go"; S.items.find(i => i.kitId === "go").thumb = "t1"; render(); })()`);
+    await ev(`(() => { const k = S.kits.find(k => k.id === "go"); k.photos = ["p1"]; S.openKit = "go"; S.items.find(i => i.kitId === "go").thumb = "t1"; render();
+      // The test page has no photo store, so give each picture something that loads before the missing one fails
+      document.querySelectorAll('img[src^="/_blob/"]').forEach(i => { i.src = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="; }); })()`);
     const c = JSON.parse(await ev(`JSON.stringify((() => { const b = e => { const r = e.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom, w: r.width, h: r.height }; };
       const card = document.querySelector(".tag.ph"), plain = document.querySelector(".tag:not(.ph)");
       return { card: b(card), img: b(card.querySelector(".tag-img")), name: b((r => (r.selectNodeContents(card.querySelector("b")), r))(document.createRange())), pct: b(card.querySelector(".tag-pct")),
@@ -219,5 +221,20 @@ test("a kit's photo runs across the top of its card, clear of its name and score
     assert.ok(c.pic.w > c.icon.w * 2 && c.pic.r <= c.tile.r && c.pic.l >= c.tile.l, `${width}px: an item's picture is ${c.pic.w}px wide, inside its tile`);
     assert.ok(c.prompt.b <= c.zone.t, `${width}px: the photo prompt is above the contents`);
     assert.ok(c.wide, `${width}px: the page doesn't scroll sideways`);
+  });
+});
+
+test("a kit's photo that won't load gives way to the kit's icon card, not an empty band", { skip }, async () => {
+  await onPage("tests/household", 390, "kits", async ev => {
+    // No photo store on the test page, so this photo really does fail to load
+    await ev(`(() => { S.kits.find(k => k.id === "go").photos = ["p1"]; render(); })()`);
+    let c;
+    for (let n = 0; n < 40; n++) {
+      c = JSON.parse(await ev(`JSON.stringify({ ph: document.querySelectorAll(".tag.ph").length, imgs: document.querySelectorAll(".tag-img img").length,
+        w: document.querySelector('.tag[data-id="go"] .tag-img').getBoundingClientRect().width, icon: !!document.querySelector('.tag[data-id="go"] .tag-img svg'), bad: [...S.badPics] })`));
+      if (!c.ph) break;
+      await new Promise(r => setTimeout(r, 50));
+    }
+    assert.deepEqual(c, { ph: 0, imgs: 0, w: 48, icon: true, bad: ["p1"] });
   });
 });

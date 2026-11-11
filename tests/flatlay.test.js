@@ -342,7 +342,20 @@ test("a kit with a photo gets a card led by that photo, and one without keeps it
   const cards = [...app.run(`S.view = "kits"; viewKits(model())`).matchAll(/<button class="tag([^"]*)" data-act="openKit" data-id="([^"]*)"[^>]*>\s*<span class="tag-img">([\s\S]*?)<\/span>/g)].map(m => ({ cls: m[1].trim(), id: m[2], img: m[3] }));
   assert.equal(cards.length, app.json(`S.kits.length`));
   for (const c of cards) {
-    if (c.id === "go") { assert.equal(c.cls, "ph"); assert.match(c.img, /^<img src="\/_blob\/p1" alt="" loading="lazy">$/, "its first photo"); }
+    if (c.id === "go") { assert.equal(c.cls, "ph"); assert.match(c.img, /^<img src="\/_blob\/p1" alt="" loading="lazy" data-pic="p1">$/, "its first photo"); }
     else { assert.equal(c.cls, ""); assert.match(c.img, /^<svg class="ic"/); }
   }
+});
+
+test("a kit card whose photo failed to load leads with the kit's next photo, and with its icon when none loads", () => {
+  const app = load({ fixture: "tests/household" });
+  app.run(`S.kits.find(k => k.id === "go").photos = ["p1", "p2"]`);
+  const card = () => app.run(`S.view = "kits"; viewKits(model())`).match(/<button class="tag([^"]*)" data-act="openKit" data-id="go"[^>]*>\s*<span class="tag-img">([\s\S]*?)<\/span>/).slice(1, 3);
+  app.run(`S.badPics.add("p1")`);
+  assert.deepEqual(card(), [" ph", `<img src="/_blob/p2" alt="" loading="lazy" data-pic="p2">`]);
+  app.run(`S.badPics.add("p2")`);
+  const [cls, img] = card();
+  assert.equal(cls, ""); assert.match(img, /^<svg class="ic"/);
+  // Nothing about the kit is changed: its photos are still its photos
+  assert.deepEqual(app.json(`S.kits.find(k => k.id === "go").photos`), ["p1", "p2"]);
 });

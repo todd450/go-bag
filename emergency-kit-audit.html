@@ -1751,6 +1751,7 @@ const S = {
   listKit: null, // the kit whose Contents panel shows List; any other kit shows Flat-lay. Memory only: never saved
   flOpen: null, // the item whose flat-lay tile shows its fields, cleared when a kit is opened. Memory only
   toGet: null, // the kit whose switch is on To get; any other kit shows Packed. Memory only
+  badPics: new Set(), // kit photos that failed to load: their cards fall back to the kit's icon. Memory only, so a reload tries again
   allKits: location.hash === "#shop" || null, // true while the Review sheet is open (#121). Memory only
   ctr: null, // the open container editor: { id, ...typed }
   hhDraft: null, hhDirty: false, wiz: null, condOpen: new Set(), how: new Set(),
@@ -2178,11 +2179,11 @@ function viewKits(M) {
   return `<div class="kits-grid"${S.allKits ? " inert" : ""}>
     <div class="stack kits-list">
       <h2>Your kits</h2>
-      <div class="tags">${list.map(k => `<button class="tag${k.photos?.length ? " ph" : ""}" data-act="openKit" data-id="${esc(k.id)}" aria-pressed="${k.id === S.openKit}">
-        <span class="tag-img">${k.photos?.length ? `<img src="/_blob/${esc(k.photos[0])}" alt="" loading="lazy">` : icon(KIT_ICON[k.type])}</span>
+      <div class="tags">${list.map(k => { const pic = k.photos?.find(p => !S.badPics.has(p)); return `<button class="tag${pic ? " ph" : ""}" data-act="openKit" data-id="${esc(k.id)}" aria-pressed="${k.id === S.openKit}">
+        <span class="tag-img">${pic ? `<img src="/_blob/${esc(pic)}" alt="" loading="lazy" data-pic="${esc(pic)}">` : icon(KIT_ICON[k.type])}</span>
         <span class="mono">${esc(KIT_TYPES[k.type] || "Kit")}${isExampleKit(k) ? " · EXAMPLE" : ""}</span><b>${esc(k.name)}</b>
         <span class="small">${pl(counts[k.id] || 0, "item")}${k.where ? " · " + esc(k.where) : ""}</span>
-        <span class="tag-pct" style="color:${statusInk(M.kitRes[k.id].score)}" aria-label="Readiness ${M.kitRes[k.id].score} percent">${caseMark(M.kitRes[k.id].score, 24)}${M.kitRes[k.id].score}%</span></button>`).join("") || `<p class="muted">No kits yet. Add the first one below: a go-bag, a home supply bin or a car kit.</p>`}</div>
+        <span class="tag-pct" style="color:${statusInk(M.kitRes[k.id].score)}" aria-label="Readiness ${M.kitRes[k.id].score} percent">${caseMark(M.kitRes[k.id].score, 24)}${M.kitRes[k.id].score}%</span></button>`; }).join("") || `<p class="muted">No kits yet. Add the first one below: a go-bag, a home supply bin or a car kit.</p>`}</div>
       ${!S.canWrite ? "" : S.kits.length && !S.addKit ? `<button class="btn ghost add-kit" data-act="addKit">+ Add a kit</button>` : `<form class="panel stack" data-submit="newKit">
         <p class="eyebrow">Add a kit</p>
         <label class="f">Name<input type="text" id="nk-name" name="name" required placeholder="Hall closet go-bag" maxlength="60"></label>
@@ -3280,6 +3281,8 @@ document.addEventListener("input", e => {
     S.hhDirty = true;
   } else if (t.dataset.input === "ctr" && S.ctr) S.ctr[t.dataset.f] = t.value;
 });
+// A kit card whose photo won't load shows the kit's next photo, or its icon (error doesn't bubble, so capture)
+document.addEventListener("error", e => { const p = e.target.closest?.(".tag-img img")?.dataset.pic; if (p && !S.badPics.has(p)) { S.badPics.add(p); render(); } }, true);
 document.addEventListener("toggle", e => { const id = e.target.dataset?.how; if (id) e.target.open ? S.how.add(id) : S.how.delete(id); }, true);
 document.addEventListener("change", async e => {
   const t = e.target;
