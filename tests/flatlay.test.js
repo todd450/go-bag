@@ -234,12 +234,12 @@ test("+ Add by hand switches to List and focuses the add row's name, and read-on
   }
 });
 
-test("the kit's panels come in order: readiness, Contents, checklist, weight and space, photo prompt", () => {
+test("the kit's panels come in order: readiness, photo prompt, Contents, checklist, weight and space", () => {
   const app = load({ fixture: "tests/household" });
   app.run(`S.kits[0].photos = ["p1"]`);
   const html = kitHtml(app.run, "go");
   const at = re => { const i = html.search(re); assert.ok(i >= 0, String(re)); return i; };
-  const marks = [/class="kit-pct"/, /People this kit is for/, /class="fl-zone"/, /class="ess-blk"/, /Expired items don't count/, /Weight and space/, /class="photos"/, /Photograph the contents/];
+  const marks = [/class="kit-pct"/, /People this kit is for/, /Photograph the contents/, /data-act="pickPhotos"/, /class="photos"/, /class="fl-zone"/, /class="ess-blk"/, /Expired items don't count/, /Weight and space/];
   const pos = marks.map(at);
   assert.deepEqual(pos, [...pos].sort((a, b) => a - b), marks.map(String).join(" < "));
   // The readiness panel ends before Contents starts: the checklist is no longer inside it
@@ -247,7 +247,7 @@ test("the kit's panels come in order: readiness, Contents, checklist, weight and
   assert.doesNotMatch(ready, /ess-blk|Expired items don't count/);
 });
 
-test("an empty kit says so above the photo prompt, and a one-item kit shows one tile", () => {
+test("an empty kit says so under the photo prompt, which explains itself there, and a one-item kit shows one tile", () => {
   const fresh = load({ fixture: "fixtures/empty-and-one/new-household" });
   fresh.run(`S.kits.push({ id: "e", name: "New bag", type: "go", createdAt: 1 })`);
   for (const w of [true, false]) {
@@ -255,11 +255,19 @@ test("an empty kit says so above the photo prompt, and a one-item kit shows one 
     const html = kitHtml(fresh.run, "e");
     assert.equal(tiles(html).length, 0);
     assert.match(html, /<p class="fl-empty[^"]*">[^<]{5,80}<\/p>/, "one short line says the kit is empty");
-    if (w) assert.ok(html.indexOf("fl-empty") < html.indexOf("Photograph the contents"), "the photo prompt stays below");
+    if (w) assert.ok(html.indexOf("Lay items out so labels face up") > 0 && html.indexOf("Photograph the contents") < html.indexOf("fl-empty"), "the photo prompt, with how to do it, comes first");
+    else assert.doesNotMatch(html, /Photograph the contents|pickPhotos/, "a viewer who can't write gets no photo prompt");
   }
   const one = load({ fixture: "fixtures/empty-and-one/one-person" });
   const html = kitHtml(one.run, "k");
   assert.deepEqual(tiles(html).map(t => [t.id, t.name, t.note]), [["i", "Water bottle", ""]]);
+  // With something packed the prompt is one line: its heading and button, without the how-to
+  assert.match(html, /Photograph the contents/);
+  assert.doesNotMatch(html, /Lay items out so labels face up/);
+  // ...and the how-to is back while photos wait to be read
+  one.run(`S.tray = { kitId: "k", photos: [{ key: "a", file: {}, url: "blob:a" }] }`);
+  assert.match(kitHtml(one.run, "k"), /Lay items out so labels face up[\s\S]*Read 1 photo/);
+  one.run(`S.tray = null`);
   assert.doesNotMatch(html, /fl-empty/);
 });
 
@@ -325,5 +333,16 @@ test("at 390px a tile shows its whole kcal note and its ×N badge never touches 
     assert.ok(t.noteWhole, `${t.id}: "${t.note}" is cut off`);
     assert.ok(t.apart, `${t.id}: the badge "${t.qty}" overlaps the icon`);
     assert.ok(t.qInside, `${t.id}: the badge "${t.qty}" runs out of its tile`);
+  }
+});
+
+test("a kit with a photo gets a card led by that photo, and one without keeps its type's icon", () => {
+  const app = load({ fixture: "tests/household" });
+  app.run(`S.kits.find(k => k.id === "go").photos = ["p1", "p2"]`);
+  const cards = [...app.run(`S.view = "kits"; viewKits(model())`).matchAll(/<button class="tag([^"]*)" data-act="openKit" data-id="([^"]*)"[^>]*>\s*<span class="tag-img">([\s\S]*?)<\/span>/g)].map(m => ({ cls: m[1].trim(), id: m[2], img: m[3] }));
+  assert.equal(cards.length, app.json(`S.kits.length`));
+  for (const c of cards) {
+    if (c.id === "go") { assert.equal(c.cls, "ph"); assert.match(c.img, /^<img src="\/_blob\/p1" alt="" loading="lazy">$/, "its first photo"); }
+    else { assert.equal(c.cls, ""); assert.match(c.img, /^<svg class="ic"/); }
   }
 });

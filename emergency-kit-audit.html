@@ -319,12 +319,18 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 @media (max-width: 640px) { .plan-bar { bottom: calc(46px + 1.05rem + env(safe-area-inset-bottom, 0px)); padding-bottom: 10px; } }
 .tags { display: grid; gap: 8px; }
 .add-kit, .ctr-add { justify-content: center; border-style: dashed; }
-.tag { position: relative; text-align: left; background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 14px; padding: 10px 60px 10px 10px; cursor: pointer; display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 0 12px; width: 100%; line-height: 1.3; box-shadow: var(--shadow); transition: border-color .15s, box-shadow .15s; }
+.tag { position: relative; text-align: left; background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 14px; padding: 10px 60px 10px 10px; cursor: pointer; display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; align-content: center; gap: 0 12px; width: 100%; line-height: 1.3; box-shadow: var(--shadow); transition: border-color .15s, box-shadow .15s; }
 .tag:hover { border-color: var(--rule-2); }
 .tag[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
 .tag-img { grid-row: span 3; width: 48px; height: 48px; border-radius: 10px; background: var(--paper); color: var(--ink-2); display: grid; place-items: center; overflow: hidden; }
 .tag-img img { width: 100%; height: 100%; object-fit: cover; }
 .tag-img .ic { width: 22px; height: 22px; }
+/* A kit with a photo: a listing card, the photo across its top */
+.tag.ph { grid-template-columns: minmax(0, 1fr); padding: 0 0 10px; overflow: hidden; }
+.tag.ph .tag-img { grid-row: auto; width: 100%; height: auto; aspect-ratio: 5 / 2; border-radius: 0; margin-bottom: 8px; }
+.tag.ph > :not(.tag-img, .tag-pct) { padding: 0 64px 0 12px; }
+.tag.ph .tag-pct { top: auto; bottom: 10px; transform: none; }
+.add-kit { align-self: center; }
 /* The case sits above the score in the same 60px gutter, so it takes no room from the kit's name. */
 .tag-pct { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1; font-family: var(--f-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .tag b { font-size: 1rem; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -638,7 +644,9 @@ html:has(.review-sheet) { overflow: hidden; }
 .fl-tile, .fl-add { position: relative; display: flex; flex-direction: column; gap: 1px; min-width: 0; min-height: 76px; padding: 8px 5px 6px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); color: var(--ink); font-size: .72rem; line-height: 1.25; }
 .fl-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0 4px; margin-bottom: 3px; }
 .fl-tile .ic { width: 22px; height: 22px; color: var(--ink-2); }
-.fl-pic { width: 34px; height: 34px; object-fit: contain; }
+.fl-pic { width: 100%; height: 52px; object-fit: contain; }
+.fl-top:has(.fl-pic) { position: relative; }
+.fl-top:has(.fl-pic) .fl-q { position: absolute; top: -2px; right: 0; padding: 0 4px; border-radius: 6px; background: var(--paper); }
 .fl-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-weight: 500; }
 .fl-exp { color: var(--ink-2); font-size: .68rem; }
 .fl-q { min-width: 0; overflow-wrap: anywhere; font-size: .72rem; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -2164,7 +2172,7 @@ function viewKits(M) {
   return `<div class="kits-grid"${S.allKits ? " inert" : ""}>
     <div class="stack kits-list">
       <h2>Your kits</h2>
-      <div class="tags">${list.map(k => `<button class="tag" data-act="openKit" data-id="${esc(k.id)}" aria-pressed="${k.id === S.openKit}">
+      <div class="tags">${list.map(k => `<button class="tag${k.photos?.length ? " ph" : ""}" data-act="openKit" data-id="${esc(k.id)}" aria-pressed="${k.id === S.openKit}">
         <span class="tag-img">${k.photos?.length ? `<img src="/_blob/${esc(k.photos[0])}" alt="" loading="lazy">` : icon(KIT_ICON[k.type])}</span>
         <span class="mono">${esc(KIT_TYPES[k.type] || "Kit")}${isExampleKit(k) ? " · EXAMPLE" : ""}</span><b>${esc(k.name)}</b>
         <span class="small">${pl(counts[k.id] || 0, "item")}${k.where ? " · " + esc(k.where) : ""}</span>
@@ -2215,6 +2223,7 @@ function kitDetail(kit, ready, M = model()) {
   const items = S.items.filter(i => i.kitId === kit.id).sort((a, b) => (byValue ? val[b.id].pts - val[a.id].pts : 0) || String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name)));
   const sortTh = (k, label) => `<button class="th-sort" data-act="sortItems" data-k="${k}" aria-pressed="${S.itemSort === k}">${label}${S.itemSort === k ? " ↓" : ""}</button>`;
   const photos = Array.isArray(kit.photos) ? kit.photos : [];
+  const shots = photos.length ? `<div class="photos">${photos.map(id => `<img src="/_blob/${esc(id)}" alt="Photo of ${esc(kit.name)}" loading="lazy">`).join("")}</div>` : "";
   const scanning = S.scan?.kitId === kit.id ? S.scan : null;
   const draft = S.draft?.kitId === kit.id ? S.draft : null;
   const tray = S.tray?.kitId === kit.id ? S.tray.photos : [];
@@ -2268,21 +2277,21 @@ function kitDetail(kit, ready, M = model()) {
   </div>${get
     ? `<div class="panel stack">${shopTools(M, P, kit)}${shopSection(M, P, kit) || `<p class="small muted">Nothing to get for this kit.</p>`}</div>${reviewBtn}` : `
   <div class="kit-top">${kitReadyPanel(kit, ready, M)}${containerCard(kit, ready.h)}</div>
-  ${contentsPanel(kit, items, list)}
-  ${kitChecklist(kit, ready, M)}
-  ${packPanel(kit, ready)}
-  ${photos.length ? `<div class="photos">${photos.map(id => `<img src="/_blob/${esc(id)}" alt="Photo of ${esc(kit.name)}" loading="lazy">`).join("")}</div>` : ""}
-  ${photos.length && S.canWrite && sample && assets && !working && items.some(i => !i.thumb) ? `<div class="row"><button class="btn ghost sm" data-act="findPics">Add item pictures from these photos</button><span class="small muted">${pl(items.filter(i => !i.thumb).length, "item")} without one</span></div>` : ""}
   ${S.canWrite ? `<div class="panel stack" data-drop="photos">
     <div class="row" style="justify-content:space-between">
-      <div><b>Photograph the contents</b><p class="small muted">Lay items out so labels face up. Add as many photos as you need, from the camera or your library, or drop them here. Claude reads them together, then you check the list before anything is saved.</p></div>
+      <div><b>Photograph the contents</b>${items.length && !tray.length && !scanning ? "" : `<p class="small muted">Lay items out so labels face up. Add as many photos as you need, from the camera or your library, or drop them here. Claude reads them together, then you check the list before anything is saved.</p>`}</div>
       ${working ? `<button class="btn ghost" data-act="stopScan">Stop</button>` : tray.length ? "" : `<button class="btn" data-act="pickPhotos">Add photos</button>`}
     </div>
+    ${shots}
+    ${photos.length && S.canWrite && sample && assets && !working && items.some(i => !i.thumb) ? `<div class="row"><button class="btn ghost sm" data-act="findPics">Add item pictures from these photos</button><span class="small muted">${pl(items.filter(i => !i.thumb).length, "item")} without one</span></div>` : ""}
     ${tray.length ? `<div class="tray">${tray.map((p, i) => `<figure class="tray-ph"><img src="${esc(p.url)}" alt="Photo ${i + 1}">${working ? "" : `<button class="x" data-act="trayDrop" data-k="${esc(p.key)}" aria-label="Remove photo ${i + 1}">×</button>`}</figure>`).join("")}</div>
     ${working ? "" : `<div class="row"><button class="btn" data-act="readTray">Read ${tray.length} photo${tray.length === 1 ? "" : "s"}</button><button class="btn ghost" data-act="pickPhotos">Add more</button><button class="btn ghost" data-act="trayClear">Clear</button></div>`}` : ""}
     ${scanning ? (working ? `<div class="working"><span class="pulse"></span><span>${esc(scanning.msg)}</span></div>` : `<p class="small" style="color:var(--bad)">${esc(scanning.msg)}</p>`) : ""}
-  </div>` : ""}
-  ${draft ? draftTable(draft) : ""}`}`;
+  </div>` : shots}
+  ${draft ? draftTable(draft) : ""}
+  ${contentsPanel(kit, items, list)}
+  ${kitChecklist(kit, ready, M)}
+  ${packPanel(kit, ready)}`}`;
 }
 /* The Contents panel: Flat-lay, one tile per item in the zones of ZONES, or List, the item table (`list`). It shows
    what is packed; what is missing is the kit's To get. */
