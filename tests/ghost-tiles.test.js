@@ -22,7 +22,7 @@ function tiles(app, kit) {
   return [...html.matchAll(/<li class="fl-tile miss([^"]*)"[^>]*>([\s\S]*?)<\/li>/g)].map(([, cls, body]) => ({
     cls: cls.trim().split(/\s+/).filter(Boolean), body,
     name: text((body.match(/<span class="fl-name"[^>]*>([\s\S]*?)<\/span>/) || ["", ""])[1]),
-    gain: +((body.match(/<span class="gain[^"]*"[^>]*>\+(\d+)<\/span>/) || [0, 0])[1]),
+    gain: +((body.match(/<span class="gain[^"]*"[^>]*>\+(\d+) pts?<\/span>/) || [0, 0])[1]),
     buttons: [...body.matchAll(/<button([^>]*)>([\s\S]*?)<\/button>/g)].map(([, a, inner]) => ({
       data: data(a), id: (a.match(/ id="([^"]*)"/) || [])[1], label: unesc((a.match(/aria-label="([^"]*)"/) || ["", ""])[1]), text: text(inner) })),
     all: text(body),
@@ -37,7 +37,7 @@ const tile = (app, kit, name) => {
 const chips = (app, kit) => {
   const html = app.run(`(() => { const M = model(); return kitChecklist(S.kits.find(k => k.id === ${JSON.stringify(kit)}), M.kitRes[${JSON.stringify(kit)}], M); })()`);
   return new Map([...html.matchAll(/<span class="chip ess miss">([\s\S]*?)<\/span>(?=<span class="chip|<\/div>)/g)].map(([, body]) => {
-    const g = body.match(/<span class="gain"[^>]*>\+(\d+)<\/span>/);
+    const g = body.match(/<span class="gain"[^>]*>\+(\d+) pts?<\/span>/);
     return [text(body.replace(/<span class="vh">[^<]*<\/span>/, "").replace(/ · <span class="gain"[\s\S]*$/, "")), g ? +g[1] : 0];
   }));
 };

@@ -94,8 +94,8 @@ test("its Review button opens the sheet", () => {
     app.run(EVERY_GAP);
     const btn = barOf(kitsTab(app)).match(/<button [^>]*>([\s\S]*?)<\/button>/);
     // It reads Review, and its name tells it apart from a kit's To get chip, which opens the same sheet
-    assert.equal(text(btn[1].replace(/<span class="vh">[\s\S]*?<\/span>/g, "")), "Review", name);
-    assert.notEqual(text(btn[1]), "Review", `${name}: a name of its own`);
+    assert.equal(text(btn[1].replace(/<span class="vh">[\s\S]*?<\/span>/g, "")), "Shopping list", name);
+    assert.notEqual(text(btn[1]), "Shopping list", `${name}: a name of its own`);
     const act = btn[0].match(/data-act="([^"]*)"/)[1];
     tap(app, act);
     assert.match(kitsTab(app), /<div class="review-sheet stack" role="dialog"/, `${name}: the sheet is open`);

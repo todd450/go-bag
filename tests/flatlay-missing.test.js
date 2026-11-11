@@ -44,7 +44,7 @@ const missing = (app, kit) => app.json(`(() => { const M = model(), r = M.kitRes
 const chipGains = (app, kit) => {
   const html = app.run(`(() => { const M = model(); return kitChecklist(S.kits.find(k => k.id === ${JSON.stringify(kit)}), M.kitRes[${JSON.stringify(kit)}], M); })()`);
   return new Map([...html.matchAll(/<span class="chip ess miss">([\s\S]*?)<\/span>(?=<span class="chip|<\/div>)/g)].map(([, body]) => {
-    const g = body.match(/<span class="gain"[^>]*>\+(\d+)<\/span>/);
+    const g = body.match(/<span class="gain"[^>]*>\+(\d+) pts?<\/span>/);
     return [text(body.replace(/<span class="vh">[^<]*<\/span>/, "").replace(/ · <span class="gain"[\s\S]*$/, "")), g ? +g[1] : 0];
   }));
 };
@@ -145,8 +145,8 @@ test("each dashed tile's +N is the checklist chip's gain, and tapping plans that
       for (const t of dashed(kitHtml(app.run, kit))) {
         const where = `${fixture} ${kit} ${t.name}`;
         assert.ok(chips.has(t.name), `${where}: the checklist has it`);
-        assert.equal(t.gain ? +t.gain.replace(/^\+/, "") : 0, chips.get(t.name), `${where}: same points as the chip`);
-        if (t.gain) assert.match(t.gain, /^\+[1-9]\d*$/);
+        assert.equal(t.gain ? parseInt(t.gain, 10) : 0, chips.get(t.name), `${where}: same points as the chip`);
+        if (t.gain) assert.match(t.gain, /^\+(1 pt|[1-9]\d* pts)$/);
       }
     }
   }
@@ -157,7 +157,7 @@ test("each dashed tile's +N is the checklist chip's gain, and tapping plans that
       const t = dashed(kitHtml(app.run, kit)).find(t => t.button?.dataset.act === "shopAdd" && t.gain);
       if (!t) break;
       const before = app.json("shopItems()").length;
-      const want = +t.gain.slice(1);
+      const want = parseInt(t.gain, 10);
       app.run(`ACT[${JSON.stringify(t.button.dataset.act)}](${JSON.stringify({ dataset: t.button.dataset })})`);
       const after = app.json("shopItems()");
       assert.equal(after.length, before + 1, `${t.name}: one line`);

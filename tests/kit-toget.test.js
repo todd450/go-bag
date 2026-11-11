@@ -39,37 +39,37 @@ function packed() {
 }
 if (process.argv.includes("--record")) { console.log(JSON.stringify(packed(), null, 1)); process.exit(0); }
 const MAIN = {
- "tests/household go": "ef0bbe9cc28dc217af71",
- "tests/household home": "64bfd73a06044d7f9cb0",
- "tests/household car": "5cba926623a346d4f528",
- "fixtures/data-and-account-shapes/essential-tags go": "91c51647253b34554f6b",
- "fixtures/data-and-account-shapes/essential-tags home": "8bd9b306cfd1835fa80e",
- "fixtures/data-and-account-shapes/essential-tags car": "0b8584db57258d70faa8",
- "fixtures/data-and-account-shapes/odd-container c-null": "ab13f8e2d192d2fe4537",
- "fixtures/data-and-account-shapes/odd-container c-array": "451e405d2adcafe6e96c",
- "fixtures/data-and-account-shapes/odd-container c-string": "155bc9a0781a92191c75",
- "fixtures/data-and-account-shapes/odd-container c-boat": "656b97c3f67c026f90d0",
- "fixtures/data-and-account-shapes/odd-container c-neg": "2d32fc389d9ff625fda6",
- "fixtures/data-and-account-shapes/odd-container c-long": "397a664977e50bf71156",
- "fixtures/data-and-account-shapes/odd-container c-home": "4e8a77a1c8c626cbfc1f",
- "fixtures/data-and-account-shapes/odd-values k": "ff86c532f2b5f8f12cf9",
- "fixtures/data-and-account-shapes/odd-values g": "d4d8a225bab9403295c3",
- "fixtures/empty-and-one/big-household g": "38bafcde29d2ab6d8495",
- "fixtures/empty-and-one/big-household h": "d4ed60a6b04a8a618e1b",
- "fixtures/empty-and-one/big-household c": "05d70e85e40a3ff7b114",
- "fixtures/empty-and-one/one-person k": "b2f3c0870a5fdf6bfccd",
- "fixtures/phone-width/box-container car": "be3a55f3d692582a0951",
- "fixtures/phone-width/box-container go": "ae481d23c0eacfdbc0f8",
- "fixtures/phone-width/box-container home": "16229a5c4fe675cb37cd",
- "fixtures/phone-width/long-container go": "7073a4d22ba297bfb4a2",
- "fixtures/phone-width/long-container car": "8949b42a222e0fc740da",
- "fixtures/phone-width/long-container home": "61b9b97e2cfe0811dab0",
- "fixtures/phone-width/long-essentials go": "1b1bfaea11862e071d08",
- "fixtures/phone-width/long-essentials home": "68707f3bbd52e3901877",
- "fixtures/phone-width/long-essentials car": "ef3499545c292e0bdae1",
- "fixtures/phone-width/long-kit-name home": "3c729db1a24ae25ac4d7",
- "fixtures/phone-width/long-kit-name car": "896ded9050753874f2c5",
- "fixtures/phone-width/long-kit-name go": "2e46a67975eb8ecf39c5"
+ "tests/household go": "14a1cb10940e46b133aa",
+ "tests/household home": "93a205ad9813436447a4",
+ "tests/household car": "0551c5d1e97a92a1683a",
+ "fixtures/data-and-account-shapes/essential-tags go": "7d9ef793c04272201576",
+ "fixtures/data-and-account-shapes/essential-tags home": "87e0ab752a96907ff277",
+ "fixtures/data-and-account-shapes/essential-tags car": "4a603831d06705af3f7c",
+ "fixtures/data-and-account-shapes/odd-container c-null": "f1ae8d478e40932f39cf",
+ "fixtures/data-and-account-shapes/odd-container c-array": "d90cc6b8585b62df55cc",
+ "fixtures/data-and-account-shapes/odd-container c-string": "56ff3e3a1a650b3fa092",
+ "fixtures/data-and-account-shapes/odd-container c-boat": "4c3b9a37527a4f83f1f6",
+ "fixtures/data-and-account-shapes/odd-container c-neg": "9a3ed412d3851d00f404",
+ "fixtures/data-and-account-shapes/odd-container c-long": "f1a9849c700b929413a3",
+ "fixtures/data-and-account-shapes/odd-container c-home": "c353c96b1925c20423af",
+ "fixtures/data-and-account-shapes/odd-values k": "8cbfba66c83dbb17f2d0",
+ "fixtures/data-and-account-shapes/odd-values g": "788c22029f5fd47ed775",
+ "fixtures/empty-and-one/big-household g": "2fa78b3a0b7c1c816819",
+ "fixtures/empty-and-one/big-household h": "2930a1bdec620d67c44a",
+ "fixtures/empty-and-one/big-household c": "ab7f0b1f41b93802b6bc",
+ "fixtures/empty-and-one/one-person k": "e64611bcd6376b833112",
+ "fixtures/phone-width/box-container car": "46b7514653b083d314d7",
+ "fixtures/phone-width/box-container go": "6abae39eaa9d3b90290c",
+ "fixtures/phone-width/box-container home": "00bac6c9e7ad0752e739",
+ "fixtures/phone-width/long-container go": "f2f885f171d628632f3c",
+ "fixtures/phone-width/long-container car": "59abc5d73bdf0a0e3e78",
+ "fixtures/phone-width/long-container home": "1bf871d2775fb5da468f",
+ "fixtures/phone-width/long-essentials go": "aab7f33e65ef89bde60a",
+ "fixtures/phone-width/long-essentials home": "0482beded185d2059a87",
+ "fixtures/phone-width/long-essentials car": "2acdcf3ea860348be844",
+ "fixtures/phone-width/long-kit-name home": "14fa4615d3202db94732",
+ "fixtures/phone-width/long-kit-name car": "fce9191e511991670c91",
+ "fixtures/phone-width/long-kit-name go": "ad95ad244320b7d7c6d4"
 };
 
 const { chrome, atPhoneWidth } = require("./phone");
@@ -177,7 +177,7 @@ test("the Trunk bag's To get lists its three gaps, plans them into the Trunk bag
   assert.ok(others.every(k => !t.gaps.includes(k)), "none of the other kits' gaps");
   assert.match(text(t.body), /Not on your list yet · 3/);
   for (const b of t.buttons.filter(b => /^shopAdd/.test(b.ds.act))) assert.equal(b.ds.kit, "car", b.label);
-  assert.ok(t.buttons.some(b => b.ds.act === "shopAddTop" && b.label === "Plan the top 3"));
+  assert.ok(t.buttons.some(b => b.ds.act === "shopAddTop" && b.label === "Add the top 3"));
   assert.ok(!t.buttons.some(b => b.ds.act === "shopShare"), "no tools with nothing on the list");
   assert.deepEqual(writes(), [], "showing To get writes nothing");
 
@@ -193,7 +193,7 @@ test("the Trunk bag's To get lists its three gaps, plans them into the Trunk bag
   assert.equal(count(kitsTab(app), "To get"), 3, "a gap planned is still one thing to get");
 
   // Plan the top 2, then the tools: Share list carries the kit, and shares only the Trunk bag's lines
-  press(app, kitsTab(app), "Plan the top 2");
+  press(app, kitsTab(app), "Add the top 2");
   assert.deepEqual(app.json("shopItems().map(e => e.kitId)"), ["car", "car", "car"]);
   app.run(`ACT.shopAddAll(); globalThis.SHARED = []; navigator.share = d => { SHARED.push(d); return Promise.resolve(); }`);
   t = toGet(kitsTab(app));
@@ -226,8 +226,8 @@ for (const name of households) {
         assert.deepEqual(t.buttons.filter(b => b.ds.act === "shopShare").map(b => b.ds.kit), w.lines.length ? [id] : [], `${at}: Share list`);
         for (const b of t.buttons.filter(b => /^shopAdd/.test(b.ds.act))) assert.equal(b.ds.kit, id, `${at}: ${b.label}`);
         assert.doesNotMatch(t.body, /Kit readiness|class="fl-|class="ess-blk"|Weight and space|Photograph the contents|<table/, at);
-        assert.deepEqual(t.buttons.filter(b => b.label === "Review").map(b => b.ds.act), ["allKits"], `${at}: the Review chip`);
-        assert.ok(text(t.body).length > "Review".length, `${at}: says something above the chip`);
+        assert.deepEqual(t.buttons.filter(b => b.label === "Shopping list").map(b => b.ds.act), ["allKits"], `${at}: the Review chip`);
+        assert.ok(text(t.body).length > "Shopping list".length, `${at}: says something above the chip`);
       }
     }
   });
@@ -241,7 +241,7 @@ test("opening a kit, or the same one again, starts it on Packed", () => {
     assert.deepEqual(sides(kitsTab(app)).map(([, p]) => p), ["true", "false"], `${how} ${id}`);
     assert.match(kitsTab(app), /Kit readiness/, `${how} ${id}`);
     // From Review, too
-    press(app, getSide(app, "go"), "Review");
+    press(app, getSide(app, "go"), "Shopping list");
     app.run(`ACT.${how}({ dataset: { id: ${JSON.stringify(id)} } })`);
     assert.deepEqual(sides(kitsTab(app)).map(([, p]) => p), ["true", "false"], `${how} ${id} from Review`);
     assert.equal(sheet(kitsTab(app)), "", `${how} ${id}: Review closes`);
@@ -253,7 +253,7 @@ test("opening a kit, or the same one again, starts it on Packed", () => {
 test("Review from the Trunk bag's To get opens the whole list over it, and Close returns to its To get", () => {
   const app = load({ fixture: "tests/household" });
   app.run(SEED);
-  press(app, getSide(app, "car"), "Review");
+  press(app, getSide(app, "car"), "Shopping list");
   const html = kitsTab(app), all = app.run("viewShop(model())"), s = sheet(html);
   assert.ok(s.includes(all), "Review is viewShop");
   assert.equal((s.match(SWITCH) || []).length, 0, "no kit in the sheet");
@@ -274,7 +274,7 @@ test("a kit's name renders as text in the switch's label and in Review", () => {
   app.run("ACT.shopAddAll()");
   evil.forEach((name, i) => {
     const pages = [open(app, "x" + i), getSide(app, "x" + i)];
-    press(app, pages[1], "Review");
+    press(app, pages[1], "Shopping list");
     pages.push(kitsTab(app));
     for (const html of pages) assert.doesNotMatch(html, /<img src|<b>bold|" onfocus="/, name);
     for (const html of pages.slice(0, 2)) assert.equal(attrs(html.match(SWITCH)[0].match(/^<div [^>]*>/)[0])["aria-label"], name, "the switch is labelled with the kit's name");
@@ -286,11 +286,11 @@ test("a kit's name renders as text in the switch's label and in Review", () => {
 test("with no kits, the Kits tab says to pick or add a kit, with Review under it, and adding a kit opens it on Packed", async () => {
   const app = load({ fixture: "fixtures/empty-and-one/new-household" });
   const html = kitsTab(app);
-  assert.match(text(html), /Pick a kit to see its contents, or add one\. Review/);
+  assert.match(text(html), /Pick a kit to see its contents, or add one\. Shopping list/);
   assert.equal(sheet(html), "", "Review is closed");
   assert.equal((html.match(SWITCH) || []).length, 0);
   assert.match(html, /data-submit="newKit"/, "the add-a-kit form is open, as today");
-  press(app, html, "Review");
+  press(app, html, "Shopping list");
   assert.ok(sheet(kitsTab(app)).includes(app.run("viewShop(model())")), "Review opens");
   press(app, kitsTab(app), "Close");
   // Adding a kit through the form
@@ -306,7 +306,7 @@ test("with no kits, the Kits tab says to pick or add a kit, with Review under it
   assert.match(now, /<h2>First bag<\/h2>/);
   assert.deepEqual(sides(now).map(([, p]) => p), ["true", "false"]);
   // A kit added after Review opens on Packed too
-  press(app, getSide(app, id), "Review");
+  press(app, getSide(app, id), "Shopping list");
   press(app, kitsTab(app), "Close");
   const car = await add("Car kit", "car");
   now = kitsTab(app);
@@ -322,9 +322,9 @@ test("switching sides, Review and Close write nothing and store nothing", () => 
   for (const id of Object.keys(NAMES)) {
     press(app, getSide(app, id), "Packed");
     press(app, kitsTab(app), "To get");
-    press(app, kitsTab(app), "Review");
+    press(app, kitsTab(app), "Shopping list");
     press(app, kitsTab(app), "Close");
-    press(app, kitsTab(app), "Review");
+    press(app, kitsTab(app), "Shopping list");
     app.run("render()");
   }
   app.run(`ACT.gotoKit({ dataset: { id: "go" } }); render()`);
@@ -341,7 +341,7 @@ test("read-only viewers can switch to To get and open Review, with no Plan, Plan
     app.run("S.canWrite = false");
     for (const id of Object.keys(NAMES)) {
       const get = getSide(app, id);
-      press(app, get, "Review");
+      press(app, get, "Shopping list");
       const all = kitsTab(app);
       for (const html of [get, all]) {
         for (const act of ["shopAdd", "shopAddTop", "shopDel", "shopClear", "shopAddAll", "shopAddFree"]) assert.doesNotMatch(html, new RegExp(`data-act="${act}"`), `${setup} ${id}: ${act}`);
@@ -362,7 +362,7 @@ test("at 390px a kit's To get and Review never scroll sideways, with no lines an
   for (let i = 0; i < PHONE.length; i += 2) for (const [f, r] of measure(PHONE.slice(i, i + 2))) seen.set(f, r);
   assert.equal(seen.size, PHONE.length);
   // Where focus lands after each tap, so a keyboard user keeps their place as the column redraws
-  const FOCUS = { "To get": /^To get · \d+$/, Review: /^Close$/, Close: /^Review$/ };
+  const FOCUS = { "To get": /^To get · \d+$/, "Shopping list": /^Close$/, Close: /^Shopping list$/ };
   let kits = 0;
   for (const [f, shots] of seen) {
     assert.ok(shots.length >= 2, `${f}: measured`);
@@ -395,13 +395,13 @@ function measure(fixtures) {
       S.view = "kits"; render();
       if (!S.kits.length) {
         look(`${lines} lines, no kits`, !!view.querySelector('[data-act="allKits"]'));
-        look(`${lines} lines, no-kits Review`, tap(b => b.textContent === "Review") && !!view.querySelector(".review-sheet .shop-gap, .review-sheet .shop-row"));
+        look(`${lines} lines, no-kits Review`, tap(b => b.textContent === "Shopping list") && !!view.querySelector(".review-sheet .shop-gap, .review-sheet .shop-row"));
         look(`${lines} lines, no-kits Close`, tap(b => b.textContent === "Close") && !view.querySelector(".review-sheet"));
       }
       for (const k of S.kits) {
         tap(b => b.dataset.act === "openKit" && b.dataset.id === k.id);
         look(`${lines} lines, ${k.id} To get`, tap(b => b.textContent.startsWith("To get")) && !!view.querySelector('[data-act="allKits"]'));
-        look(`${lines} lines, ${k.id} Review`, tap(b => b.textContent === "Review") && !!view.querySelector(".review-sheet"));
+        look(`${lines} lines, ${k.id} Review`, tap(b => b.textContent === "Shopping list") && !!view.querySelector(".review-sheet"));
         look(`${lines} lines, ${k.id} Close`, tap(b => b.textContent === "Close") && !view.querySelector(".review-sheet") && !!view.querySelector('[data-act="allKits"]'));
       }
     }

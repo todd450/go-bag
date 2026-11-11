@@ -15,7 +15,7 @@ test("the Readiness tab groups emergencies, with filled stars on raised ones", (
   run(`S.hazards.importance = { burns: "most" }; S.openHz = new Set(["burns"]);`);
   const html = run("viewOverview(model())");
   for (const label of ["Disasters and outages", "Health emergencies", "Everyday"]) assert.ok(html.includes(label), label);
-  assert.deepEqual(html.match(/<span class="imp up"[^>]*>[^<]*</g), ['<span class="imp up" aria-hidden="true">★★<']);
+  assert.deepEqual([...html.matchAll(/<span class="imp up"[^>]*><span class="vh">([^<]*)<\/span><span aria-hidden="true">([^<]*)</g)].map(m => [m[1], m[2]]), [["One of our top priorities", "★★"]]);
 });
 
 test("names people type are escaped", () => {
@@ -139,7 +139,7 @@ function blocks(html) {
     const chips = (blk.match(/<div class="chips">([\s\S]*?)<\/div>/) || ["", ""])[1];
     const pills = chips.split('<span class="chip ess ').slice(1).map(p => {
       const text = plain(p.replace(/^[^>]*>/, "").replace(/<span class="vh">[^<]*<\/span>/g, ""));
-      return { have: p.startsWith("full"), label: text.split(" · ")[0], gain: +(p.match(/class="gain"[^>]*>\+(\d+)</) || [0, 0])[1], text };
+      return { have: p.startsWith("full"), label: text.split(" · ")[0], gain: +(p.match(/class="gain"[^>]*>\+(\d+) pts?</) || [0, 0])[1], text };
     });
     return { name: plain(head.replace(/<span class="of">[\s\S]*$/, "")), of: plain((head.match(/<span class="of">([^<]*)</) || ["", ""])[1]),
       pills, button: /<button/.test(blk), text: plain(blk.replace(/<span class="vh">[^<]*<\/span>/g, "")) };
@@ -180,44 +180,50 @@ test("an emergency row names what it needs, missing first, then some, then what 
   }
 });
 
-// An emergency's pickers, as its row shows them: each one's id, the word on its skin, and the option chosen.
-const picks = html => [...html.matchAll(/<span class="pick( ro)?"[^>]*><span[^>]*>([\s\S]*?)<\/span><select id="([^"]+)"([^>]*)>([\s\S]*?)<\/select>/g)]
-  .map(([, ro, skin, id, attrs, options]) => ({ id, skin: plain(skin.replace(/<span class="lik"[\s\S]*?<\/span>/, `${(skin.match(/<i class="on">/g) || []).length} bars `)),
-    chosen: (options.match(/<option value="([^"]+)" selected>/) || [])[1], ro: !!ro, disabled: /\bdisabled\b/.test(attrs), label: (attrs.match(/aria-label="([^"]*)"/) || [])[1] }));
+// An emergency's two ratings. On its row they are marks to read; its pickers are in the opened emergency.
+const marks = html => { const row = html.split('id="hzp-')[0];
+  return { selects: (row.match(/<select/g) || []).length, likely: plain((row.match(/<span class="pick ro"[^>]*>([\s\S]*?)<\/span><\/span>/) || ["", ""])[1].replace(/<span class="lik"[\s\S]*?<\/span>/, m => ` ${(m.match(/<i class="on">/g) || []).length} bars `)),
+    stars: (row.match(/<span class="imp up"[^>]*><span class="vh">[^<]*<\/span><span aria-hidden="true">([^<]*)</) || [])[1] || "" }; };
+const picks = html => [...html.slice(html.indexOf('id="hzp-')).matchAll(/<label class="f">([^<]*)<select id="([^"]+)"([^>]*)>([\s\S]*?)<\/select>/g)]
+  .map(([, label, id, attrs, options]) => ({ id, label, chosen: (options.match(/<option value="([^"]+)" selected>/) || [])[1], disabled: /\bdisabled\b/.test(attrs) }));
 
-test("an emergency's likelihood and importance change right on its row, without opening it", async () => {
+test("an emergency's row shows its two ratings as marks, and they are changed in the opened emergency", async () => {
   const { run, json, fire } = load({ fixture: "tests/household" });
   run(`S.canWrite = true`);
   let html = hzHtml(run, "housefire");
   assert.doesNotMatch(html, /hz-panel/, "closed");
+  // Closed: no control on the row, how likely in bars and a word, and no star while it matters as much as the others
+  assert.deepEqual(marks(html), { selects: 0, likely: "How likely: 2 bars Moderate", stars: "" });
+  run(`S.openHz = new Set(["housefire"])`);
+  html = hzHtml(run, "housefire");
+  assert.equal(marks(html).selects, 0, "opened, the row still has no control");
   assert.deepEqual(picks(html), [
-    { id: "lv-housefire", skin: "2 bars Moderate", chosen: "moderate", ro: false, disabled: false, label: "How likely House fire is for you" },
-    { id: "im-housefire", skin: "☆", chosen: "normal", ro: false, disabled: false, label: "How much House fire matters to you" }]);
+    { id: "lv-housefire", label: "How likely it is for you", chosen: "moderate", disabled: false },
+    { id: "im-housefire", label: "How much it matters to you", chosen: "normal", disabled: false }]);
   await fire("change", { dataset: { change: "level", id: "housefire" }, value: "high" });
   await fire("change", { dataset: { change: "importance", id: "housefire" }, value: "most" });
   assert.equal(json("S.hazards.levels.housefire"), "high");
   assert.equal(json("S.hazards.importance.housefire"), "most");
   html = hzHtml(run, "housefire");
-  assert.deepEqual(picks(html).map(p => [p.skin, p.chosen]), [["3 bars High", "high"], ["★★", "most"]]);
-  assert.match(html, /<span class="imp up"/);
-  // Back to "As much as the others" drops the saved importance instead of storing the default.
+  assert.deepEqual(picks(html).map(p => p.chosen), ["high", "most"]);
+  assert.deepEqual(marks(html), { selects: 0, likely: "How likely: 3 bars High", stars: "★★" });
+  // Back to "As much as the others" drops the saved importance instead of storing the default, and the star goes
   await fire("change", { dataset: { change: "importance", id: "housefire" }, value: "normal" });
   assert.equal(json("Object.hasOwn(S.hazards.importance, 'housefire')"), false);
-  // Opened, its panel has no pickers of its own: they stay on the row.
-  run(`S.openHz = new Set(["housefire"])`);
-  html = hzHtml(run, "housefire");
-  assert.equal((html.match(/<select/g) || []).length, 2);
-  assert.doesNotMatch(html.slice(html.indexOf("hz-panel")), /<select/);
-  // Someone who can only view sees the same values, with the pickers shown flat and turned off.
+  assert.equal(marks(hzHtml(run, "housefire")).stars, "");
+  // Someone who can only view sees the same values, with the pickers turned off
   run(`S.canWrite = false`);
-  assert.deepEqual(picks(hzHtml(run, "housefire")).map(p => [p.ro, p.disabled]), [[true, true], [true, true]]);
+  assert.deepEqual(picks(hzHtml(run, "housefire")).map(p => p.disabled), [true, true]);
 });
 
 test("an emergency that doesn't apply keeps its likelihood picker, at Not relevant, so it can be turned back on", () => {
   const { run } = load({ fixture: "tests/household" });
-  const quake = hzHtml(run, "earthquake");
+  let quake = hzHtml(run, "earthquake");
   assert.match(quake, /^<div class="hz-row off">/);
-  assert.deepEqual(picks(quake).map(p => [p.id, p.skin, p.chosen]), [["lv-earthquake", "0 bars Not relevant", "none"]], "and no importance picker");
+  assert.deepEqual(marks(quake), { selects: 0, likely: "How likely: 0 bars Not relevant", stars: "" });
+  run(`S.openHz = new Set(["earthquake"])`);
+  quake = hzHtml(run, "earthquake");
+  assert.deepEqual(picks(quake).map(p => [p.id, p.chosen]), [["lv-earthquake", "none"]], "and no importance picker");
   run(`S.profile.vehicles = 0`);
   const stranded = hzHtml(run, "stranded");
   assert.match(stranded, /No vehicle/);

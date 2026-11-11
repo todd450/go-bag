@@ -204,7 +204,11 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .pick select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
 .pick.ro { border-color: transparent; background: none; }
 .pick.ro::after { display: none; }
-.pick.ro select { cursor: default; }
+.hzp-set { gap: 12px 20px; align-items: end; }
+/* The "⋯" menu: rarely used, destructive things, away from the everyday controls */
+.more { position: relative; } .more summary { list-style: none; letter-spacing: .1em; } .more summary::-webkit-details-marker { display: none; }
+.more-m { position: absolute; right: 0; top: calc(100% + 4px); z-index: 4; padding: 4px; background: var(--card); border: 1px solid var(--rule); border-radius: 12px; box-shadow: var(--shadow); white-space: nowrap; }
+.more-m .btn { border-color: transparent; color: var(--bad); }
 .pick-t { min-width: 4.7em; }
 .imp, .imp-k { color: var(--ink-2); letter-spacing: -.1em; }
 .pick > .imp { min-width: 1.7em; }
@@ -422,8 +426,9 @@ tr.addrow td { background: var(--paper); }
 :is(input, select, textarea).ed { background: transparent; border: 0; border-radius: 6px; padding: 2px 4px; margin: 0 -4px; color: inherit; font: inherit; box-shadow: inset 0 -1px 0 var(--rule); field-sizing: content; max-width: 100%; }
 :is(input, select, textarea).ed:hover:not(:disabled) { box-shadow: inset 0 -1px 0 var(--rule-2); }
 :is(input, select, textarea).ed:focus { background: color-mix(in srgb, var(--brand) 12%, transparent); box-shadow: inset 0 -2px 0 var(--brand); outline: none; border: 0; }
-:is(input, textarea).ed::placeholder { color: var(--brand); font-weight: 500; opacity: 1; }
-:is(input, textarea).ed:focus::placeholder { color: var(--ink-2); font-weight: 400; }
+/* Empty, it is a box to type in; filled, it reads as text with a rule under it */
+:is(input, textarea).ed:placeholder-shown:not(:focus, :disabled) { box-shadow: inset 0 0 0 1px var(--rule-2); background: var(--card); }
+:is(input, textarea).ed::placeholder { color: var(--ink-2); opacity: 1; }
 :is(input, select, textarea).ed:disabled { box-shadow: none; opacity: 1; }
 input.ed[type=number] { appearance: textfield; -moz-appearance: textfield; min-width: 2.5ch; text-align: center; }
 input.ed[type=number]::-webkit-inner-spin-button, input.ed[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -1115,7 +1120,7 @@ function gapPlan(g, h) {
   if (g.essential) return { kits, why, hint, qty: 1, unit: "", name: g.label, title: `Add ${g.label}`, detail: `One of the ${catLabel(g.cat).toLowerCase()} essentials. One in a kit is enough.`, text: `${g.label} (${catLabel(g.cat)})` };
   if (row.unit === "L") {
     const L = Math.ceil(short), days = L / (h.people * 3.8 + h.pets);
-    return { kits, why, hint, qty: L, unit: "L", name: "Drinking water", title: `Add ${L} L of drinking water`, detail: `About ${gal(L)} gallons: ${f1(days)} more days for everyone.`, text: `Drinking water: ${L} L (${gal(L)} gal)` };
+    return { kits, why, hint, qty: L, unit: "L", name: "Drinking water", title: `Add ${gal(L)} gallons of drinking water`, detail: `${L} L: ${f1(days)} more days for everyone.`, text: `Drinking water: ${gal(L)} gal (${L} L)` };
   }
   if (row.unit === "kcal") {
     const k = Math.ceil(short / 100) * 100, days = f1(k / h.kcalDay);
@@ -1851,9 +1856,10 @@ const TAB_ICON = { overview: "gauge", kits: "bag", household: "person" };
 // One line up front and the full explanation a tap away; the ones you open stay open when the page re-renders
 const how = (id, body) => `<details class="how" data-how="${id}" ${S.how.has(id) ? "open" : ""}><summary>How this works</summary><p>${body}</p></details>`;
 const money = p => p === undefined ? "" : p === null ? "Prescription" : p === 0 ? "From home" : `$${p}`;
+const pts = n => `+${n} pt${n === 1 ? "" : "s"}`;
 const ptsLabel = p => p >= 1 ? String(Math.round(p)) : p > 0 ? "<1" : "0";
 function amount(row, h, days = "household-days") {
-  if (row.unit === "L") return `${f1(row.have)} of ${row.need} L <span class="muted">(${f1(row.have / 3.785)} of ${f1(row.need / 3.785)} gal)</span>`;
+  if (row.unit === "L") return `${gal(row.have)} of ${gal(row.need)} gal <span class="muted">(${f1(row.have)} of ${row.need} L)</span>`;
   if (row.unit === "kcal") return `${f1(row.have / h.kcalDay)} of ${f1(row.need / h.kcalDay)} ${days}`;
   return `${row.have} of ${row.need}`;
 }
@@ -1878,7 +1884,7 @@ function essBlock(M, row, items, kitId) {
     const its = live.filter(it => essentialOf(it) === e.id);
     return `<span class="chip ess full" title="${esc(its.map(i => i.name).join(", "))}">${icon("yes", "ic ic-s")}<span class="vh">Have </span>${esc(e.label)}${its.length > 1 && slots(e.id) === 1 ? `<span class="muted"> · ${its.length} items, counts once</span>` : ""}</span>`;
   });
-  const lacks = miss.map(({ e, gain }) => `<span class="chip ess miss">${icon("no", "ic ic-s")}<span class="vh">Missing </span>${esc(e.label)}${gain ? ` · <span class="gain" title="Readiness points adding it adds">+${gain}</span>` : ""}</span>`);
+  const lacks = miss.map(({ e, gain }) => `<span class="chip ess miss">${icon("no", "ic ic-s")}<span class="vh">Missing </span>${esc(e.label)}${gain ? ` · <span class="gain" title="Readiness points adding it adds">${pts(gain)}</span>` : ""}</span>`);
   const foot = [
     miss.some(x => x.g) && !miss.some(x => off.has(x.g)) ? `<span class="small muted">On your shopping list</span>` : "",
     ...essNotes(row.cat, items).map(n => `<span class="small muted">${n}</span>`),
@@ -2116,33 +2122,37 @@ const needRank = x => x.cov >= 1 ? 2 : x.cov > 0 ? 1 : 0;
 const NEED_WORD = ["Missing", "Some", "Have"];
 /* The household gaps an emergency is short of: each counted category's one gap and each missing essential's (essGap). */
 const hzGaps = (M, r) => [...new Set(r.rows.flatMap(x => x.cov >= 1 ? [] : x.ess ? x.ess.filter(e => !e.have).map(e => essGap(M, x.cat, e)) : M.gaps.filter(g => g.cat === x.cat && !g.essential)).filter(Boolean))];
-/* An emergency's two pickers, changed right on its row: how likely it is (bars, and the word on wider screens) and how
-   much it matters (a hollow star as much as the others, one or two filled when more). One that doesn't apply keeps
-   only its likelihood, so it can be turned back on. */
+/* An emergency's two ratings. On its row they are marks to read: how likely it is (bars, and the word on wider screens)
+   and, only when raised, how much it matters (one or two filled stars). They are changed in the opened emergency
+   (hzSet). One that doesn't apply keeps only its likelihood, so it can be turned back on. */
 const opts = (o, on) => Object.entries(o).map(([k, v]) => `<option value="${k}"${k === on ? " selected" : ""}>${v[0]}</option>`).join("");
 const STARS = { normal: "☆", more: "★", most: "★★" };
-function hzPicks(hz, rel, off) {
-  const ro = S.canWrite ? "" : " ro", imp = Object.hasOwn(IMPORTANCE, S.hazards?.importance?.[hz.id] || "") ? S.hazards.importance[hz.id] : "normal";
-  return `<span class="pick${ro}" title="How likely: ${LEVELS[rel][0]}"><span aria-hidden="true">${lik(rel)}<span class="pick-t">${LEVELS[rel][0]}</span></span><select id="lv-${hz.id}" data-change="level" data-id="${hz.id}" aria-label="How likely ${esc(hz.name)} is for you" ${D()}>${opts(LEVELS, rel)}</select></span>`
-    + (off ? "" : `<span class="pick${ro}" title="How much it matters: ${IMPORTANCE[imp][0]}"><span class="imp${imp === "normal" ? "" : " up"}" aria-hidden="true">${STARS[imp]}</span><select id="im-${hz.id}" data-change="importance" data-id="${hz.id}" aria-label="How much ${esc(hz.name)} matters to you" ${D()}>${opts(IMPORTANCE, imp)}</select></span>`);
+const impOf = hz => Object.hasOwn(IMPORTANCE, S.hazards?.importance?.[hz.id] || "") ? S.hazards.importance[hz.id] : "normal";
+function hzMarks(hz, rel, off) {
+  const imp = impOf(hz);
+  return `<span class="pick ro" title="How likely: ${LEVELS[rel][0]}"><span class="vh">How likely: </span>${lik(rel)}<span class="pick-t">${LEVELS[rel][0]}</span></span>`
+    + (off || imp === "normal" ? "" : `<span class="imp up" title="How much it matters: ${IMPORTANCE[imp][0]}"><span class="vh">${IMPORTANCE[imp][0]}</span><span aria-hidden="true">${STARS[imp]}</span></span>`);
 }
-/* An emergency as a row: its name and when, its pickers and score, then its needs, missing first, six at most.
+function hzSet(hz, rel, off) {
+  const sel = (id, act, label, o, on) => `<label class="f">${label}<select id="${id}-${hz.id}" data-change="${act}" data-id="${hz.id}" ${D()}>${opts(o, on)}</select></label>`;
+  return `<div class="row hzp-set">${sel("lv", "level", "How likely it is for you", LEVELS, rel)}${off ? "" : sel("im", "importance", "How much it matters to you", IMPORTANCE, impOf(hz))}</div>`;
+}
+/* An emergency as a row: its name and when, its ratings and score, then its needs, missing first, six at most.
    The name's button opens it, and covers the whole row. */
 function hzRow(r, h, M = model()) {
   const id = r.hz.id, open = S.openHz.has(id), off = LEVELS[r.rel][1] === 0;
   const lockedOff = r.hz.vehicle && h.vehicles === 0;
   const alarm = r.hz.group === "health" && r.rel === "high" && r.score < 50;
-  const ink = alarm ? "var(--bad)" : statusInk(r.score);
   const rows = [...r.rows].sort((a, b) => needRank(a) - needRank(b)), more = rows.length - 6;
   return `<div class="hz-row${off ? " off" : ""}${open ? " open" : ""}">
     <span class="hz-nm"><button class="hz-tg" data-act="toggleHz" data-id="${id}" aria-expanded="${open}"${open ? ` aria-controls="hzp-${id}"` : ""} title="${esc(r.hz.name)} · ${esc(modeLine(r.hz))}">${esc(r.hz.name)}</button><span class="mode">${esc(modeLine(r.hz))}</span></span>
-    <span class="hz-sc">${lockedOff ? `<span class="small muted">No vehicle</span>` : hzPicks(r.hz, r.rel, off)}<span class="pct" style="color:${ink}">${r.score}%${alarm ? `<span class="vh">, needs attention</span>` : ""}</span></span>
+    <span class="hz-sc">${lockedOff ? `<span class="small muted">No vehicle</span>` : hzMarks(r.hz, r.rel, off)}<span class="pct"${alarm ? ` style="color:var(--bad)"` : ""}>${r.score}%${alarm ? `<span class="vh">, needs attention</span>` : ""}</span></span>
     <span class="hz-needs">${rows.slice(0, 6).map(x => { const s = needRank(x); return `<span class="need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span class="vh">${NEED_WORD[s]} </span>${esc(catLabel(x.cat))}${s === 1 ? ` <span class="amt">${amount(x, h, "days").replace(/ <span[\s\S]*/, "")}</span>` : ""}</span>`; }).join("")}${more > 0 ? `<span class="need more">+${more} more</span>` : ""}</span>
   </div>${open ? hzPanel(r, h, M, rows) : ""}`;
 }
 /* What an opened emergency involves: where you'd be and with what, how bad it is and why it's rated as it is, each
    need on a line with the essentials still missing and its notes, and a button adding the household gaps it is short
-   of to the list. Its name, score and pickers stay on the row above. */
+   of to the list. Its two ratings are set here; its name, score and their marks stay on the row above. */
 function hzPanel(r, h, M, rows) {
   const hz = r.hz, [sev, mult, what] = SEVERITY[hz.severity];
   const why = hz.group ? householdWhy(hz, h) : S.hazards?.reasons?.[hz.id];
@@ -2153,6 +2163,7 @@ function hzPanel(r, h, M, rows) {
   return `<div class="panel hz-panel" id="hzp-${hz.id}">
     <p class="small">${esc(where)} Counts ${kitsFor(hz).map(k => KIT_TYPES[k].toLowerCase().replace(/y$/, "ie") + "s").join(", ").replace(/, ([^,]*)$/, " and $1")}.</p>
     <p class="small muted"><b>${sev} if you're unprepared:</b> ${what}${mult > 1 ? `, so it counts ${mult}× in your score` : ""}.${why ? ` ${esc(why)}` : ""}</p>
+    ${hz.vehicle && h.vehicles === 0 ? "" : hzSet(hz, r.rel, LEVELS[r.rel][1] === 0)}
     ${costLine(hzCost(r, h), "what it needs", "to be ready")}
     <div class="hzp-needs">${rows.map(x => { const s = needRank(x), miss = x.ess ? x.ess.filter(e => !e.have).map(e => essWord(x.cat, e.label)) : [];
       return `<div class="hzp-need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span><span class="vh">${NEED_WORD[s]}: </span><b>${esc(catLabel(x.cat))}</b>${miss.length ? `<span class="muted"> · missing ${esc(orList(miss, "and"))}</span>` : ""}${x.ess ? essNotes(x.cat, items).map(n => `<span class="hzp-note muted">${n}</span>`).join("") : ""}</span><span class="amt">${amount(x, h)}</span></div>`; }).join("")}</div>
@@ -2162,7 +2173,7 @@ function hzPanel(r, h, M, rows) {
 }
 
 // Opens Review (#121): a kit's To get has one, and so does the Kits tab with no kits
-const reviewBtn = `<div><button class="btn ghost sm" id="kit-all" data-act="allKits">Review</button></div>`;
+const reviewBtn = `<div><button class="btn ghost sm" id="kit-all" data-act="allKits">Shopping list</button></div>`;
 function viewKits(M) {
   const kit = S.kits.find(k => k.id === S.openKit) || null;
   const counts = {};
@@ -2186,7 +2197,7 @@ function viewKits(M) {
     </div>
     <div class="stack kit-main">${kit ? kitDetail(kit, M.kitRes[kit.id], M) : `<p class="muted">Pick a kit to see its contents, or add one.</p>${reviewBtn}`}</div>${planBar(M)}
   </div>${S.allKits ? `<div class="review-bg"><div class="review-sheet stack" role="dialog" aria-modal="true" aria-labelledby="review-h">
-    <div class="row review-hd"><h2 id="review-h">Review</h2><button class="btn ghost sm" id="review-x" data-act="allBack">Close</button></div>${viewShop(M)}</div></div>` : ""}`;
+    <div class="row review-hd"><h2 id="review-h">Shopping list</h2><button class="btn ghost sm" id="review-x" data-act="allBack">Close</button></div>${viewShop(M)}</div></div>` : ""}`;
 }
 /* The plan bar (#122): the open lines, about what they cost and readiness once they're packed, as Review sums them
    (prescriptions unpriced). Priced without shopInfo's points, which the bar doesn't show. Writes nothing. */
@@ -2194,7 +2205,7 @@ function planBar(M) {
   const left = shopItems().filter(e => !e.done);
   if (!left.length) return "";
   const price = e => lineCost(e, M.h) || 0;
-  return `<aside class="plan-bar" aria-label="Your plan"><div class="stack"><b>${left.length} planned · about $${left.reduce((a, e) => a + price(e), 0).toLocaleString()}</b>${M.overall == null ? "" : `<span class="small">Readiness ${M.overall} → <b>${scoreIfBought(left)}</b> once packed</span>`}</div><button class="btn sm" id="plan-review" data-act="allKits">${icon("cart")}Review<span class="vh"> the plan</span></button></aside>`;
+  return `<aside class="plan-bar" aria-label="Your plan"><div class="stack"><b>${left.length} planned · about $${left.reduce((a, e) => a + price(e), 0).toLocaleString()}</b>${M.overall == null ? "" : `<span class="small">Readiness ${M.overall} → <b>${scoreIfBought(left)}</b> once packed</span>`}</div><button class="btn sm" id="plan-review" data-act="allKits">${icon("cart")}Shopping list<span class="vh">, the whole plan</span></button></aside>`;
 }
 /* An item's fields, as [class, label, html]: its List row's cells and its opened tile's fields, so the two never drift.
    Each writes through the data-change="item" handler. The Essential html is empty outside the five checklist categories. */
@@ -2271,7 +2282,7 @@ function kitDetail(kit, ready, M = model()) {
     <div class="seg kit-sw" role="group" aria-label="${esc(kit.name)}">${side("packed", `Packed · ${items.length}`)}${side("get", `To get · ${getN}`)}</div>
     ${S.canWrite ? (S.confirm === "kit:" + kit.id
       ? `<div class="row"><span class="small">Delete this kit, its ${pl(items.length, "item")} and ${pl(photos.length, "photo")}?</span><button class="btn danger sm" data-act="delKit" data-id="${esc(kit.id)}">Delete</button><button class="btn ghost sm" data-act="cancelConfirm">Cancel</button></div>`
-      : `<button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button>`) : ""}
+      : `<details class="more"><summary class="btn ghost sm" aria-label="More for ${esc(kit.name)}">⋯</summary><div class="more-m"><button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button></div></details>`) : ""}
   </div>${get
     ? `<div class="panel stack">${shopTools(M, P, kit)}${shopSection(M, P, kit) || `<p class="small muted">Nothing to get for this kit.</p>`}</div>${reviewBtn}` : `
   <div class="kit-top">${kitReadyPanel(kit, ready, M)}${containerCard(kit, ready.h)}</div>
@@ -2335,7 +2346,7 @@ function flMiss(M, cat, e, next, kit) {
   const notes = !g ? [] : here ? ["Planned" + (cost && " · " + cost)]
     : line ? [to ? `Planned for ${esc(S.kits.find(k => k.id === to).name)}` : "Planned · no kit yet"]
     : [p === null ? "Rx · pharmacy" : cost, first !== g && w && `Plan ${esc((first.label.match(/\((\d+ of \d+)\)$/) || [, first.label])[1])} first`];
-  const body = `<span class="fl-top">${icon(cat)}${gain ? `<span class="gain" title="Readiness points adding it adds">+${gain}</span>` : ""}</span><span class="fl-name">${flWord(e.label)}</span>`
+  const body = `<span class="fl-top">${icon(cat)}${gain ? `<span class="gain" title="Readiness points adding it adds">${pts(gain)}</span>` : ""}</span><span class="fl-name">${flWord(e.label)}</span>`
     + notes.filter(Boolean).map(n => `<span class="fl-note">${n}</span>`).join("");
   const id = here && esc(line.id), open = here && S.flOpen === line.id;
   const tile = !w ? body
@@ -2609,7 +2620,7 @@ function shopRow(e, i, over) {
     return why ? `<span class="small muted">${why}</span>` : ""; };
   return `<li class="shop-row ${e.done ? "done" : ""} ${S.flash === e.id ? "flash" : ""} ${over && !e.done ? "over" : ""}">
     <label class="shop-chk"><input type="checkbox" id="shop-${esc(e.id)}" data-change="shopTick" data-id="${esc(e.id)}" ${e.done ? "checked" : ""} ${D()}>${icon(e.cat || "other")}<span><b>${esc(i.line)}</b>${!e.done && i.sub ? `<span class="small muted">${esc(i.sub)}</span>` : ""}${!e.done && i.tip ? `<span class="small shop-tip">${esc(i.tip)}</span>` : ""}${e.done ? "" : buyLine()}</span></label>
-    <div class="shop-meta">${e.done ? "" : `${i.gain ? `<span class="gain mono" title="Readiness points this adds">+${i.gain}</span>` : ""}${money(i.price) ? `<span class="small muted">${money(i.price)}</span>` : ""}`}</div>
+    <div class="shop-meta">${e.done ? "" : `${i.gain ? `<span class="gain mono" title="Readiness points this adds">${pts(i.gain)}</span>` : ""}${money(i.price) ? `<span class="small muted">${money(i.price)}</span>` : ""}`}</div>
     <div class="shop-kit">${e.done ? (inKit ? `<span class="small muted">In ${esc(inKit)}</span>` : "")
       : CATS[e.cat] && S.kits.length ? `<select id="shop-${esc(e.id)}-kit" data-change="shopKit" data-id="${esc(e.id)}" aria-label="Kit for ${esc(i.line)}" ${D()}><option value="none" ${cur ? "" : "selected"}>Not in a kit yet</option>${S.kits.map(k => `<option value="${esc(k.id)}" ${k.id === cur ? "selected" : ""}>Goes in ${esc(k.name)}</option>`).join("")}</select>` : ""}</div>
     ${S.canWrite ? `<button class="x" data-act="shopDel" data-id="${esc(e.id)}" aria-label="Remove ${esc(i.line)} from the list">×</button>` : ""}
@@ -2651,9 +2662,9 @@ function shopSection(M, P, kit) {
   const lines = P.order.filter(e => kit ? shopKit(e) === id : !shopKit(e));
   const gaps = (kit ? kitGaps(M, id) : M.gaps.filter(g => !shopKit(shopFromGap(g, M.h)))).filter(g => off.has(g)).map(g => ({ g, gain: gapGain(M, g) })).sort((a, b) => b.gain - a.gain);
   const price = g => money(linePrice(shopFromGap(g, M.h, id), M));
-  const gapRow = ({ g, gain }) => { const n = gapName(g), p = price(g); return `<li class="shop-gap">${icon(g.cat)}<span>${esc(n.charAt(0).toUpperCase() + n.slice(1))}</span><div class="shop-meta">${gain ? `<span class="gain mono" title="Readiness points this adds">+${gain}</span>` : ""}${p ? `<span class="small muted">${p}</span>` : ""}</div>${S.canWrite ? `<button class="btn ghost sm" data-act="shopAdd" data-cat="${esc(g.cat)}"${g.essential ? ` data-essential="${esc(g.essential)}"` : ""}${dk} aria-label="Plan ${esc(n)}">Plan</button>` : ""}</li>`; };
+  const gapRow = ({ g, gain }) => { const n = gapName(g), p = price(g); return `<li class="shop-gap">${icon(g.cat)}<span>${esc(n.charAt(0).toUpperCase() + n.slice(1))}</span><div class="shop-meta">${gain ? `<span class="gain mono" title="Readiness points this adds">${pts(gain)}</span>` : ""}${p ? `<span class="small muted">${p}</span>` : ""}</div>${S.canWrite ? `<button class="btn ghost sm" data-act="shopAdd" data-cat="${esc(g.cat)}"${g.essential ? ` data-essential="${esc(g.essential)}"` : ""}${dk} aria-label="Add ${esc(n)} to your list">Add to list</button>` : ""}</li>`; };
   return shopList(P, lines)
-    + (gaps.length ? `<div class="stack"><p class="eyebrow">Not on your list yet · ${gaps.length}</p><ul class="shop">${gaps.map(gapRow).join("")}</ul>${S.canWrite && kit ? `<div><button class="btn sm" data-act="shopAddTop"${dk}>Plan the top ${Math.min(5, gaps.length)}</button></div>` : ""}</div>` : "");
+    + (gaps.length ? `<div class="stack"><p class="eyebrow">Not on your list yet · ${gaps.length}</p><ul class="shop">${gaps.map(gapRow).join("")}</ul>${S.canWrite && kit ? `<div><button class="btn sm" data-act="shopAddTop"${dk}>Add the top ${Math.min(5, gaps.length)}</button></div>` : ""}</div>` : "");
 }
 /* Review (#121): the tools, every open line grouped by trip (#123), Free tonight, the gaps no kit takes, then Got it. */
 function viewShop(M) {
@@ -2794,7 +2805,7 @@ function flyPoints(from, n) {
   const to = $("#hdr-score");
   if (calm() || !from || !(n > 0) || typeof to?.animate !== "function") return;
   const b = to.getBoundingClientRect(), chip = document.createElement("span");
-  chip.className = "fly"; chip.textContent = `+${n}`; chip.setAttribute("aria-hidden", "true");
+  chip.className = "fly"; chip.textContent = pts(n); chip.setAttribute("aria-hidden", "true");
   document.body.append(chip);
   const x = Math.min(from.right - 80, window.innerWidth - 60), y = from.top + from.height / 2 - chip.offsetHeight / 2;
   chip.style.left = `${x}px`; chip.style.top = `${y}px`;
@@ -3283,6 +3294,8 @@ const ACT = {
   },
 };
 document.addEventListener("click", e => { const b = e.target.closest("[data-act]"); if (b && !b.disabled && ACT[b.dataset.act]) { e.preventDefault(); ACT[b.dataset.act](b); } });
+// A "⋯" menu closes on a click anywhere else
+document.addEventListener("click", e => document.querySelectorAll("details.more[open]").forEach(d => d.contains(e.target) || (d.open = false)));
 document.addEventListener("input", e => {
   const t = e.target;
   if (t.dataset.input === "draft") {
@@ -3506,7 +3519,8 @@ render();
   const timer = setTimeout(() => { S.slow = true; render(); }, 10000);
   const seen = new Set();
   const all = Object.keys(COLS).length + HOUSEHOLD_DOCS.length;
-  const done = (k, snap) => { if (!snap.metadata?.fromCache) seen.add(k); if (seen.size >= all) { S.loaded = true; S.slow = false; clearTimeout(timer); } };
+  // Someone with nothing saved yet, who opened no tab by its link, starts where setting up starts: Household
+  const done = (k, snap) => { if (!snap.metadata?.fromCache) seen.add(k); if (seen.size >= all) { if (!S.loaded && !location.hash && !S.profile && !S.kits.length) S.view = "household"; S.loaded = true; S.slow = false; clearTimeout(timer); } };
   const fail = () => { clearTimeout(timer); S.loaded = true; render(); };
   for (const [key, col] of Object.entries(COLS)) {
     db.collection(col).onSnapshot(snap => { S[key] = snap.docs.map(x => ({ id: x.id, ...x.data() })); done(key, snap); render(); }, fail);
