@@ -30,10 +30,23 @@ function findChrome() {
 }
 
 // Starts headless Chrome and returns a page session: send(method, params) and once(event).
-async function openChrome(chrome) {
+// A Chrome that starts but never answers (seen on a busy machine: it sits on about:blank and the test waits for
+// ever) is killed and replaced, three starts at most, so a stall fails the run instead of hanging it.
+async function openChrome(chrome, { wait = 20000, starts = 3 } = {}) {
+  for (let n = 1, err; ; n++) {
+    let proc;
+    const page = await Promise.race([startChrome(chrome, p => { proc = p; }).catch(e => { err = e; return null; }), sleep(wait).then(() => null)]);
+    if (page) return page;
+    proc?.kill();
+    if (n >= starts) throw err || new Error(`Chrome didn't answer within ${wait / 1000}s in ${starts} starts`);
+  }
+}
+
+async function startChrome(chrome, started) {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-shots-"));
   const proc = spawn(chrome, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
     "--remote-debugging-port=0", `--user-data-dir=${profile}`, "about:blank"], { stdio: "ignore" });
+  started(proc);
   const portFile = path.join(profile, "DevToolsActivePort");
   for (let i = 0; i < 100 && !fs.existsSync(portFile); i++) await sleep(100);
   const [port, wsPath] = fs.readFileSync(portFile, "utf8").split("\n");
