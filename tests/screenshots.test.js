@@ -83,3 +83,40 @@ test("a browser that never answers is started again, then fails the run instead 
   const ran = fs.existsSync(log) ? fs.readFileSync(log, "utf8").trim().split("\n").length : 0;
   assert.ok(ran <= 2, `started ${ran} times, never more than asked`);
 });
+
+// Starting Chrome is most of what a browser test waits for (issue #147), so one test file's pages share one Chrome.
+// Each page still starts clean, as a new Chrome's would: its own storage and screen size, none of the last page's.
+// Once the last page closes, Chrome exits, so the test file's process can end.
+test("pages opened in turn share one Chrome, each starts clean, and Chrome exits after the last closes", { skip: !require("./phone").chrome && "no Chrome found (set CHROME)" }, async () => {
+  const { openChrome } = require("../tools/screenshots");
+  const { chrome } = require("./phone");
+  const file = path.join(dir, "blank.html");
+  fs.writeFileSync(file, "<!doctype html><title>blank</title>");
+  // The page's width, and what it found stored before it stored something of its own
+  const visit = async page => {
+    const loaded = page.once("Page.loadEventFired");
+    await page.send("Page.navigate", { url: `file://${file}` });
+    await loaded;
+    const ev = async e => (await page.send("Runtime.evaluate", { expression: e, returnByValue: true, awaitPromise: true })).result.value;
+    return { width: await ev("innerWidth"), stored: await ev(`(() => { const v = localStorage.getItem("k"); localStorage.setItem("k", "set"); return v; })()`),
+      databases: await ev(`(async () => { const n = (await indexedDB.databases()).length;
+        await new Promise(ok => { const r = indexedDB.open("k"); r.onsuccess = () => { r.result.close(); ok(); }; }); return n; })()`) };
+  };
+  const first = await openChrome(chrome);
+  try {
+    await first.send("Emulation.setDeviceMetricsOverride", { width: 333, height: 600, deviceScaleFactor: 1, mobile: false });
+    assert.deepEqual(await visit(first), { width: 333, stored: null, databases: 0 });
+  } finally { await first.close(); }
+  const second = await openChrome(chrome);
+  try {
+    assert.ok(Number.isInteger(first.pid), "a page knows its Chrome's process");
+    assert.equal(second.pid, first.pid, "the second page opened in the same Chrome");
+    const b = await visit(second);
+    assert.notEqual(b.width, 333, "the last page's screen size didn't carry over");
+    assert.equal(b.stored, null, "nor what it stored");
+    assert.equal(b.databases, 0, "nor its databases");
+  } finally { await second.close(); }
+  const alive = () => { try { process.kill(first.pid, 0); return true; } catch (_) { return false; } };
+  for (let i = 0; i < 100 && alive(); i++) await new Promise(r => setTimeout(r, 100));
+  assert.equal(alive(), false, "Chrome exits once no page is open");
+});
