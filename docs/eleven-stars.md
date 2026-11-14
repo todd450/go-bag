@@ -52,15 +52,13 @@ should come from data the app already keeps. Printing or saving it as a PDF from
 needs no decision; making the app itself work offline (a service worker, an installable app)
 would be the founder's call.
 
-What holds it back:
+What holds it back (the page's size budget was another, until the founder removed it on
+14 Nov 2026):
 
 - **No evidence anyone wants it.** Every brief so far notes that nobody has been seen using a
   feature and no check-back has a verdict. So the first step is not code: a 10-minute family
   drill with the app open, noting where it fails to help. That would be the project's first
   observed evidence.
-- **The page is at its size budget** (93,881 of 94,000 bytes when #150 was written). Even a
-  small go sheet likely means raising the budget in `check.sh`, which covers the page and
-  `core.js` together.
 
 ## Using this
 
