@@ -26,7 +26,7 @@ fi
 # functions parse. Their behaviour is in tests/web-runtime.test.js.
 for f in web/runtime.js tools/build-web.js api/*.mjs; do node --check "$f"; done
 
-# The page's size, gzipped, the way it travels to the founder's phone: reported, never a failure. The size
+# The app's size (the page and core.js), gzipped, the way it travels to the founder's phone: reported, never a failure. The size
 # budget set in #25 was removed on 14 Nov 2026 by the founder's choice, after it had been raised eight times.
 page=$(gzip -9c emergency-kit-audit.html | wc -c | tr -d ' ')
 core=$(gzip -9c core.js | wc -c | tr -d ' ')
