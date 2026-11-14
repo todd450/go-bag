@@ -34,28 +34,51 @@
   // The household every read and write names. Set once, before anything resolves.
   let hid = null;
 
-  /* ---------- log out ---------- */
-  // A plain link to /app?signout (below), so it works however the page is doing. It sits in the
-  // header's first row, just before the readiness score, pushed right. The page file is the claude.ai
-  // Artifact too and never changes for Vercel, so the link is added here, once someone is signed in.
-  const LOGOUT_CSS = `.gb-out{flex:none;align-self:center;margin-left:auto;font-size:.85rem;font-weight:500;line-height:1.2;color:var(--ink-2);
-  text-decoration:none;white-space:nowrap;border:1px solid var(--rule-2);border-radius:999px;padding:5px 12px}
-.gb-out:hover{color:var(--ink);border-color:var(--ink)}
-.gb-out:focus-visible{outline:2px solid var(--brand);outline-offset:2px}`;
-  function addLogOut(session) {
+  /* ---------- the account button (#154) ---------- */
+  // A round button with the signed-in person's initial, at the right end of the page's header (.hdr-end),
+  // after the readiness score. It opens a small panel saying who is signed in, with Log out: a plain link to
+  // /app?signout (below), so it works however the page is doing. A <details> disclosure, so it opens and
+  // closes from the keyboard with no script; a click elsewhere or Escape closes it. The page file is the
+  // claude.ai Artifact too and never changes for Vercel, so the button is added here, once someone is signed in.
+  const ACCOUNT_CSS = `.gb-acct{position:relative;flex:none;align-self:center}
+.gb-acct>summary{list-style:none;cursor:pointer;display:block;border-radius:999px}
+.gb-acct>summary::-webkit-details-marker{display:none}
+.gb-acct>summary:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.gb-av{width:40px;height:40px;border-radius:999px;display:grid;place-items:center;background:var(--ink);color:var(--card);font-weight:600;font-size:.95rem;line-height:1}
+.gb-acct>summary:hover .gb-av,.gb-acct[open] .gb-av{box-shadow:0 0 0 4px var(--rule)}
+.gb-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:9;display:grid;gap:2px;min-width:220px;max-width:min(320px,calc(100vw - 32px));
+  background:var(--card);border:1px solid var(--rule);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:8px}
+.gb-who{margin:0;padding:8px 12px 10px;border-bottom:1px solid var(--rule);margin-bottom:4px;font-size:.85rem;line-height:1.4;color:var(--ink-2);overflow-wrap:anywhere}
+.gb-who b{display:block;color:var(--ink);font-weight:600}
+.gb-out{display:block;padding:10px 12px;border-radius:8px;color:var(--ink);font-weight:500;text-decoration:none}
+.gb-out:hover{background:var(--paper)}
+.gb-out:focus-visible{outline:2px solid var(--brand);outline-offset:-2px}
+@media (max-width:640px){.gb-av{width:34px;height:34px;font-size:.85rem}}`;
+  // The initial on the button: the first letter or digit of the email, or "?" with none.
+  const initial = email => (String(email || "").match(/[a-z0-9]/i)?.[0] || "?").toUpperCase();
+  function addAccount(session) {
     const put = () => {
       const top = document.querySelector?.(".top-in");
-      if (!top || top.querySelector?.(".gb-out")) return;
+      if (!top || document.querySelector?.(".gb-acct")) return;
       const st = document.createElement("style");
-      st.textContent = LOGOUT_CSS;
+      st.textContent = ACCOUNT_CSS;
       document.head.append(st);
-      const a = document.createElement("a");
-      a.className = "gb-out";
-      a.setAttribute("href", "/app?signout");
-      if (session.user?.email) a.setAttribute("title", `Signed in as ${session.user.email}`);
-      a.textContent = "Log out";
-      const score = top.querySelector?.("#hdr-score");
-      if (score) top.insertBefore(a, score); else top.append(a);
+      const email = session.user?.email || "";
+      const el = (tag, className, text) => { const e = document.createElement(tag); e.className = className; if (text != null) e.textContent = text; return e; };
+      const box = el("details", "gb-acct"), sum = el("summary", ""), menu = el("div", "gb-menu");
+      sum.setAttribute("aria-label", email ? `Account: signed in as ${email}` : "Account");
+      sum.append(el("span", "gb-av", initial(email)));
+      if (email) { const who = el("p", "gb-who", "Signed in as"); who.append(el("b", "", email)); menu.append(who); }
+      const out = el("a", "gb-out", "Log out");
+      out.setAttribute("href", "/app?signout");
+      menu.append(out);
+      box.append(sum, menu);
+      // At the right end of the header's row, after the score; an older page without .hdr-end gets it at the row's end.
+      (top.querySelector?.(".hdr-end") || top).append(box);
+      try {
+        document.addEventListener("click", e => { if (box.open && !box.contains(e.target)) box.open = false; });
+        document.addEventListener("keydown", e => { if (e.key === "Escape" && box.open) { box.open = false; sum.focus(); } });
+      } catch {}
     };
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", put, { once: true });
     else put();
@@ -84,7 +107,7 @@
       setCookie(s);
       realtimeAuth(s);
     });
-    try { addLogOut(session); } catch {}
+    try { addAccount(session); } catch {}
     return session;
   })();
 

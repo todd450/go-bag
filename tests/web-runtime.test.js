@@ -162,69 +162,105 @@ test("?signout signs out on this device only, puts /app in the address, then sho
   assert.equal(sb.signIns.length, 1);
 });
 
-/* ---------- log out ---------- */
+/* ---------- the account button and Log out (#154) ---------- */
 
-// Just enough DOM for the Log out link: elements that keep their attributes and children, a page
-// header (.top-in) holding the brand, the score (#hdr-score) and the tabs unless `header: false`, and
-// a document still parsing when `loading` is set.
-function fakeDom({ header = true, loading = false } = {}) {
+// Just enough DOM for the account button: elements that keep their attributes and children, a page
+// header (.top-in) holding the brand, the tabs and .hdr-end with the score (#hdr-score) unless `header: false`
+// (or with no .hdr-end, an older page's header, when `end: false`), and a document still parsing when `loading` is set.
+function fakeDom({ header = true, end = true, loading = false } = {}) {
+  const find = (node, sel) => {
+    for (const c of node.children) {
+      if (sel === "." + c.className || sel === "#" + c.id) return c;
+      const deeper = find(c, sel);
+      if (deeper) return deeper;
+    }
+    return null;
+  };
   const el = (tag, props) => ({
     tag, attrs: {}, children: [], textContent: "", className: "", id: "", ...props,
     setAttribute(k, v) { this.attrs[k] = String(v); },
     append(...kids) { this.children.push(...kids); },
     insertBefore(kid, ref) { this.children.splice(this.children.indexOf(ref), 0, kid); },
-    querySelector(sel) { return this.children.find(c => sel === "." + c.className || sel === "#" + c.id) || null; },
+    querySelector(sel) { return find(this, sel); },
   });
   const top = header ? el("div") : null;
-  top?.append(el("div", { className: "brand" }), el("div", { className: "hdr-score", id: "hdr-score" }), el("nav", { className: "tabs" }));
+  const score = el("div", { className: "hdr-score", id: "hdr-score" });
+  top?.append(el("div", { className: "brand" }), el("nav", { className: "tabs" }), ...(end ? [el("div", { className: "hdr-end", children: [score] })] : [score]));
   const styles = [], waiting = [];
   const dom = {
     readyState: loading ? "loading" : "complete",
     createElement: el,
-    querySelector: sel => (sel === ".top-in" ? top : null),
+    querySelector: sel => (sel === ".top-in" ? top : top && find(top, sel)),
     head: { append: (...k) => styles.push(...k) },
     addEventListener: (type, fn) => { if (type === "DOMContentLoaded") waiting.push(fn); },
   };
   const parsed = () => { dom.readyState = "interactive"; waiting.splice(0).forEach(fn => fn()); };
   return { dom, top, styles, parsed };
 }
-const links = top => top.children.filter(c => c.tag === "a");
+// Every element under the header, depth first, and the account buttons among them
+const all = node => node.children.flatMap(c => [c, ...all(c)]);
+const accounts = top => all(top).filter(c => c.className === "gb-acct");
+const text = node => node.textContent + node.children.map(text).join("");
 
-test("signed in, a Log out link to /app?signout goes in the page's header just before the score, once", async () => {
+test("signed in, an account button with the person's initial goes at the right end of the header, after the score, once", async () => {
   const { dom, top, styles } = fakeDom();
   const { claude } = runtime({ dom });
   await claude.use("db");
   await claude.use("user");
   await settle();
-  const [a, ...more] = links(top);
-  assert.equal(more.length, 0, "one link, however many capabilities resolve");
-  assert.equal(a.attrs.href, "/app?signout");
-  assert.equal(a.textContent, "Log out");
-  assert.equal(a.attrs.title, "Signed in as sam@example.com", "says whose account it signs out of");
-  assert.deepEqual(top.children.map(c => c.className), ["brand", "gb-out", "hdr-score", "tabs"], "first row, beside the score, not under the tabs");
+  const [box, ...more] = accounts(top);
+  assert.equal(more.length, 0, "one button, however many capabilities resolve");
+  assert.equal(box.tag, "details", "a disclosure: it opens from the keyboard with no script");
+  const end = top.querySelector(".hdr-end");
+  assert.deepEqual(end.children.map(c => c.className), ["hdr-score", "gb-acct"], "after the score, at the row's end");
+  const [sum, menu] = box.children;
+  assert.equal(sum.tag, "summary");
+  assert.equal(sum.attrs["aria-label"], "Account: signed in as sam@example.com", "says whose account it is");
+  assert.equal(text(sum), "S", "the email's initial");
+  assert.match(text(menu), /Signed in as\s*sam@example\.com/, "the panel says who is signed in");
+  const out = all(menu).find(c => c.tag === "a");
+  assert.equal(out.attrs.href, "/app?signout");
+  assert.equal(out.textContent, "Log out");
   assert.equal(styles.length, 1, "its own small style, in the page's colours");
-  assert.match(styles[0].textContent, /\.gb-out\{/);
+  assert.match(styles[0].textContent, /\.gb-acct\{/);
 });
 
-test("the Log out link waits for the header when the page is still parsing", async () => {
+test("the email reaches the account button as text, never as markup", async () => {
+  const { dom, top } = fakeDom();
+  const { claude } = runtime({ dom, session: { ...SESSION, user: { ...SESSION.user, email: '<img src=x onerror=alert(1)>@example.com' } } });
+  await claude.use("db");
+  const [box] = accounts(top);
+  assert.ok(box, "a button");
+  assert.ok(all(box).every(c => !("innerHTML" in c)), "nothing is set as HTML");
+  assert.equal(text(box.children[0]), "I", "the first letter or digit, upper-cased");
+});
+
+test("an older page with no .hdr-end still gets the account button, at the end of the header's row", async () => {
+  const { dom, top } = fakeDom({ end: false });
+  const { claude } = runtime({ dom });
+  await claude.use("db");
+  assert.deepEqual(top.children.map(c => c.className), ["brand", "tabs", "hdr-score", "gb-acct"]);
+});
+
+test("the account button waits for the header when the page is still parsing", async () => {
   const { dom, top, parsed } = fakeDom({ loading: true });
   const { claude } = runtime({ dom });
   await claude.use("db");
-  assert.equal(links(top).length, 0);
+  assert.equal(accounts(top).length, 0);
   parsed();
-  assert.equal(links(top).length, 1);
+  assert.equal(accounts(top).length, 1);
 });
 
-test("signed out, or with no household, there is no Log out link: the sign-in card has the page", async () => {
+test("signed out, or with no household, there is no account button: the sign-in card has the page", async () => {
   for (const opts of [{ session: null }, { rpc: { my_household: () => ({ data: null, error: { message: "boom" } }) } }]) {
     const { dom, top } = fakeDom();
     const { claude } = runtime({ dom, ...opts });
     assert.equal(await pending(claude.use("db")), "pending");
-    assert.equal(links(top).length, 0);
+    assert.equal(accounts(top).length, 0);
   }
 });
 
-test("a page with no header still gets every capability, just no Log out link", async () => {
+test("a page with no header still gets every capability, just no account button", async () => {
   const { dom } = fakeDom({ header: false });
   const { claude } = runtime({ dom });
   for (const name of ["db", "assets", "sample", "user"]) assert.ok(await claude.use(name), name);
