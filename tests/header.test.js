@@ -98,3 +98,44 @@ test("at 390px the tabs are a bottom bar with the same icons, the selected one m
     assert.ok(await ev("document.scrollingElement.scrollWidth <= innerWidth"), "nothing scrolls sideways");
   });
 });
+
+// The runtime's own account code (web/runtime.js), run in the page with a made-up email, as Vercel runs it once signed in
+const RT = fs.readFileSync(path.join(__dirname, "..", "web", "runtime.js"), "utf8");
+const ACCOUNT = RT.slice(RT.indexOf("  /* ---------- the account button"), RT.indexOf("  // Resolves once someone is signed in"));
+
+test("the real account button fits the header at every width, and its panel stays on screen", { skip }, async () => {
+  for (const width of [1440, 760, 641, 390]) {
+    await onPage(width, "kits", async ev => {
+      await ev(`document.querySelector(".gb-acct").remove(), (() => { ${ACCOUNT}; addAccount({ user: { email: "a.very.long.name.for.testing@example.com" } }); })(), 1`);
+      const [top, end, acct] = await Promise.all([".top", ".hdr-end", ".gb-acct"].map(s => ev(box(s))));
+      assert.ok(acct.top >= top.top && acct.bottom <= top.bottom && acct.right <= end.right + 0.5, `${width}px: in the header's row, at its end`);
+      await ev(`document.querySelector(".gb-acct").open = true, 1`);
+      const menu = await ev(box(".gb-menu"));
+      assert.ok(menu.left >= 0 && menu.right <= width, `${width}px: the panel is on screen (${menu.left}–${menu.right})`);
+      assert.ok(await ev("document.scrollingElement.scrollWidth <= innerWidth"), `${width}px: nothing scrolls sideways`);
+    });
+  }
+});
+
+test("Escape closes the account panel and nothing else; tabbing past Log out closes it too", { skip }, async () => {
+  await onPage(1440, "kits", async ev => {
+    await ev(`document.querySelector(".gb-acct").remove(), (() => { ${ACCOUNT}; addAccount({ user: { email: "sam@example.com" } }); })(), 1`);
+    const esc = `document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })), 1`;
+    const open = `document.querySelector(".gb-acct").open`;
+    // From the keyboard: Escape closes the panel and puts focus back on the button
+    await ev(`${open} = true, document.querySelector(".gb-out").focus(), 1`);
+    await ev(esc);
+    assert.equal(await ev(open), false, "the panel closed");
+    assert.equal(await ev(`document.activeElement === document.querySelector(".gb-acct > summary")`), true, "focus is back on the button");
+    // Tab past Log out: the panel closes once focus is outside it
+    await ev(`${open} = true, document.querySelector(".gb-out").focus(), document.querySelector("#tabs button").focus(), 1`);
+    assert.equal(await ev(open), false, "focus left the panel, so it closed");
+    // Opened with the mouse over Review all: one Escape closes the panel, and Review stays open
+    await ev(`S.allKits = true, render(), ${open} = true, 1`);
+    await ev(esc);
+    assert.equal(await ev(open), false, "the panel closed");
+    assert.equal(await ev(`S.allKits`), true, "Review is still open: one Escape, one thing closed");
+    await ev(esc);
+    assert.notEqual(await ev(`S.allKits`), true, "the next Escape is the page's again");
+  });
+});

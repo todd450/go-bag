@@ -77,7 +77,13 @@
       (top.querySelector?.(".hdr-end") || top).append(box);
       try {
         document.addEventListener("click", e => { if (box.open && !box.contains(e.target)) box.open = false; });
-        document.addEventListener("keydown", e => { if (e.key === "Escape" && box.open) { box.open = false; sum.focus(); } });
+        // Escape closes the panel and only the panel: caught on the way down, before the page's own Escape
+        // (which would also leave Review, say), and stopped there.
+        document.addEventListener("keydown", e => {
+          if (e.key === "Escape" && box.open) { box.open = false; sum.focus(); e.stopPropagation(); }
+        }, true);
+        // Tabbing past Log out closes it, so it never covers what has the focus now
+        box.addEventListener("focusout", e => { if (box.open && e.relatedTarget && !box.contains(e.relatedTarget)) box.open = false; });
       } catch {}
     };
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", put, { once: true });
