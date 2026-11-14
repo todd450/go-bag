@@ -41,12 +41,16 @@ emergency itself, and more of the household takes part.
 ## The sweet spot, as of 14 Nov 2026
 
 **8 stars, cut to its smallest version.** Rungs 1 to 7 are about the time between
-emergencies, where Go Bag is now strong and where two briefs already sit. Nothing yet covers
+emergencies, where Go Bag is now strong. Two briefs sit there, and neither is under way: the
+founder declined #149 on 14 Nov 2026 (option C), and #150 is open with a no-go
+recommendation. Nothing yet covers
 the first hour of a real emergency, the moment the product exists for. The smallest test is a
 **one-page go sheet for each emergency**: what to grab, from which kit, in what order, plus the
 meeting place and contacts, printed or saved to the family's phones so it works offline. #149's
 option B, a printed sheet for each bag, is halfway there. It needs no new outside service and
-should come from data the app already keeps.
+should come from data the app already keeps. Printing or saving it as a PDF from the browser
+needs no decision; making the app itself work offline (a service worker, an installable app)
+would be the founder's call.
 
 What holds it back:
 
@@ -55,7 +59,8 @@ What holds it back:
   drill with the app open, noting where it fails to help. That would be the project's first
   observed evidence.
 - **The page is at its size budget** (93,881 of 94,000 bytes when #150 was written). Even a
-  small go sheet likely means raising the budget or finishing the split in #111.
+  small go sheet likely means raising the budget in `check.sh`, which covers the page and
+  `core.js` together.
 
 ## Using this
 
