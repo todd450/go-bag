@@ -71,10 +71,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .how p { max-width: 70ch; margin-top: 4px; }
 .eyebrow { font-size: .8rem; font-weight: 500; color: var(--ink-2); }
 
+/* The header (#154, after Airbnb's): on desktop one row, the wordmark left, the tabs centred, each an illustrated
+   object beside its label with a heavy underline when selected, and the score and the account (web/runtime.js puts
+   it in .hdr-end on Vercel) right. On phones the tabs are a bottom bar with the same objects. */
 .top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--card); border-bottom: 1px solid var(--rule); }
 .top-in, .wrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.top-in { display: flex; align-items: center; justify-content: space-between; gap: 4px 24px; flex-wrap: wrap; padding-block: 12px 0; }
-.brand { display: flex; align-items: center; gap: 10px; }
+.top-in { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; gap: 24px; min-height: 80px; }
+.brand { display: flex; align-items: center; gap: 10px; justify-self: start; }
 .brand-mark { width: 28px; height: 28px; flex: none; }
 .case { display: block; flex: none; }
 .case .ct { stroke: var(--brand-track); }
@@ -82,34 +85,56 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .case .cs { fill: var(--brand); }
 /* The wordmark (founder's pick E, PR #91): the case stands in for the space, so "Go [case] Bag" is one lockup.
    Real spaces in the markup keep the heading's name "Go Bag"; the flex row lays out without them. */
-.brand h1 { display: flex; align-items: center; gap: .22em; font-size: 1.1rem; font-weight: 700; letter-spacing: -.02em; line-height: 1; white-space: nowrap; }
+.brand h1 { display: flex; align-items: center; gap: .22em; font-size: 1.3rem; font-weight: 700; letter-spacing: -.02em; line-height: 1; white-space: nowrap; }
 .brand h1 .go { color: var(--brand); }
 .brand h1 .brand-mark { margin-top: -.12em; }
-.hdr-score { font-size: .8rem; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; background: var(--paper); border-radius: 999px; padding: 4px 14px; }
+.brand h1 .brand-mark, .brand h1 .brand-mark .case { width: 34px; height: 34px; }
+.hdr-end { display: flex; align-items: center; justify-content: flex-end; gap: 10px; justify-self: end; }
+.hdr-score { font-size: .8rem; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; background: var(--paper); border-radius: 999px; padding: 4px 14px; white-space: nowrap; }
 .hdr-score:empty { display: none; }
 .hdr-score b { font-family: var(--f-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
 /* On Readiness the ring shows the score: the header's copy fades in as the ring passes under the header (the inset is the header's height), where scroll timelines work */
 @keyframes hs { from { opacity: 0; } }
-body { timeline-scope: --rg; } .sum-score .ring { view-timeline: --rg; view-timeline-inset: 100px 0; }
+body { timeline-scope: --rg; } .sum-score .ring { view-timeline: --rg; view-timeline-inset: 81px 0; }
 body:has(#v-overview:not([hidden])) .hdr-score { animation: hs linear both; animation-timeline: --rg; animation-range: exit; }
-nav.tabs { display: flex; gap: 28px; overflow-x: auto; width: 100%; scrollbar-width: none; }
-nav.tabs button { display: flex; align-items: center; gap: 6px; background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 0 12px; font-weight: 500; font-size: .92rem; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
-nav.tabs button .ic { display: none; }
+nav.tabs { display: flex; align-items: stretch; gap: 40px; }
+nav.tabs button { display: flex; align-items: center; gap: 10px; background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px; padding: 0 4px; font-weight: 500; font-size: 1rem; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
 nav.tabs button[aria-current="page"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
 nav.tabs button:hover { color: var(--ink); }
+nav.tabs .art { display: block; flex: none; width: 40px; height: 40px; transition: transform .25s cubic-bezier(.3, 1.6, .5, 1); }
+nav.tabs button:hover .art { transform: translateY(-2px) scale(1.06); }
+nav.tabs button[aria-current="page"] .art { transform: none; }
+@media (prefers-reduced-motion: reduce) { nav.tabs .art { transition: none; } nav.tabs button:hover .art { transform: none; } }
+/* Narrow desktops and tablets: the same row, closer together */
+@media (min-width: 641px) and (max-width: 1000px) {
+  .top-in { gap: 16px; }
+  .brand h1 { font-size: 1.15rem; }
+  .brand h1 .brand-mark, .brand h1 .brand-mark .case { width: 30px; height: 30px; }
+  nav.tabs { gap: 20px; }
+  nav.tabs button { gap: 6px; font-size: .92rem; }
+  nav.tabs .art { width: 32px; height: 32px; }
+  .hdr-score .eyebrow:first-child { display: none; }
+}
+@media (min-width: 641px) and (max-width: 760px) {
+  nav.tabs { gap: 12px; }
+  nav.tabs button { gap: 4px; padding: 0 2px; }
+  nav.tabs .art { width: 28px; height: 28px; }
+}
 @media (max-width: 640px) {
-  .top-in { padding-block: 10px; flex-wrap: nowrap; }
+  .top-in { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 0; padding-block: 10px; }
   .brand { min-width: 0; }
   .brand h1 { font-size: 1rem; }
+  .brand h1 .brand-mark, .brand h1 .brand-mark .case { width: 28px; height: 28px; }
   .hdr-score { flex: none; padding: 3px 12px; }
   .sum-score .ring { view-timeline-inset: calc(56px + env(safe-area-inset-top, 0px)) 0; }
   .hdr-score .eyebrow:first-child { display: none; }
-  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; gap: 0; justify-content: space-around; background: var(--card); border-top: 1px solid var(--rule); padding: 6px max(8px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)); }
-  nav.tabs button { flex: 1; flex-direction: column; gap: 3px; padding: 4px 0; border-bottom: 0; font-size: .7rem; position: relative; }
-  nav.tabs button .ic { display: block; width: 22px; height: 22px; }
-  nav.tabs button[aria-current="page"] .ic { stroke-width: 2.1; }
-  nav.tabs .tab-n { position: absolute; top: 0; left: calc(50% + 8px); background: var(--brand); color: var(--brand-ink); border-radius: 999px; padding: 0 5px; font-size: .65rem; line-height: 1.5; }
-  main.wrap { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; gap: 0; justify-content: space-around; background: var(--card); border-top: 1px solid var(--rule); padding: 8px max(8px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)); }
+  nav.tabs button { flex: 1; flex-direction: column; gap: 2px; padding: 2px 0 4px; border-bottom: 0; margin: 0; font-size: .72rem; position: relative; }
+  nav.tabs .art { width: 32px; height: 32px; }
+  /* The selected tab's mark: a short dark bar on the bar's top edge, where the underline would be on desktop */
+  nav.tabs button[aria-current="page"]::before { content: ""; position: absolute; top: -9px; left: 50%; width: 32px; height: 3px; margin-left: -16px; border-radius: 0 0 3px 3px; background: var(--ink); }
+  nav.tabs .tab-n { position: absolute; top: 0; left: calc(50% + 10px); background: var(--brand); color: var(--brand-ink); border-radius: 999px; padding: 0 5px; font-size: .65rem; line-height: 1.5; }
+  main.wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 }
 
 main.wrap { padding-block: 24px 64px; display: grid; gap: 24px; }
@@ -319,7 +344,7 @@ button.chip.ess:hover { border-color: var(--ink); }
   .kits-grid:has(> .plan-bar) { padding-bottom: 80px; }
   .plan-bar { position: fixed; z-index: 5; inset: auto 0 0; justify-content: space-between; border-width: 1px 0 0; border-radius: 0; padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
 }
-@media (max-width: 640px) { .plan-bar { bottom: calc(46px + 1.05rem + env(safe-area-inset-bottom, 0px)); padding-bottom: 10px; } }
+@media (max-width: 640px) { .plan-bar { bottom: calc(55px + 1.08rem + env(safe-area-inset-bottom, 0px)); padding-bottom: 10px; } .kits-grid:has(> .plan-bar) { padding-bottom: 90px; } }
 .tags { display: grid; gap: 8px; }
 .add-kit, .ctr-add { justify-content: center; border-style: dashed; }
 .tag { position: relative; text-align: left; background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 14px; padding: 10px 60px 10px 10px; cursor: pointer; display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; align-content: center; gap: 0 12px; width: 100%; line-height: 1.3; box-shadow: var(--shadow); transition: border-color .15s, box-shadow .15s; }
@@ -686,18 +711,18 @@ html:has(.review-sheet) { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .shop-row.flash { animation: none; } .hdr-score b { transition: none; } }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--paper); padding: 12px 18px; border-radius: 12px; z-index: 20; width: max-content; max-width: calc(100% - 32px); font-size: .9rem; display: flex; gap: 14px; align-items: center; box-shadow: 0 6px 20px rgba(0, 0, 0, .18); }
 .toast button { background: none; color: inherit; border: 1px solid currentColor; border-radius: 999px; padding: 4px 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-@media (max-width: 640px) { .toast { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); } }
+@media (max-width: 640px) { .toast { bottom: calc(90px + env(safe-area-inset-bottom, 0px)); } }
 </style>
 
 <header class="top">
   <div class="top-in">
     <div class="brand"><h1><span class="go">Go</span> <span class="brand-mark" aria-hidden="true"></span> <span>Bag</span></h1></div>
-    <div class="hdr-score" id="hdr-score"></div>
     <nav class="tabs" id="tabs" aria-label="Sections">
       <button data-act="tab" data-v="overview">Readiness</button>
       <button data-act="tab" data-v="kits">Kits</button>
       <button data-act="tab" data-v="household">Household</button>
     </nav>
+    <div class="hdr-end"><div class="hdr-score" id="hdr-score"></div></div>
   </div>
 </header>
 <main class="wrap">
@@ -935,7 +960,13 @@ const caseMark = (score, size) => `<svg class="case" viewBox="0 0 64 64" width="
 const tabIconHref = score => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -5.5 80 80">`
   + `<style>.ct{stroke:#fff;stroke-opacity:.4}.cf{stroke:#fff}.cs{fill:#fff}</style><rect x="-8" y="-5.5" width="80" height="80" rx="18" fill="#2B59D9"/>${caseParts(score, 16)}</svg>`);
 const KIT_ICON = { go: "bag", home: "home", car: "car" };
-const TAB_ICON = { overview: "gauge", kits: "bag", household: "person" };
+/* The tabs' illustrated icons (#154): small objects with depth, in fixed colours that read on light and dark,
+   a ground shadow under each, and gradient ids of their own (each icon is drawn once, in the nav). */
+const TAB_ICON = {
+  overview: '<svg class="art" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="ta-rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5D86F4"/><stop offset="1" stop-color="#1E43AE"/></linearGradient><radialGradient id="ta-face" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DDE5F8"/></radialGradient></defs><ellipse cx="24" cy="44" rx="13" ry="2.4" fill="#0B1A44" opacity=".14"/><circle cx="24" cy="24" r="18.5" fill="url(#ta-rim)"/><circle cx="24" cy="24" r="14.5" fill="url(#ta-face)"/><g fill="none" stroke-width="3.2" stroke-linecap="round"><path d="M14.6 28.2A10 10 0 0 1 16.4 17.6" stroke="#E0612A"/><path d="M18.6 15.6A10 10 0 0 1 29.4 15.6" stroke="#EDA100"/><path d="M31.6 17.6A10 10 0 0 1 33.4 28.2" stroke="#1BAF7A"/></g><path d="M24 25.5L31 18.2" stroke="#222" stroke-width="2.4" stroke-linecap="round"/><circle cx="24" cy="25.5" r="2.6" fill="#222"/><path d="M11 19a14 14 0 0 1 9-8.6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".55"/></svg>',
+  kits: '<svg class="art" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="ta-bag" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F59360"/><stop offset="1" stop-color="#D2501C"/></linearGradient><linearGradient id="ta-flap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E56A33"/><stop offset="1" stop-color="#BF4718"/></linearGradient><linearGradient id="ta-pocket" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB083"/><stop offset="1" stop-color="#EE7840"/></linearGradient></defs><ellipse cx="24" cy="44" rx="13" ry="2.4" fill="#3A1205" opacity=".14"/><g fill="none" stroke="#9E3A13" stroke-linecap="round"><path d="M20.5 11.5V9.8a3.5 3.5 0 0 1 7 0v1.7" stroke-width="2.6"/><path d="M10.8 22v-3M37.2 22v-3" stroke-width="3"/></g><rect x="10.5" y="11" width="27" height="31" rx="9" fill="url(#ta-bag)"/><path d="M10.5 20a9 9 0 0 1 9-9h9a9 9 0 0 1 9 9v1.5c-4 2.6-23 2.6-27 0z" fill="url(#ta-flap)"/><rect x="21.6" y="20.5" width="4.8" height="5" rx="1.2" fill="#FFD9C2"/><rect x="15" y="28" width="18" height="11.5" rx="4.5" fill="url(#ta-pocket)"/><path d="M18 31.6h12" stroke="#B9461A" stroke-width="1.6" stroke-linecap="round"/><path d="M22.5 35.2h3M24 33.7v3" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/><path d="M14.2 15.2c1.5-1.5 3.4-2.3 5.8-2.4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".5"/></svg>',
+  household: '<svg class="art" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="ta-roof" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#628BF6"/><stop offset="1" stop-color="#2346B5"/></linearGradient><linearGradient id="ta-wall" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF8EC"/><stop offset="1" stop-color="#EBD6B4"/></linearGradient></defs><ellipse cx="24" cy="44" rx="15" ry="2.4" fill="#2A1A05" opacity=".14"/><rect x="31" y="10" width="4.5" height="9" rx="1" fill="#9A6440"/><rect x="12" y="21" width="24" height="21" rx="2" fill="url(#ta-wall)"/><path d="M8.5 23.5L24 9.5l15.5 14" fill="url(#ta-roof)" stroke="url(#ta-roof)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><rect x="21" y="30" width="7" height="12" rx="1.6" fill="#D2501C"/><circle cx="26.2" cy="36.5" r=".9" fill="#FFD9C2"/><rect x="14.5" y="27.5" width="5" height="5" rx="1" fill="#FFCF5C"/><path d="M17 27.5v5M14.5 30h5" stroke="#E2A82C" stroke-width=".9"/><rect x="30.5" y="27.5" width="3.2" height="5" rx="1" fill="#FFCF5C"/><path d="M13 21.5L24 12" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".45"/></svg>',
+};
 // One line up front and the full explanation a tap away; the ones you open stay open when the page re-renders
 const how = (id, body) => `<details class="how" data-how="${id}" ${S.how.has(id) ? "open" : ""}><summary>How this works</summary><p>${body}</p></details>`;
 const money = p => p === undefined ? "" : p === null ? "Prescription" : p === 0 ? "From home" : `$${p}`;
@@ -2568,7 +2599,7 @@ async function shareShop(kit) {
 // The household form before anything is saved: a new household, and the one left after clearing the examples.
 function blankHousehold() { return { members: [{ label: "", age: "adult", needs: "" }], pets: [], vehicles: 0, home: "House", location: "" }; }
 function syncDraft() { if (!S.hhDirty) S.hhDraft = clone(S.profile) || blankHousehold(); }
-document.querySelectorAll("#tabs button").forEach(b => b.insertAdjacentHTML("afterbegin", icon(TAB_ICON[b.dataset.v])));
+document.querySelectorAll("#tabs button").forEach(b => b.insertAdjacentHTML("afterbegin", TAB_ICON[b.dataset.v]));
 syncDraft();
 render();
 (async () => {
