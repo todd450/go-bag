@@ -149,7 +149,7 @@ function blocks(html) {
 const hzHtml = (run, id) => run(`(M => hzRow(M.results.find(r => r.hz.id === ${JSON.stringify(id)}), M.h, M))(model())`);
 const houseFire = run => { run(`S.openHz = new Set(["housefire"])`); return hzHtml(run, "housefire"); };
 const goKit = run => { run(`S.openKit = "go"`); return run("viewKits(model())"); };
-// An emergency row's need tags, in order: state (miss, part, have, or more for "+N more") and text.
+// An emergency row's need tags, in order: state (miss, part, have, or more for "+N more to get") and text.
 const tags = html => (html.match(/<span class="hz-needs">([\s\S]*?)<\/span>\s*(?:<span class="hz-cost">|<\/div>)/) || ["", ""])[1]
   .split('<span class="need ').slice(1).map(p => ({ state: p.slice(0, p.indexOf('"')), text: plain(p.replace(/^[^>]*>/, "").replace(/<span class="vh">[^<]*<\/span>/g, "")) }));
 // An opened emergency's needs, one line each: state, name with what's missing, notes, and the amount.
@@ -159,25 +159,32 @@ const needs = html => [...html.matchAll(/<div class="hzp-need (\w+)">([\s\S]*?)<
     notes: [...nm.matchAll(/<span class="hzp-note[^"]*">([^<]*)<\/span>/g)].map(m => plain(m[1])), amount: plain(body.slice(i)) };
 });
 
-test("an emergency row names what it needs, missing first, then some, then what you have", () => {
+test("an emergency row names the three things it is short of that add the most points, then how many more", () => {
   const { run, json } = screenshotCase();
   const html = hzHtml(run, "housefire");
   assert.deepEqual(tags(html), [
-    { state: "miss", text: "Fire safety" }, { state: "miss", text: "Clothing" }, { state: "miss", text: "Pet supplies" },
-    { state: "miss", text: "Baby supplies" }, { state: "miss", text: "Kids' comfort" }, { state: "part", text: "Documents & cash 1 of 4" },
-    { state: "more", text: "+2 more" }]);
+    { state: "miss", text: "Fire safety" }, { state: "part", text: "Medications 1 of 3" }, { state: "miss", text: "Clothing" },
+    { state: "more", text: "+5 more to get" }]);
   assert.match(html, /<span class="lik" role="img" aria-label="Moderate likelihood"[^>]*><i class="on"><\/i><i class="on"><\/i><i><\/i><\/span>/);
   assert.match(html, />16%</);
   assert.doesNotMatch(html, /hz-panel/, "closed, it shows no panel");
-  // Every emergency: at most six tags, missing before some before have, and "+N more" for the rest
+  // One short of nothing says so, in place of a list
+  assert.deepEqual(tags(run(`(M => { const r = M.results.find(r => r.hz.id === "housefire"); return hzRow({ ...r, rows: r.rows.map(x => ({ ...x, cov: 1 })) }, M.h, M); })(model())`)), [{ state: "have", text: "Everything covered" }]);
+  // Every emergency: at most three tags, only what it is short of, most points first, and "+N more to get" for the rest
   run(`S.showOff = true`);
   for (const id of json("HAZARDS.map(h => h.id)")) {
-    const n = json(`model().results.find(r => r.hz.id === "${id}").rows.length`);
+    const short = json(`model().results.find(r => r.hz.id === "${id}").rows.filter(x => x.cov < 1).length`);
     const t = tags(hzHtml(run, id)), states = t.filter(x => x.state !== "more").map(x => ["miss", "part", "have"].indexOf(x.state));
     assert.ok(states.every(s => s >= 0), id);
-    assert.deepEqual(states, [...states].sort((a, b) => a - b), id);
-    assert.equal(states.length, Math.min(n, 6), id);
-    assert.deepEqual(t.filter(x => x.state === "more").map(x => x.text), n > 6 ? [`+${n - 6} more`] : [], id);
+    assert.equal(states.length, short ? Math.min(short, 3) : 1, id);
+    assert.deepEqual(t.filter(x => x.state === "more").map(x => x.text), short > 3 ? [`+${short - 3} more to get`] : [], id);
+    if (!short) assert.deepEqual(t, [{ state: "have", text: "Everything covered" }], id);
+    else assert.ok(states.every(s => s < 2), `${id}: only what it is short of`);
+    // Most points first: the same sum the shopping list shows for those gaps
+    const gains = json(`(M => { const r = M.results.find(r => r.hz.id === "${id}"); return r.rows.filter(x => x.cov < 1).map(x => [catLabel(x.cat), needGain(M, x)]); })(model())`);
+    const shown = t.filter(x => x.state !== "more" && short).map(x => gains.find(g => x.text.startsWith(g[0]))[1]);
+    assert.deepEqual(shown, [...shown].sort((a, b) => b - a), `${id}: most points first`);
+    assert.ok(gains.map(g => g[1]).sort((a, b) => b - a).slice(0, 3).every((g, i) => g === shown[i]), `${id}: the three worth most`);
   }
 });
 
