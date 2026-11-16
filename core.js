@@ -283,8 +283,7 @@ function itemsIn(types) {
 const stock = types => stockItems(itemsIn(types));
 /* What a set of items holds: units per category, litres, calories, and in the five checklist categories
    how many items are tagged with each named essential. Expired items hold nothing. */
-function stockItems(items) {
-  const st = { count: {}, ess: {}, liters: 0, kcal: 0 };
+function stockItems(items, st = { count: {}, ess: {}, liters: 0, kcal: 0 }) {
   for (const it of items) {
     if (expState(it) === "expired") continue;
     const c = CATS[it.category] ? it.category : "other";
@@ -295,6 +294,8 @@ function stockItems(items) {
   }
   return st;
 }
+/* A stock with more items in it, leaving the stock it started from as it was. */
+const stockPlus = (st, items) => stockItems(items, { count: { ...st.count }, ess: Object.fromEntries(Object.entries(st.ess).map(([c, x]) => [c, { ...x }])), liters: st.liters, kcal: st.kcal });
 function needFor(cat, hz, h) {
   const d = hz.days;
   if (Object.hasOwn(ESSENTIALS, cat)) return { need: essentialsFor(cat, h).length };
@@ -316,16 +317,20 @@ function needFor(cat, hz, h) {
     default: return { need: 1 };
   }
 }
+/* The stock each model scored from, by the kit types it draws on ("home,go,car"): one count of the items per
+   set of types, not one per emergency, and kept for scoreIfBought to add to (#158). */
+const modelStocks = new WeakMap();
 function model() {
   const h = household();
-  const stocks = Object.fromEntries(Object.entries(MODES).map(([m, d]) => [m, stock(d.kits)]));
+  const by = new Map(), stockOf = types => { const k = types.join(); if (!by.has(k)) by.set(k, stock(types)); return by.get(k); };
+  const stocks = Object.fromEntries(Object.entries(MODES).map(([m, d]) => [m, stockOf(d.kits)]));
   const results = HAZARDS.map(hz => {
     const rel = relevance(hz, h);
     const needs = [...hz.needs];
     if (!hz.group && hz.mode !== "vehicle" && h.pets) needs.push("pets");
     if (!hz.group && hz.mode !== "vehicle" && h.infants) needs.push("baby");
     if ((!hz.group && hz.mode !== "vehicle" || hz.kidsToo) && h.kids) needs.push("kids");
-    const st = stocks[hz.mode] || stock(kitsFor(hz));
+    const st = stocks[hz.mode] || stockOf(kitsFor(hz));
     const rows = needs.map(cat => needRow(cat, hz, h, st));
     return { hz, rel, wt: weightOf(hz, rel), rows, score: scoreRows(rows) };
   });
@@ -355,7 +360,9 @@ function model() {
   const exp = HOUSEHOLD.items.map(it => ({ it, st: expState(it), kit: kitName[it.kitId] })).filter(x => x.st && x.kit)
     .sort((a, b) => String(a.it.expires).localeCompare(String(b.it.expires)));
   const kitRes = Object.fromEntries(HOUSEHOLD.kits.map(k => [k.id, kitReadiness(k, h, active)]));
-  return { h, stocks, results, active, overall, gaps, exp, kitRes };
+  const M = { h, stocks, results, active, overall, gaps, exp, kitRes };
+  modelStocks.set(M, by);
+  return M;
 }
 const haveOf = (cat, st) => cat === "water" ? st.liters : cat === "food" ? st.kcal : (st.count[cat] || 0);
 function needRow(cat, hz, h, st) {
@@ -416,7 +423,7 @@ function gapPlan(g, h) {
 /* Readiness if these list entries were bought and put in the kit each would go in, the same sum ticking uses.
    An entry with no kit of the right type yet can only be estimated (overallIf), as if its category were full or its essential filled. */
 function scoreIfShopped(M, es) {
-  return es.every(e => shopKit(e)) ? scoreIfBought(es) : overallIf(M, es);
+  return es.every(e => shopKit(e)) ? scoreIfBought(es, M) : overallIf(M, es);
 }
 const scoreIfFilled = (M, gaps) => scoreIfShopped(M, gaps.map(g => shopFromGap(g, M.h)));
 
@@ -577,12 +584,35 @@ function buyGuide(cat, qty, unit, kt, h, ess) {
 /* The kit item a list entry becomes when ticked. A line for a named essential makes an item already tagged with it. */
 const itemFromShop = (e, kitId) => ({ kitId, name: e.name || catLabel(e.cat), category: e.cat, qty: e.unit ? 1 : Math.max(1, num(e.qty)), liters: e.unit === "L" ? num(e.qty) : 0, kcal: e.unit === "kcal" ? num(e.qty) : 0, expires: "", note: "Bought from the shopping list", source: "list",
   ...(essentialList(e.cat).some(x => x.id === e.essential) ? { essential: e.essential } : {}) });
-/* Household readiness if these entries were bought and put in their kits: the same sum ticking them does. */
-function scoreIfBought(list) {
+/* Household readiness if these entries were bought and put in their kits: the same sum ticking them does.
+   `M` is the model of the household as it is now. Nothing is scored again from scratch (#158): what each
+   emergency needs and weighs doesn't depend on what's in the kits, so only the stocks the new items land in
+   are added to, and only the emergencies that draw on those stocks are filled again. It is model().overall
+   with the items in their kits, to the point (tests/shopping.test.js). */
+function scoreIfBought(list, M = model()) {
   const add = list.filter(e => CATS[e.cat] && shopKit(e)).map(e => ({ id: "_sim", ...itemFromShop(e, shopKit(e)) }));
-  if (!add.length) return model().overall;
-  HOUSEHOLD.items.push(...add);
-  try { return model().overall; } finally { HOUSEHOLD.items.splice(HOUSEHOLD.items.length - add.length); }
+  return add.length ? overallWith(M, add) : M.overall;
+}
+/* model().overall with these items added to the household's, without building the model again. */
+function overallWith(M, add) {
+  const tw = M.active.reduce((a, r) => a + r.wt, 0);
+  if (!tw) return null;
+  // The stock of kits of these types with the added items that sit in one of them, or null when none does:
+  // what stock(types) would be with the items in the household. Worked out once per set of types.
+  const base = modelStocks.get(M), plus = new Map();
+  const stockWith = types => {
+    const k = types.join();
+    if (!plus.has(k)) {
+      // The kits itemsIn(types) looks in, found the way it finds them
+      const kitIds = new Set(HOUSEHOLD.kits.filter(kit => types.includes(kit.type)).map(kit => kit.id));
+      const more = add.filter(it => kitIds.has(it.kitId));
+      plus.set(k, more.length ? stockPlus(base?.get(k) || stock(types), more) : null);
+    }
+    return plus.get(k);
+  };
+  // Each emergency is filled again from the stock model() scores it from: its mode's, or its own kits' when its mode has none
+  const score = r => { const st = stockWith(M.stocks[r.hz.mode] ? MODES[r.hz.mode].kits : kitsFor(r.hz)); return st ? scoreRows(r.rows.map(x => fillRow(x, st))) : r.score; };
+  return Math.round(M.active.reduce((a, r) => a + r.wt * score(r), 0) / tw);
 }
 /* A list entry with everything the row shows, worked out from the household as it is now. */
 function shopInfo(e, M) {
@@ -914,9 +944,9 @@ if (typeof module === "object" && module && module.exports) module.exports = {
   kcalFor, personNeeds, ageText, CONDITIONS, DAILY_MEDS, onDailyMeds, CONDITION_WORDS, conditionHints, KIT_TYPES,
   MODES, LEVELS, IMPORTANCE, importanceOf, SEVERITY, severityOf, weightOf, HAZARDS, kitsFor, HZ, HOUSEHOLD_DOCS,
   HOUSEHOLD, num, uid, f1, clone, strip, isExampleKit, BANDS, band, catLabel, amazonLink, expState, household,
-  relevance, FACT_WORDS, FACTS, factText, householdWhy, itemsIn, stock, stockItems, needFor, model, haveOf, needRow,
+  relevance, FACT_WORDS, FACTS, factText, householdWhy, itemsIn, stock, stockItems, stockPlus, needFor, modelStocks, model, haveOf, needRow,
   fillRow, essCov, rawScore, scoreRows, overallIf, orList, gal, gapPlan, scoreIfShopped, scoreIfFilled, pl, whoIs,
-  hasCond, forWho, rxAsk, ESS_BUY, PICKS, essentialGuide, pk, buyGuide, itemFromShop, scoreIfBought, shopInfo, TRIPS,
+  hasCond, forWho, rxAsk, ESS_BUY, PICKS, essentialGuide, pk, buyGuide, itemFromShop, scoreIfBought, overallWith, shopInfo, TRIPS,
   tripOf, shopItems, gapKey, splitListed, gapName, shopFromGap, ownKit, shopKit, kitGaps, KIT_STD, kitReadiness,
   dollars, cents, itemCost, kitTypeOf, spentOn, shortOf, lineCost, kitCost, hzCost, householdCost, PACK, WATER_G,
   itemLoad, bodyKg, carryShare, carryKg, PACK_L, CONTAINER_KINDS, CTR_MAX, cutText, containerOf, kitLimits, packPlan,
