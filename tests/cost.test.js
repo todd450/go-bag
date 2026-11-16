@@ -121,8 +121,8 @@ test("the overview shows the household's spend and to-get, and each kit's in Wha
   const app = load({ fixture: "tests/household" });
   const html = app.run(`viewOverview(model())`), t = text(html);
   const hh = app.json(`householdCost(model())`);
-  assert.match(t, new RegExp(`\\$${hh.spent.total.toLocaleString("en-US")} spent`));
-  assert.match(t, new RegExp(`\\$${hh.toGet.total.toLocaleString("en-US")} to close every gap`));
+  assert.match(t, new RegExp(`Spent so far (about )?\\$${hh.spent.total.toLocaleString("en-US")}(?![\\d,])`));
+  assert.match(t, new RegExp(`To close every gap about \\$${hh.toGet.total.toLocaleString("en-US")}(?![\\d,])`));
   const sec = text(html.match(/<section class="costs[^"]*"[\s\S]*?<\/section>/)?.[0] || "");
   assert.ok(sec, "a What it costs section");
   for (const k of app.json(`S.kits.map(k => k.name)`)) assert.ok(sec.includes(k), `lists ${k}`);

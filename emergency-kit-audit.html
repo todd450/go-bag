@@ -165,7 +165,17 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 
 /* Overview */
 .ell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sum { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 16px 32px; }
+.sum { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 16px 32px; }
+/* The kits and expiring lists sit at the top of their column, however tall the score beside them is */
+.sum > .stack { align-content: start; }
+.sum .sec-h ~ .sec-h { margin-top: 18px; }
+/* The household's counts wrap between facts, never inside one; its dollars are a label and a figure a line */
+.counts span { white-space: nowrap; }
+.facts { margin: 0; max-width: 360px; border-top: 1px solid var(--rule); font-size: .85rem; }
+.facts > div { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 10px; padding: 6px 0; border-bottom: 1px solid var(--rule); }
+.facts dt { color: var(--ink-2); }
+.facts dd { margin: 0 0 0 auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.facts dd.fact-n { flex-basis: 100%; text-align: right; font-size: .78rem; color: var(--ink-2); }
 .sum .sum-score { border-right: 1px solid var(--rule); padding-right: 28px; }
 .sum-score { display: grid; gap: 8px; align-content: start; }
 @media (max-width: 760px) { .sum { grid-template-columns: 1fr; } .sum .sum-score { border-right: 0; padding-right: 0; border-bottom: 1px solid var(--rule); padding-bottom: 16px; } }
@@ -262,8 +272,9 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .mode { font-size: .8rem; color: var(--ink-2); }
 .bar { height: 6px; background: var(--rule); border-radius: 999px; overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--c); border-radius: 999px; }
-.band { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
-.band i { width: 9px; height: 9px; border-radius: 2px; }
+/* The band's word as a pill: neutral until the score is Ready, then green */
+.band { display: inline-flex; align-items: center; justify-self: start; font-size: .78rem; font-weight: 600; color: var(--ink); white-space: nowrap; background: var(--paper); border-radius: 999px; padding: 2px 10px; }
+.band.good { color: var(--good); background: color-mix(in srgb, var(--good) 10%, var(--card)); }
 .pct { font-size: .85rem; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; border: 1px solid transparent; background: var(--paper); color: var(--ink); border-radius: 999px; padding: 4px 11px 4px 9px; font-variant-numeric: tabular-nums; }
@@ -291,8 +302,15 @@ button.chip.ess:hover { border-color: var(--ink); }
   .hz-needs { flex-wrap: nowrap; overflow: hidden; -webkit-mask-image: linear-gradient(to right, #000 82%, transparent); mask-image: linear-gradient(to right, #000 82%, transparent); }
   .hz-panel { padding: 14px 16px; }
 }
-.kit-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px 40px; gap: 2px 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
+/* The whole row opens its kit: the name's button covers it, and a chevron at the end says so */
+.kit-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 72px 40px 14px; gap: 2px 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .9rem; }
 .kit-row .kit-miss { grid-column: 1 / -1; margin-top: -2px; }
+.kit-name::after { content: ""; position: absolute; inset: 0; border-radius: 6px; }
+.kit-name:focus-visible { outline: 0; }
+.kit-name:focus-visible::after { outline: 2px solid var(--brand); }
+.kit-row .chev { width: 14px; height: 14px; color: var(--rule-2); transition: color .15s, transform .15s; }
+.kit-row:hover .chev { color: var(--ink); transform: translateX(2px); }
+@media (prefers-reduced-motion: reduce) { .kit-row .chev { transition: none; } }
 /* What it costs (#138): the kits' table */
 .cost-grid { display: grid; gap: 16px; }
 .cost-t { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .9rem; }
@@ -882,12 +900,12 @@ for (const k of Object.keys(HOUSEHOLD)) Object.defineProperty(S, k, { get: () =>
 
 /* ---------- markup helpers ---------- */
 const esc =s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-/* Bars are neutral until a score is in good shape; red is kept for real problems (expired, overdue, a likely health emergency you can't handle). */
-// Each readiness band's colour, for bars and big numbers, in BANDS' order
-const BAND_COLORS = ["var(--good)", "var(--meter)", "var(--warn)"];
-const statusColor = s => BAND_COLORS[BANDS.indexOf(band(s))];
-const statusInk = s => s >= 40 && s < 75 ? "var(--ink)" : statusColor(s);
-const bandTag = s => `<span class="band"><i style="background:${statusColor(s)}"></i>${band(s)[1]}</span>`;
+/* Each colour has one job. A bar or ring is the meter's orange until the score is Ready, then green, and its number is
+   ink until then. Amber (--warn) is kept for things to act on (expiring soon, a need half met), and red for real
+   problems (expired, overdue, a likely health emergency you can't handle). */
+const statusColor = s => band(s) === BANDS[0] ? "var(--good)" : "var(--meter)";
+const statusInk = s => band(s) === BANDS[0] ? "var(--good)" : "var(--ink)";
+const bandTag = s => `<span class="band${band(s) === BANDS[0] ? " good" : ""}">${band(s)[1]}</span>`;
 const D = () => S.canWrite ? "" : "disabled";
 const when = t => t ? new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
 const amazonA = it => { const l = amazonLink(it); return l ? `<a class="buy small" href="${esc(l.href)}" target="_blank" rel="noopener noreferrer" title="${l.exact ? "This product on Amazon" : "Search Amazon for this item"}">${l.exact ? "On Amazon ↗" : "Find on Amazon ↗"}</a>` : ""; };
@@ -942,6 +960,7 @@ const ICONS = {
   phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
   spark: '<path d="M12 3c.6 4.5 2.5 6.4 7 7-4.5.6-6.4 2.5-7 7-.6-4.5-2.5-6.4-7-7 4.5-.6 6.4-2.5 7-7z"/>',
   no: '<circle cx="12" cy="12" r="7.5"/>',
+  chev: '<path d="M9 5.5l6.5 6.5L9 18.5"/>',
 };
 const icon = (k, cls = "ic") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${Object.hasOwn(ICONS, k) ? ICONS[k] : ICONS.other}</svg>`;
 /* The brand mark (#49): a supply case whose outline is the gauge. Two halves run from the bottom centre up
@@ -1063,8 +1082,11 @@ function viewOverview(M) {
         <div class="score"><span class="num" style="color:${overall == null ? "var(--ink)" : statusInk(sc)}">${overall ?? "–"}</span><span class="of">of 100</span></div>
       </div>
       ${overall == null ? "" : bandTag(sc)}
-      <p class="mono small muted">${pl(h.people, "person", "people")} · ${pl(h.pets, "pet")} · ${pl(S.kits.length, "kit")} · ${pl(S.items.length, "item")}${exp.length ? ` · <span style="color:var(--warn)">${exp.length} expiring</span>` : ""}</p>
-      <p class="small cost-sum">${cap(spentAmt(hc.spent))} spent${unpricedNote(hc.spent.unpriced)} · ${toGetAmt(hc.toGet)} to close every gap${unpricedNote(hc.toGet.unpriced)}</p>
+      <p class="mono small muted counts">${[pl(h.people, "person", "people"), pl(h.pets, "pet"), pl(S.kits.length, "kit"), pl(S.items.length, "item")].map((x, i, a) => `<span>${x}${i < a.length - 1 || exp.length ? " ·" : ""}</span>`).join(" ")}${exp.length ? ` <span style="color:var(--warn)">${exp.length} expiring</span>` : ""}</p>
+      <dl class="facts cost-sum">
+        <div><dt>Spent so far</dt><dd>${spentAmt(hc.spent)}</dd>${factNote(hc.spent.unpriced)}</div>
+        <div><dt>To close every gap</dt><dd>${toGetAmt(hc.toGet)}</dd>${factNote(hc.toGet.unpriced)}</div>
+      </dl>
       <p class="small muted">${hzNote}</p>
       ${how("score", "Your score is averaged across the emergencies that apply to you, weighted by how likely each one is, how bad it is to face unprepared and how much it matters to you.")}
     </div>
@@ -1072,7 +1094,7 @@ function viewOverview(M) {
       <div class="sec-h"><h2>Kits</h2><span class="small muted">Each against a standard kit of its type</span></div>
       ${S.kits.length ? `<div class="hz">${[...S.kits].sort((a, b) => M.kitRes[a.id].score - M.kitRes[b.id].score).map(k => kitRow(k, M.kitRes[k.id])).join("")}</div>`
         : `<p class="small muted">No kits yet. <button class="btn ghost sm" data-act="tab" data-v="kits">Add your first kit</button></p>`}
-      <div class="sec-h" style="margin-top:10px"><h2>Expiring</h2><span class="small muted">Expired items don't count</span></div>
+      <div class="sec-h"><h2>Expiring</h2><span class="small muted">Expired items don't count</span></div>
       ${exp.length ? `<div class="hz">${exp.map(x => `<div class="exp-row"><span class="ell"><b>${esc(x.it.name)}</b> <span class="muted">· ${esc(x.kit)}</span></span><span class="mono flag ${x.st}">${x.st === "expired" ? "Expired" : "Expires"} ${esc(x.it.expires)}</span></div>`).join("")}</div>`
         : `<p class="small muted">Nothing expires in the next 90 days${S.items.some(i => i.expires) ? "" : ". Add expiry dates to food, water, batteries and medications so they show up here"}.</p>`}
     </div>
@@ -1090,6 +1112,7 @@ function viewOverview(M) {
 /* ---------- what it costs, shown (#138) ---------- */
 const usd = n => "$" + Math.round(n).toLocaleString("en-US");
 const cap = s => s.replace(/^[a-z]/, c => c.toUpperCase());
+const factNote = n => n ? `<dd class="fact-n" title="Prescriptions and items in Other have no price">plus ${n} with no price</dd>` : "";
 const unpricedNote = n => n ? ` <span class="muted" title="Prescriptions and items in Other have no price">(+ ${n} unpriced)</span>` : "";
 /* What was spent: "about" unless every dollar of it is from receipts. What's left is always the list's estimate. */
 const spentAmt = s => `${s.paid < s.total || s.unpriced ? "about " : ""}<b>${usd(s.total)}</b>`;
@@ -1122,7 +1145,8 @@ function kitRow(k, r) {
     <button class="kit-name ell" data-act="gotoKit" data-id="${esc(k.id)}" title="Open ${esc(k.name)}"><b>${esc(k.name)}</b><span class="mode">${esc(r.std.label)} · ${esc(servesLine(r))}</span></button>
     <div class="bar" style="--c:${c}"><span style="width:${r.score}%"></span></div>
     <div class="pct">${r.score}%</div>
-    <p class="kit-miss small muted ell" title="${esc(missText)}">${esc(missText)}</p>
+    ${icon("chev", "ic chev")}
+    <p class="kit-miss small muted ell">${esc(missText)}</p>
   </div>`;
 }
 function kitReadyPanel(kit, r, M = model()) {
