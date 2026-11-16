@@ -227,8 +227,9 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .hz-tg::after { content: ""; position: absolute; inset: 0; border-radius: 6px; }
 .hz-tg:focus-visible { outline: 0; }
 .hz-tg:focus-visible::after { outline: 2px solid var(--brand); }
-.hz-sc { display: inline-flex; gap: 6px; align-items: center; justify-self: end; }
-.hz-sc .pct { min-width: 42px; }
+.hz-sc { display: grid; grid-template-columns: auto 1.7em 2.9em; gap: 6px; align-items: center; justify-self: end; }
+.hz-sc .imp { grid-column: 2; text-align: center; }
+.hz-sc .pct { grid-column: 3; text-align: right; }
 /* A picker on a row: its skin (bars or stars, a word, a chevron) with the real select lying invisibly over it, so a
    tap anywhere on it opens the browser's own list. 16px text stops phones zooming in on it. */
 /* An emergency's marks are only to read, and sit under the row's toggle, so a tap on them opens the emergency */
@@ -246,7 +247,7 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .hz-row:has(.hz-cost) .hz-needs { grid-column: 1; }
 /* Positioned so it clips its hidden words on a phone; clicks pass through it to the row's button. */
 .hz-needs { grid-column: 1 / -1; position: relative; pointer-events: none; display: flex; flex-wrap: wrap; gap: 3px 12px; font-size: .78rem; }
-/* Likelihood as three bars, and a need as its icon and name: missing in ink, some in amber with the amount, have in green with a check. */
+/* Likelihood as three bars, and a need as its icon and name: missing and some both in ink, some with its amount; have in green with a check. */
 .lik { display: inline-flex; gap: 2px; align-items: flex-end; height: 11px; flex: none; }
 .lik i { width: 3px; height: 5px; border-radius: 1px; background: var(--rule-2); }
 .lik i + i { height: 8px; } .lik i + i + i { height: 11px; }
@@ -255,8 +256,7 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .legend > span { display: inline-flex; gap: 5px; align-items: center; }
 .need { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
 .need .ic { width: 14px; height: 14px; color: var(--ink-2); }
-.need.miss { color: var(--ink); }
-.need.part, .need.part .ic { color: var(--warn); }
+.need.miss, .need.part { color: var(--ink); }
 .need.have, .need.have .ic { color: var(--good); }
 .need .amt, .need.more { color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .hz-panel { grid-column: 1 / -1; display: grid; gap: 10px; margin: 10px 0 14px; padding: 16px 20px; }
@@ -1101,7 +1101,7 @@ function viewOverview(M) {
   </div>
 
   <div class="stack">
-    <div class="sec-h"><h2>Emergencies</h2><div class="legend"><span class="need miss">${icon("water")}Missing</span><span class="need part">${icon("water")}Some</span><span class="need have">${icon("yes")}Have</span><span>${lik("moderate")}How likely</span><span><span class="imp-k" aria-hidden="true">★</span>Matters more to you</span></div></div>
+    <div class="sec-h"><h2>Emergencies</h2><div class="legend"><span>${lik("moderate")}How likely</span><span><span class="imp-k" aria-hidden="true">★</span>Matters more to you</span></div></div>
     ${group("Disasters and outages", sorted.filter(r => !r.hz.group))}
     ${group("Health emergencies", sorted.filter(r => r.hz.group === "health"), "Set from who lives here and their health on the Household tab. A first-aid course matters more than any kit.")}
     ${group("Everyday", sorted.filter(r => r.hz.group === "everyday"), "Small things that go wrong often. A kit that handles them is one you'll open, and so keep stocked.")}
@@ -1280,18 +1280,21 @@ function hzSet(hz, rel, off) {
   const sel = (id, act, label, o, on) => `<label class="f">${label}<select id="${id}-${hz.id}" data-change="${act}" data-id="${hz.id}" ${D()}>${opts(o, on)}</select></label>`;
   return `<div class="row hzp-set">${sel("lv", "level", "How likely it is for you", LEVELS, rel)}${off ? "" : sel("im", "importance", "How much it matters to you", IMPORTANCE, impOf(hz))}</div>`;
 }
-/* An emergency as a row: its name and when, its ratings and score, then its needs, missing first, six at most.
+/* The points closing a need's household gaps would add: what orders an emergency row's needs. */
+const needGain = (M, x) => (x.ess ? x.ess.filter(e => !e.have).map(e => essGap(M, x.cat, e)) : M.gaps.filter(g => g.cat === x.cat && !g.essential)).reduce((n, g) => n + gapGain(M, g), 0);
+/* An emergency as a row: its name and when, its ratings and score, then the needs it is short of, three at most: the
+   ones that would add the most points first, then missing before some. What it has is in the opened emergency.
    The name's button opens it, and covers the whole row. */
 function hzRow(r, h, M = model()) {
   const id = r.hz.id, open = S.openHz.has(id), off = LEVELS[r.rel][1] === 0;
   const lockedOff = r.hz.vehicle && h.vehicles === 0;
   const alarm = r.hz.group === "health" && r.rel === "high" && r.score < 50;
-  const rows = [...r.rows].sort((a, b) => needRank(a) - needRank(b)), more = rows.length - 6;
+  const rows = [...r.rows].sort((a, b) => needRank(a) - needRank(b)), gaps = rows.filter(x => needRank(x) < 2).map(x => [x, needGain(M, x)]).sort((a, b) => b[1] - a[1]).map(a => a[0]), more = gaps.length - 3;
   const c = off || lockedOff ? 0 : hzCost(r, h).toGet;
   return `<div class="hz-row${off ? " off" : ""}${open ? " open" : ""}">
     <span class="hz-nm"><button class="hz-tg" data-act="toggleHz" data-id="${id}" aria-expanded="${open}"${open ? ` aria-controls="hzp-${id}"` : ""} title="${esc(r.hz.name)} · ${esc(modeLine(r.hz))}">${esc(r.hz.name)}</button><span class="mode">${esc(modeLine(r.hz))}</span></span>
     <span class="hz-sc">${lockedOff ? `<span class="small muted">No vehicle</span>` : hzMarks(r.hz, r.rel, off)}<span class="pct"${alarm ? ` style="color:var(--bad)"` : ""}>${r.score}%${alarm ? `<span class="vh">, needs attention</span>` : ""}</span></span>
-    <span class="hz-needs">${rows.slice(0, 6).map(x => { const s = needRank(x); return `<span class="need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span class="vh">${NEED_WORD[s]} </span>${esc(catLabel(x.cat))}${s === 1 ? ` <span class="amt">${amount(x, h, "days").replace(/ <span[\s\S]*/, "")}</span>` : ""}</span>`; }).join("")}${more > 0 ? `<span class="need more">+${more} more</span>` : ""}</span>
+    <span class="hz-needs">${gaps.length ? "" : `<span class="need have">${icon("yes")}Everything covered</span>`}${gaps.slice(0, 3).map(x => { const s = needRank(x); return `<span class="need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span class="vh">${NEED_WORD[s]} </span>${esc(catLabel(x.cat))}${s === 1 ? ` <span class="amt">${amount(x, h, "days").replace(/ <span[\s\S]*/, "")}</span>` : ""}</span>`; }).join("")}${more > 0 ? `<span class="need more">+${more} more to get</span>` : ""}</span>
     ${c && (c.total || c.unpriced) ? `<span class="hz-cost">${c.total ? `${usd(c.total)}${c.unpriced ? ` <span title="${c.unpriced} more with no price">+${c.unpriced}</span>` : ""} to be ready` : "Not priced yet"}</span>` : ""}
   </div>${open ? hzPanel(r, h, M, rows) : ""}`;
 }
