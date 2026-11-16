@@ -188,3 +188,27 @@ test("the CLI prints the page for an address, and fails without printing for a b
   assert.equal(execFileSync(process.execPath, [cli], { encoding: "utf8" }), render({}));
   assert.throws(() => execFileSync(process.execPath, [cli, "<b>@x"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }));
 });
+
+// Issue #160: a stylesheet from another site would hold up the first paint until it answered. Both pages
+// ask for Inter's as a print stylesheet, which never blocks painting, and their own script switches it on
+// once it has loaded: text shows in the system font first and swaps. No inline handler does it, so the
+// landing keeps its rule above.
+test("neither page's first paint waits on Google Fonts, and each page's script switches the font on", () => {
+  for (const [file, html] of [["emergency-kit-audit.html", page], ["the landing", out]]) {
+    const sheets = [...html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*>/g)].map(m => m[0]);
+    assert.equal(sheets.length, 1, `${file} has one stylesheet link`);
+    assert.match(sheets[0], /\bmedia="print"/, `${file}: ${sheets[0]}`);
+    // Run the page's own switch against a stand-in link: already loaded, and still loading.
+    const code = html.match(/[^\n]*link\[rel="stylesheet"\]\[media="print"\][^\n]*/)?.[0].replace(/<\/script>.*$/, "");
+    assert.ok(code, `${file}'s script finds the print stylesheet`);
+    for (const loaded of [true, false]) {
+      const link = { media: "print", sheet: loaded ? {} : null, on: {}, addEventListener(t, fn) { this.on[t] = fn; } };
+      const ready = [];
+      const document = { querySelector: sel => (sel === 'link[rel="stylesheet"][media="print"]' ? link : null), addEventListener: (t, fn) => { if (t === "DOMContentLoaded") ready.push(fn); } };
+      vm.runInNewContext(code, { document });
+      ready.forEach(fn => fn());
+      if (!loaded) { assert.equal(link.media, "print", `${file}: stays print until it loads`); link.on.load(); }
+      assert.equal(link.media, "all", `${file}: switched on (${loaded ? "already loaded" : "on load"})`);
+    }
+  }
+});

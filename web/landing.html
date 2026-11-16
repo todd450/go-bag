@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Go Bag: see how ready your household is</title>
 <meta name="description" content="Photograph what's in your emergency kits. Go Bag scores them for who lives with you and where you live, then turns the gaps into a shopping list and a family plan.">
-<script>try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (/^sb-.+-auth-token$/.test(k) && localStorage.getItem(k)) { location.replace("/app"); break; } } } catch (e) {}</script>
+<script>try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (/^sb-.+-auth-token$/.test(k) && localStorage.getItem(k)) { location.replace("/app"); break; } } } catch (e) {}
+/* Inter's stylesheet is asked for as print, so the first paint never waits on Google; it is switched on once loaded (issue 160). */
+try { document.addEventListener("DOMContentLoaded", function () { var f = document.querySelector('link[rel="stylesheet"][media="print"]'); if (f) { var on = function () { f.media = "all"; }; if (f.sheet) on(); else f.addEventListener("load", on); } }); } catch (e) {}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print">
 <link rel="icon" type="image/svg+xml" href="data:,">
 <style>
 /* The public landing page (issue #77). Its tokens are the app's, copied in by tools/landing.js, so this

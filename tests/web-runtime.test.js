@@ -561,7 +561,8 @@ test("vercel.json serves / and /app fresh, the scripts forever, and photos throu
   assert.equal(v.outputDirectory, "dist");
   const headerFor = (source, key) => (v.headers.find(h => h.source === source)?.headers || []).find(h => h.key === key)?.value;
   for (const p of ["/", "/app", "/app/"]) assert.equal(headerFor(p, "Cache-Control"), "no-cache", p);
-  assert.equal(headerFor("/(supabase|signin|runtime).js", "Cache-Control"), "public, max-age=31536000, immutable");
+  // Every script the app page loads is kept for a year: each one's address carries a hash of its content (the build test above).
+  assert.equal(headerFor("/(supabase|signin|runtime|core).js", "Cache-Control"), "public, max-age=31536000, immutable");
   assert.equal(headerFor("/(.*)", "X-Content-Type-Options"), "nosniff");
   assert.equal(headerFor("/(.*)", "Referrer-Policy"), "strict-origin-when-cross-origin");
   assert.equal(headerFor("/(.*)", "X-Frame-Options"), "DENY");
