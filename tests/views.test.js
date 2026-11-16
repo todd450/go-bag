@@ -194,7 +194,7 @@ test("an emergency row names the three things it is short of that add the most p
 test("each group lists its emergencies most likely first, and among equally likely ones the least ready first", () => {
   for (const fixture of ["tests/household", "fixtures/empty-and-one/big-household"]) {
     const { run, json } = load({ fixture });
-    run(`S.showOff = true`);
+    run(`S.showOff = true; S.showLow = new Set(["", "health", "everyday"])`);
     const ids = [...run("viewOverview(model())").matchAll(/data-act="toggleHz" data-id="([^"]+)"/g)].map(m => m[1]);
     const rows = json(`model().results.map(r => ({ id: r.hz.id, group: r.hz.group || "", level: LEVELS[r.rel][1], score: r.score, wt: r.wt, applies: LEVELS[r.rel][1] > 0 && !(r.hz.vehicle && model().h.vehicles === 0) }))`);
     assert.equal(ids.length, rows.length, `${fixture}: every emergency has a row`);
@@ -209,6 +209,31 @@ test("each group lists its emergencies most likely first, and among equally like
       if (p.level === r.level && p.score === r.score) assert.ok(p.wt >= r.wt, `${fixture}: tied, ${p.id} (weight ${p.wt}) is before ${r.id} (weight ${r.wt})`);
     }
   }
+});
+
+test("a group's unlikely emergencies wait behind a button at its end, unless they matter more to the household", () => {
+  const { run, json } = load({ fixture: "tests/household" });
+  const drawn = () => [...run("viewOverview(model())").matchAll(/data-act="toggleHz" data-id="([^"]+)"/g)].map(m => m[1]);
+  const buttons = () => [...run("viewOverview(model())").matchAll(/data-act="toggleLow" data-g="([^"]*)" aria-expanded="(\w+)">([^<]*)</g)].map(([, g, open, label]) => ({ g, open, label }));
+  const rows = json(`model().results.map(r => ({ id: r.hz.id, group: r.hz.group || "", level: LEVELS[r.rel][1], score: r.score }))`);
+  const low = rows.filter(r => r.level === 1), health = low.filter(r => r.group === "health").map(r => r.id);
+  assert.ok(health.length >= 2 && low.length === health.length, "the standard household's Low emergencies are health ones");
+  // Closed: every emergency that applies but the Low ones, and one button, in their group
+  assert.deepEqual(drawn().sort(), rows.filter(r => r.level > 1).map(r => r.id).sort());
+  assert.deepEqual(buttons(), [{ g: "health", open: "false", label: `Show ${health.length} less likely` }]);
+  // They still count: hiding them is only what the list shows
+  assert.ok(json("model().active.map(r => r.hz.id)").includes(health[0]));
+  // Opened, they are at the end of their group, in the list's order
+  run(`ACT.toggleLow({ dataset: { g: "health" } })`);
+  assert.deepEqual(drawn().slice(-health.length - rows.filter(r => r.group === "everyday" && r.level > 1).length).slice(0, health.length).sort(), [...health].sort());
+  assert.deepEqual(buttons(), [{ g: "health", open: "true", label: `Hide ${health.length} less likely` }]);
+  run(`ACT.toggleLow({ dataset: { g: "health" } })`);
+  assert.equal(drawn().length, rows.filter(r => r.level > 1).length, "and hidden again");
+  // One the household marked as mattering more is never hidden, and isn't in the count
+  run(`S.hazards = { ...S.hazards, importance: { ...S.hazards?.importance, [${JSON.stringify(health[0])}]: "more" } }`);
+  assert.ok(drawn().includes(health[0]), "the starred one shows");
+  assert.ok(!drawn().includes(health[1]), "the others stay hidden");
+  assert.deepEqual(buttons(), [{ g: "health", open: "false", label: `Show ${health.length - 1} less likely` }]);
 });
 
 // An emergency's two ratings. On its row they are marks to read; its pickers are in the opened emergency.
@@ -312,7 +337,7 @@ test("Add the N missing adds each of the emergency's gaps that isn't on the list
 test("no block or essentials line reads more than it needs, in any scenario, emergency or kit", () => {
   const apps = [...countFixtures.map(f => [f, load({ fixture: f })]), ["screenshot case", screenshotCase()]];
   for (const [name, { run, json }] of apps) {
-    run(`syncDraft(); S.showOff = true; S.openHz = new Set(HAZARDS.map(h => h.id))`);
+    run(`syncDraft(); S.showOff = true; S.showLow = new Set(["", "health", "everyday"]); S.openHz = new Set(HAZARDS.map(h => h.id))`);
     const ess = new Set(json("Object.keys(ESSENTIALS).map(catLabel)"));
     const lines = needs(run("viewOverview(model())")).filter(n => ess.has(n.text.split(" · ")[0]));
     assert.ok(lines.length > 0, name);
@@ -417,7 +442,7 @@ test("at 390px each emergency keeps its name, pickers and score on one line and 
       lines: [...document.querySelectorAll(`#v-${S.view} .hz-row`)].map(r => { const b = r.querySelector(".hz-tg"), n = b.getBoundingClientRect(), c = r.querySelector(".hz-sc").getBoundingClientRect();
         return { name: b.textContent, width: Math.round(n.width), cut: b.scrollWidth > b.clientWidth, dy: Math.round(Math.abs(n.top + n.bottom - c.top - c.bottom) / 2) }; }),
       panels: document.querySelectorAll(`#v-${S.view} .hz-panel`).length });
-    S.view = "overview"; S.showOff = true; S.openHz = new Set(); render();
+    S.view = "overview"; S.showOff = true; S.showLow = new Set(["", "health", "everyday"]); S.openHz = new Set(); render();
     const views = [look("emergencies")];
     S.openHz = new Set(HAZARDS.map(h => h.id)); render(); views.push(look("opened emergencies"));
     for (const k of S.kits) { S.view = "kits"; S.openKit = k.id; render(); views.push(look(`kit ${k.name}`)); }

@@ -208,6 +208,7 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .grp { display: grid; gap: 4px; }
 .grp + .grp { margin-top: 14px; }
 .grp-h { display: grid; gap: 2px; }
+.grp-low { margin-top: 6px; }
 
 .hz { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--rule); }
 /* The emergencies: one column of rows, read top to bottom in their order, each its name, its ratings, score and needs,
@@ -888,7 +889,7 @@ const S = {
   // Old addresses: #plan and #review open Household, where the plan and the review now live, and #shop the Kits tab with Review open
   view: VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : ["#plan", "#review"].includes(location.hash) ? "household" : location.hash === "#shop" ? "kits" : "overview",
   live: false, loaded: false, slow: false, canWrite: true,
-  openKit: null, addKit: false, showOff: false, shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
+  openKit: null, addKit: false, showOff: false, showLow: new Set(), shopSort: "points", budget: "", openHz: new Set(), confirm: null, sel: new Set(), itemSort: "cat",
   listKit: null, // the kit whose Contents panel shows List; any other kit shows Flat-lay. Memory only: never saved
   flOpen: null, // the item whose flat-lay tile shows its fields, cleared when a kit is opened. Memory only
   toGet: null, // the kit whose switch is on To get; any other kit shows Packed. Memory only
@@ -1076,9 +1077,16 @@ function viewOverview(M) {
   const applies = r => LEVELS[r.rel][1] > 0 && !(r.hz.vehicle && h.vehicles === 0);
   const offCount = results.filter(r => !applies(r)).length;
   const hc = householdCost(M);
-  const group = (label, rows, note) => { rows = S.showOff ? rows : rows.filter(applies); return rows.length ? `<div class="grp">
+  /* A group's rows. Its unlikely emergencies (rated Low, and not marked as mattering more) wait behind a button at its
+     end, so the list is the ones to act on; they still count in the score. S.showLow holds the groups showing theirs. */
+  const group = (key, label, rows, note) => {
+    rows = S.showOff ? rows : rows.filter(applies);
+    const low = new Set(rows.filter(r => applies(r) && LEVELS[r.rel][1] === 1 && impOf(r.hz) === "normal")), open = S.showLow.has(key);
+    const shown = open ? rows : rows.filter(r => !low.has(r));
+    return rows.length ? `<div class="grp">
     <div class="grp-h"><span class="eyebrow">${label}</span>${note ? `<span class="small muted">${note}</span>` : ""}</div>
-    <div class="hz-grid">${rows.map(r => hzRow(r, h, M)).join("")}</div></div>` : ""; };
+    ${shown.length ? `<div class="hz-grid">${shown.map(r => hzRow(r, h, M)).join("")}</div>` : ""}
+    ${low.size ? `<div class="grp-low"><button class="btn ghost sm" data-act="toggleLow" data-g="${key}" aria-expanded="${open}">${open ? "Hide" : "Show"} ${low.size} less likely</button></div>` : ""}</div>` : ""; };
   return `
   <div class="panel sum">
     <div class="sum-score">
@@ -1108,9 +1116,9 @@ function viewOverview(M) {
 
   <div class="stack">
     <div class="sec-h"><h2>Emergencies</h2><div class="legend"><span>${lik("moderate")}How likely</span><span><span class="imp-k" aria-hidden="true">★</span>Matters more to you</span></div></div>
-    ${group("Disasters and outages", sorted.filter(r => !r.hz.group))}
-    ${group("Health emergencies", sorted.filter(r => r.hz.group === "health"), "Set from who lives here and their health on the Household tab. A first-aid course matters more than any kit.")}
-    ${group("Everyday", sorted.filter(r => r.hz.group === "everyday"), "Small things that go wrong often. A kit that handles them is one you'll open, and so keep stocked.")}
+    ${group("", "Disasters and outages", sorted.filter(r => !r.hz.group))}
+    ${group("health", "Health emergencies", sorted.filter(r => r.hz.group === "health"), "Set from who lives here and their health on the Household tab. A first-aid course matters more than any kit.")}
+    ${group("everyday", "Everyday", sorted.filter(r => r.hz.group === "everyday"), "Small things that go wrong often. A kit that handles them is one you'll open, and so keep stocked.")}
     ${offCount ? `<div><button class="btn ghost sm" data-act="toggleOff" aria-expanded="${!!S.showOff}">${S.showOff ? "Hide" : "Show"} ${offCount} that ${offCount === 1 ? "doesn't" : "don't"} apply to you</button></div>` : ""}
   </div>
   ${costsSection(M)}`;
@@ -2274,6 +2282,7 @@ const ACT = {
   },
   planMedDel: b => savePlan({ ...(S.plan || {}), meds: (S.plan?.meds || []).filter((_, i) => i !== +b.dataset.i) }),
   toggleOff: () => { S.showOff = !S.showOff; render(); },
+  toggleLow: b => { const g = b.dataset.g; S.showLow.has(g) ? S.showLow.delete(g) : S.showLow.add(g); render(); },
   toggleHz: b => { const id = b.dataset.id; S.openHz.has(id) ? S.openHz.delete(id) : S.openHz.add(id); render(); },
   askConfirm: b => { S.confirm = b.dataset.k; render(); },
   cancelConfirm: () => { S.confirm = null; render(); },
