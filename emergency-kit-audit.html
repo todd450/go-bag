@@ -1075,7 +1075,8 @@ function viewOverview(M) {
   const hzNote = assessed
     ? `Hazard levels for <b>${esc(S.hazards.location || S.profile?.location || "your area")}</b> checked ${when(assessed)}.`
     : `Only the emergencies every household faces are counted so far. <button class="btn ghost sm" data-act="tab" data-v="household">Check hazards for your area</button>`;
-  const sorted = [...results].sort((a, b) => b.wt - a.wt || a.score - b.score);
+  // Each group's rows: the most likely first, and among equally likely ones the least ready, then the one that weighs more in the score
+  const sorted = [...results].sort((a, b) => LEVELS[b.rel][1] - LEVELS[a.rel][1] || a.score - b.score || b.wt - a.wt);
   const applies = r => LEVELS[r.rel][1] > 0 && !(r.hz.vehicle && h.vehicles === 0);
   const offCount = results.filter(r => !applies(r)).length;
   const hc = householdCost(M);
