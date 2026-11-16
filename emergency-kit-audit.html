@@ -215,7 +215,7 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
    covers the whole row, and the pickers sit above it. */
 .hz-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; column-gap: 40px; border-top: 1px solid var(--rule); }
 .hz-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; align-content: start; padding: 9px 0 10px; border-bottom: 1px solid var(--rule); font-size: .9rem; }
-.hz-row.off :is(.hz-nm, .hz-needs, .pct) { opacity: .5; }
+.hz-row.off :is(.hz-nm, .hz-needs, .bar, .pct) { opacity: .5; }
 .kit-name { display: flex; gap: 8px; align-items: baseline; background: none; border: 0; padding: 2px 0; text-align: left; cursor: pointer; }
 .kit-name b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 .kit-name .mode { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -227,9 +227,10 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .hz-tg::after { content: ""; position: absolute; inset: 0; border-radius: 6px; }
 .hz-tg:focus-visible { outline: 0; }
 .hz-tg:focus-visible::after { outline: 2px solid var(--brand); }
-.hz-sc { display: grid; grid-template-columns: auto 2em 2.9em; gap: 6px; align-items: center; justify-self: end; }
+.hz-sc { display: grid; grid-template-columns: auto 2em 44px 2.9em; gap: 6px; align-items: center; justify-self: end; }
 .hz-sc .imp { grid-column: 2; text-align: center; }
-.hz-sc .pct { grid-column: 3; text-align: right; }
+.hz-sc .bar { grid-column: 3; }
+.hz-sc .pct { grid-column: 4; text-align: right; }
 /* A picker on a row: its skin (bars or stars, a word, a chevron) with the real select lying invisibly over it, so a
    tap anywhere on it opens the browser's own list. 16px text stops phones zooming in on it. */
 /* An emergency's marks are only to read, and sit under the row's toggle, so a tap on them opens the emergency */
@@ -298,7 +299,9 @@ button.chip.ess:hover { border-color: var(--ink); }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 560px) {
   .hz-row { padding: 8px 0; gap: 2px 12px; }
-  .hz-nm .mode, .hz-needs .more .to, .pick-t { display: none; }
+  .hz-nm .mode, .pick-t { display: none; }
+  /* No room to hold a place for stars: a row without them gives it to the name, and the bar and score still line up */
+  .hz-sc { grid-template-columns: auto auto 32px 2.9em; }
   /* One line of needs. "+N more" stays in view at its end, over whatever runs under it; a line without one fades out. */
   .hz-needs { flex-wrap: nowrap; overflow: hidden; }
   .hz-needs:not(:has(.more)) { -webkit-mask-image: linear-gradient(to right, #000 82%, transparent); mask-image: linear-gradient(to right, #000 82%, transparent); }
@@ -1285,7 +1288,7 @@ function hzSet(hz, rel, off) {
 }
 /* The points closing a need's household gaps would add: what orders an emergency row's needs. */
 const needGain = (M, x) => (x.ess ? x.ess.filter(e => !e.have).map(e => essGap(M, x.cat, e)) : M.gaps.filter(g => g.cat === x.cat && !g.essential)).reduce((n, g) => n + gapGain(M, g), 0);
-/* An emergency as a row: its name and when, its ratings and score, then the needs it is short of, three at most: the
+/* An emergency as a row: its name and when, its ratings and its score as a bar and a number (the kit rows' bar), then the needs it is short of, three at most: the
    ones that would add the most points first, then missing before some. What it has is in the opened emergency.
    The name's button opens it, and covers the whole row. */
 function hzRow(r, h, M = model()) {
@@ -1296,8 +1299,8 @@ function hzRow(r, h, M = model()) {
   const c = off || lockedOff ? 0 : hzCost(r, h).toGet;
   return `<div class="hz-row${off ? " off" : ""}${open ? " open" : ""}">
     <span class="hz-nm"><button class="hz-tg" data-act="toggleHz" data-id="${id}" aria-expanded="${open}"${open ? ` aria-controls="hzp-${id}"` : ""} title="${esc(r.hz.name)} · ${esc(modeLine(r.hz))}">${esc(r.hz.name)}</button><span class="mode">${esc(modeLine(r.hz))}</span></span>
-    <span class="hz-sc">${lockedOff ? `<span class="small muted">No vehicle</span>` : hzMarks(r.hz, r.rel, off)}<span class="pct"${alarm ? ` style="color:var(--bad)"` : ""}>${r.score}%${alarm ? `<span class="vh">, needs attention</span>` : ""}</span></span>
-    <span class="hz-needs">${gaps.length ? "" : `<span class="need have">${icon("yes")}Everything covered</span>`}${gaps.slice(0, 3).map(x => { const s = needRank(x); return `<span class="need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span class="vh">${NEED_WORD[s]} </span>${esc(catLabel(x.cat))}${s === 1 ? ` <span class="amt">${amount(x, h, "days").replace(/ <span[\s\S]*/, "")}</span>` : ""}</span>`; }).join("")}${more > 0 ? `<span class="need more">+${more} more<span class="to"> to get</span></span>` : ""}</span>
+    <span class="hz-sc">${lockedOff ? `<span class="small muted">No vehicle</span>` : hzMarks(r.hz, r.rel, off)}<span class="bar" aria-hidden="true" style="--c:${statusColor(r.score)}"><span style="width:${r.score}%"></span></span><span class="pct"${alarm ? ` style="color:var(--bad)"` : ""}>${r.score}%${alarm ? `<span class="vh">, needs attention</span>` : ""}</span></span>
+    <span class="hz-needs">${gaps.length ? "" : `<span class="need have">${icon("yes")}Everything covered</span>`}${gaps.slice(0, 3).map(x => { const s = needRank(x); return `<span class="need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span class="vh">${NEED_WORD[s]} </span>${esc(catLabel(x.cat))}${s === 1 ? ` <span class="amt">${amount(x, h, "days").replace(/ <span[\s\S]*/, "")}</span>` : ""}</span>`; }).join("")}${more > 0 ? `<span class="need more">+${more} more</span>` : ""}</span>
     ${c && (c.total || c.unpriced) ? `<span class="hz-cost">${c.total ? `${usd(c.total)}${c.unpriced ? ` <span title="${c.unpriced} more with no price">+${c.unpriced}</span>` : ""} to be ready` : "Not priced yet"}</span>` : ""}
   </div>${open ? hzPanel(r, h, M, rows) : ""}`;
 }
