@@ -191,6 +191,26 @@ test("an emergency row names the three things it is short of that add the most p
   }
 });
 
+test("each group lists its emergencies most likely first, and among equally likely ones the least ready first", () => {
+  for (const fixture of ["tests/household", "fixtures/empty-and-one/big-household"]) {
+    const { run, json } = load({ fixture });
+    run(`S.showOff = true`);
+    const ids = [...run("viewOverview(model())").matchAll(/data-act="toggleHz" data-id="([^"]+)"/g)].map(m => m[1]);
+    const rows = json(`model().results.map(r => ({ id: r.hz.id, group: r.hz.group || "", level: LEVELS[r.rel][1], score: r.score, wt: r.wt, applies: LEVELS[r.rel][1] > 0 && !(r.hz.vehicle && model().h.vehicles === 0) }))`);
+    assert.equal(ids.length, rows.length, `${fixture}: every emergency has a row`);
+    const shown = ids.map(id => rows.find(r => r.id === id)).filter(r => r.applies);
+    assert.ok(new Set(shown.map(r => r.level)).size > 1, `${fixture}: more than one likelihood to order`);
+    for (const [i, r] of shown.entries()) {
+      const p = shown[i - 1];
+      if (!p || p.group !== r.group) continue;
+      assert.ok(p.level >= r.level, `${fixture}: ${p.id} (level ${p.level}) is before ${r.id} (level ${r.level})`);
+      if (p.level === r.level) assert.ok(p.score <= r.score, `${fixture}: equally likely, ${p.id} (${p.score}%) is before ${r.id} (${r.score}%)`);
+      // A tie on both goes to the one that weighs more in the score
+      if (p.level === r.level && p.score === r.score) assert.ok(p.wt >= r.wt, `${fixture}: tied, ${p.id} (weight ${p.wt}) is before ${r.id} (weight ${r.wt})`);
+    }
+  }
+});
+
 // An emergency's two ratings. On its row they are marks to read; its pickers are in the opened emergency.
 const marks = html => { const row = html.split('id="hzp-')[0];
   return { selects: (row.match(/<select/g) || []).length, likely: plain((row.match(/<span class="hz-mk" title[^>]*>([\s\S]*?)<\/span><\/span><\/span>/) || ["", ""])[1].replace(/<span class="lik"[\s\S]*?<\/span>/, m => ` ${(m.match(/<i class="on">/g) || []).length} bars `)),
