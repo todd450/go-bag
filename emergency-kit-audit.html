@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print">
 <link rel="icon" type="image/svg+xml" href="data:,">
 <style>
 /* Layout: calm white workspace — one typeface, black controls, Cobalt for the brand, orange only for Partway progress.
@@ -2632,6 +2632,8 @@ function syncDraft() { if (!S.hhDirty) S.hhDraft = clone(S.profile) || blankHous
 document.querySelectorAll("#tabs button").forEach(b => b.insertAdjacentHTML("afterbegin", TAB_ICON[b.dataset.v]));
 syncDraft();
 render();
+/* Inter's stylesheet is asked for as print, so the first paint never waits on Google; it is switched on once loaded (#160). */
+{ const f = document.querySelector('link[rel="stylesheet"][media="print"]'), on = () => { f.media = "all"; }; if (f) f.sheet ? on() : f.addEventListener("load", on); }
 (async () => {
   const use = n => window.claude?.use ? window.claude.use(n).catch(() => null) : Promise.resolve(null);
   const [d, a, s, u] = await Promise.all([use("db"), use("assets"), use("sample"), use("user")]);
