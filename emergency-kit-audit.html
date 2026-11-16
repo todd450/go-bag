@@ -227,7 +227,7 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .hz-tg::after { content: ""; position: absolute; inset: 0; border-radius: 6px; }
 .hz-tg:focus-visible { outline: 0; }
 .hz-tg:focus-visible::after { outline: 2px solid var(--brand); }
-.hz-sc { display: grid; grid-template-columns: auto 1.7em 2.9em; gap: 6px; align-items: center; justify-self: end; }
+.hz-sc { display: grid; grid-template-columns: auto 2em 2.9em; gap: 6px; align-items: center; justify-self: end; }
 .hz-sc .imp { grid-column: 2; text-align: center; }
 .hz-sc .pct { grid-column: 3; text-align: right; }
 /* A picker on a row: its skin (bars or stars, a word, a chevron) with the real select lying invisibly over it, so a
@@ -298,8 +298,11 @@ button.chip.ess:hover { border-color: var(--ink); }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 560px) {
   .hz-row { padding: 8px 0; gap: 2px 12px; }
-  .hz-nm .mode, .hz-needs .more, .pick-t { display: none; }
-  .hz-needs { flex-wrap: nowrap; overflow: hidden; -webkit-mask-image: linear-gradient(to right, #000 82%, transparent); mask-image: linear-gradient(to right, #000 82%, transparent); }
+  .hz-nm .mode, .hz-needs .more .to, .pick-t { display: none; }
+  /* One line of needs. "+N more" stays in view at its end, over whatever runs under it; a line without one fades out. */
+  .hz-needs { flex-wrap: nowrap; overflow: hidden; }
+  .hz-needs:not(:has(.more)) { -webkit-mask-image: linear-gradient(to right, #000 82%, transparent); mask-image: linear-gradient(to right, #000 82%, transparent); }
+  .hz-needs .more { position: sticky; right: 0; flex: none; padding-left: 20px; background: linear-gradient(to right, transparent, var(--paper) 16px); }
   .hz-panel { padding: 14px 16px; }
 }
 /* The whole row opens its kit: the name's button covers it, and a chevron at the end says so */
@@ -1294,7 +1297,7 @@ function hzRow(r, h, M = model()) {
   return `<div class="hz-row${off ? " off" : ""}${open ? " open" : ""}">
     <span class="hz-nm"><button class="hz-tg" data-act="toggleHz" data-id="${id}" aria-expanded="${open}"${open ? ` aria-controls="hzp-${id}"` : ""} title="${esc(r.hz.name)} · ${esc(modeLine(r.hz))}">${esc(r.hz.name)}</button><span class="mode">${esc(modeLine(r.hz))}</span></span>
     <span class="hz-sc">${lockedOff ? `<span class="small muted">No vehicle</span>` : hzMarks(r.hz, r.rel, off)}<span class="pct"${alarm ? ` style="color:var(--bad)"` : ""}>${r.score}%${alarm ? `<span class="vh">, needs attention</span>` : ""}</span></span>
-    <span class="hz-needs">${gaps.length ? "" : `<span class="need have">${icon("yes")}Everything covered</span>`}${gaps.slice(0, 3).map(x => { const s = needRank(x); return `<span class="need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span class="vh">${NEED_WORD[s]} </span>${esc(catLabel(x.cat))}${s === 1 ? ` <span class="amt">${amount(x, h, "days").replace(/ <span[\s\S]*/, "")}</span>` : ""}</span>`; }).join("")}${more > 0 ? `<span class="need more">+${more} more to get</span>` : ""}</span>
+    <span class="hz-needs">${gaps.length ? "" : `<span class="need have">${icon("yes")}Everything covered</span>`}${gaps.slice(0, 3).map(x => { const s = needRank(x); return `<span class="need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span class="vh">${NEED_WORD[s]} </span>${esc(catLabel(x.cat))}${s === 1 ? ` <span class="amt">${amount(x, h, "days").replace(/ <span[\s\S]*/, "")}</span>` : ""}</span>`; }).join("")}${more > 0 ? `<span class="need more">+${more} more<span class="to"> to get</span></span>` : ""}</span>
     ${c && (c.total || c.unpriced) ? `<span class="hz-cost">${c.total ? `${usd(c.total)}${c.unpriced ? ` <span title="${c.unpriced} more with no price">+${c.unpriced}</span>` : ""} to be ready` : "Not priced yet"}</span>` : ""}
   </div>${open ? hzPanel(r, h, M, rows) : ""}`;
 }

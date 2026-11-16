@@ -168,6 +168,8 @@ test("an emergency row names the three things it is short of that add the most p
   assert.match(html, /<span class="lik" role="img" aria-label="Moderate likelihood"[^>]*><i class="on"><\/i><i class="on"><\/i><i><\/i><\/span>/);
   assert.match(html, />16%</);
   assert.doesNotMatch(html, /hz-panel/, "closed, it shows no panel");
+  // One short of nothing says so, in place of a list
+  assert.deepEqual(tags(run(`(M => { const r = M.results.find(r => r.hz.id === "housefire"); return hzRow({ ...r, rows: r.rows.map(x => ({ ...x, cov: 1 })) }, M.h, M); })(model())`)), [{ state: "have", text: "Everything covered" }]);
   // Every emergency: at most three tags, only what it is short of, most points first, and "+N more to get" for the rest
   run(`S.showOff = true`);
   for (const id of json("HAZARDS.map(h => h.id)")) {
