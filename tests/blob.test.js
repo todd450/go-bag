@@ -32,12 +32,16 @@ function stub({ household = HID, rpc, read } = {}) {
     calls.push({ path: u.pathname, search: u.search, init });
     if (u.pathname === "/rest/v1/rpc/my_household_id") {
       if (rpc) return rpc();
-      return new Response(JSON.stringify(household), { status: 200, headers: { "content-type": "application/json" } });
+      // `household` may be a function of the caller's token, for two accounts in two households.
+      const token = new Headers(init.headers).get("authorization").replace("Bearer ", "");
+      const answer = typeof household === "function" ? household(token) : household;
+      return new Response(JSON.stringify(answer), { status: 200, headers: { "content-type": "application/json" } });
     }
     if (u.pathname.startsWith(READ)) {
       if (read) return read(u);
       // Storage's own type is whatever the uploader said; the function must not pass it on.
-      return new Response(BYTES, { status: 200, headers: { "content-type": "text/html" } });
+      return new Response(BYTES, { status: 200, headers: { "content-type": "text/html", "content-length": String(BYTES.length),
+        "cache-control": "public, max-age=1", "set-cookie": "x=1", etag: '"abc"' } });
     }
     return new Response("unexpected", { status: 599 });
   };
@@ -119,6 +123,67 @@ test("a remembered household is one token's only, and is asked again after five 
   });
 });
 
+test("two tokens in two households each read their own folder, remembered or not", () =>
+  withStub({ household: token => (token === "theirs" ? OTHER : HID) }, async calls => {
+    for (let n = 0; n < 2; n++) {
+      await get(ID);
+      await get(ID, { cookie: "gb_at=theirs" });
+    }
+    assert.deepEqual(reads(calls).map(c => [new Headers(c.init.headers).get("authorization"), c.path]), [
+      ["Bearer tok", `${READ}photos/${HID}/${ID}`], ["Bearer theirs", `${READ}photos/${OTHER}/${ID}`],
+      ["Bearer tok", `${READ}photos/${HID}/${ID}`], ["Bearer theirs", `${READ}photos/${OTHER}/${ID}`],
+    ]);
+    assert.equal(calls.filter(c => c.path === "/rest/v1/rpc/my_household_id").length, 2);
+  }));
+
+test("the photo's length is sent on, and nothing else of Storage's headers", () =>
+  withStub({}, async () => {
+    const r = await get(ID);
+    assert.equal(r.headers.get("content-length"), String(BYTES.length), "so a photo cut off part way is not kept");
+    assert.deepEqual([...r.headers.keys()].sort(), ["cache-control", "content-length", "content-type"]);
+  }));
+
+test("an encoded photo goes without a length, and an empty one is not served or kept", async () => {
+  await withStub({ read: () => new Response(BYTES, { headers: { "content-encoding": "gzip", "content-length": "5" } }) }, async () => {
+    const r = await get(ID);
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get("content-length"), null);
+  });
+  await withStub({ read: () => new Response("", { status: 200, headers: { "content-length": "0" } }) }, async () => {
+    const r = await get(ID);
+    assert.equal(r.status, 502);
+    assert.equal(r.headers.get("cache-control"), "no-store");
+  });
+});
+
+test("the five hundred and first token starts the memory again, and one still being asked keeps its answer", async () => {
+  let release;
+  const gate = new Promise(res => { release = res; });
+  await withStub({ rpc: async () => { await gate; return new Response(JSON.stringify(HID)); } }, async calls => {
+    const waiting = get(ID); // asked before the memory fills, answered after it is cleared
+    for (let n = 0; n < 499; n++) blob.households.set("t" + n, { at: Date.now(), answer: Promise.resolve({ household: OTHER }) });
+    assert.equal(blob.households.size, 500);
+    const next = get(ID, { cookie: "gb_at=new" });
+    assert.equal(blob.households.size, 1, "only the new token is remembered");
+    release();
+    assert.equal((await waiting).status, 200);
+    assert.equal((await next).status, 200);
+    assert.deepEqual(reads(calls).map(c => c.path), [`${READ}photos/${HID}/${ID}`, `${READ}photos/${HID}/${ID}`]);
+  });
+});
+
+test("callers who shared a failed lookup all get the failure, and the next one asks again", async () => {
+  let fail = true;
+  await withStub({ rpc: () => fail ? new Response("oops", { status: 500 }) : new Response(JSON.stringify(HID)) }, async calls => {
+    const rs = await Promise.all([get(ID), get(ID), get(ID)]);
+    assert.deepEqual(rs.map(r => r.status), [502, 502, 502]);
+    assert.equal(calls.filter(c => c.path === "/rest/v1/rpc/my_household_id").length, 1);
+    fail = false;
+    assert.equal((await get(ID)).status, 200);
+    assert.equal(reads(calls).length, 1);
+  });
+});
+
 test("when Storage refuses a photo, the household is forgotten and asked for again", async () => {
   let refuse = true;
   await withStub({ read: () => refuse ? new Response("{}", { status: 400 }) : new Response(BYTES) }, async calls => {
@@ -168,7 +233,7 @@ test("an answer from my_household_id that is not a household id reads nothing", 
 });
 
 test("a refused read gives 404, and Storage or the database unreachable gives 502, none of them kept", async () => {
-  for (const status of [400, 401, 403, 404]) {
+  for (const status of [400, 401, 403, 404, 429, 500, 503]) {
     await withStub({ read: () => new Response(JSON.stringify({ error: "not found" }), { status }) }, async () => {
       const r = await get(ID);
       assert.equal(r.status, 404, `read answered ${status}`);

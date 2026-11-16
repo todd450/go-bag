@@ -62,13 +62,18 @@ export async function GET(request) {
     households.delete(token);
     return text("Not found", 404);
   }
-  if (!r.body) return text("Photos are unavailable", 502);
+  // The length is sent on, so a photo cut off part way fails in the browser and is not kept for a year.
+  // Storage sends photos as they are; were one ever encoded in transit, its length would no longer be the
+  // length of what is sent here, so it goes without one.
+  const length = r.headers.get("content-length"), plain = !r.headers.get("content-encoding");
+  if (!r.body || length === "0") return text("Photos are unavailable", 502);
   return new Response(r.body, {
     status: 200,
     headers: {
       // The type comes from the id's own extension, never from what Storage or the uploader said.
       "content-type": TYPE[id.slice(id.lastIndexOf(".") + 1)],
       "cache-control": "private, max-age=31536000, immutable",
+      ...(plain && /^[1-9]\d*$/.test(length || "") ? { "content-length": length } : {}),
     },
   });
 }
