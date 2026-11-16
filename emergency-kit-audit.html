@@ -229,8 +229,11 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .hz-tg:focus-visible::after { outline: 2px solid var(--brand); }
 .hz-sc { display: grid; grid-template-columns: auto 2em 44px 2.9em; gap: 6px; align-items: center; justify-self: end; }
 .hz-sc .imp { grid-column: 2; text-align: center; }
-.hz-sc .bar { grid-column: 3; }
-.hz-sc .pct { grid-column: 4; text-align: right; }
+/* The bar and score take no clicks of their own, so a tap on them reaches the row's toggle even on a dimmed row, whose opacity lifts them over it */
+.hz-sc .bar { grid-column: 3; pointer-events: none; }
+.hz-sc .pct { grid-column: 4; text-align: right; pointer-events: none; }
+/* Two narrow columns: the bars say how likely without the word, which leaves the name its room beside the score's bar */
+@media (min-width: 761px) and (max-width: 1050px) { .hz-sc .pick-t { display: none; } }
 /* A picker on a row: its skin (bars or stars, a word, a chevron) with the real select lying invisibly over it, so a
    tap anywhere on it opens the browser's own list. 16px text stops phones zooming in on it. */
 /* An emergency's marks are only to read, and sit under the row's toggle, so a tap on them opens the emergency */

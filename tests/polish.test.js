@@ -187,6 +187,22 @@ test("an emergency's row says what it still costs to be ready, as its opened pan
   assert.deepEqual(app.json(ROW_COSTS).filter(r => r.off && r.shown !== null), [], "no cost on a row that is off");
 });
 
+test("on a tablet an emergency's name keeps its room beside the score's bar, and every row opens from its bar, dimmed or not", { skip }, async () => {
+  for (const width of [768, 900]) await onPage("tests/household", width, "overview", async ev => {
+    await ev(`S.showOff = true; render()`);
+    const rows = JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll(".hz-row")].map(r => { r.scrollIntoView({ block: "center" });
+      const b = r.querySelector(".hz-tg"), bar = r.querySelector(".hz-sc .bar").getBoundingClientRect();
+      return { name: b.textContent, width: b.getBoundingClientRect().width, cut: b.scrollWidth > b.clientWidth, bar: bar.width, off: r.classList.contains("off"),
+        hit: document.elementFromPoint(bar.left + bar.width / 2, bar.top + bar.height / 2) === b }; }))`));
+    assert.ok(rows.length > 10 && rows.some(r => r.off), `${width}px: ${rows.length} rows, some that don't apply`);
+    for (const r of rows) {
+      assert.equal(r.bar, 44, `${width}px ${r.name}: its bar shows`);
+      assert.ok(!r.cut || r.width >= 150, `${width}px ${r.name}: cut to ${r.width}px`);
+      assert.ok(r.hit, `${width}px ${r.name}${r.off ? " (off)" : ""}: a click on its bar reaches the row's button`);
+    }
+  });
+});
+
 test("an emergency's cost sits under its score, clear of its needs, at phone and desktop width", { skip }, async () => {
   for (const width of [390, 1440]) await onPage("tests/household", width, "overview", async ev => {
     const rows = JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll(".hz-row")].filter(r => r.querySelector(".hz-cost")).map(r => { const b = s => { const x = r.querySelector(s).getBoundingClientRect(); return { l: x.left, r: x.right, t: x.top, b: x.bottom }; };
