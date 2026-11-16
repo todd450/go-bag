@@ -210,10 +210,9 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .grp-h { display: grid; gap: 2px; }
 
 .hz { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--rule); }
-/* The emergencies: two columns of rows, each its name, its likelihood and importance pickers, score and needs; an
-   opened one's panel spans both, and dense packing pulls the row beside it back up beside it. The name's button
-   covers the whole row, and the pickers sit above it. */
-.hz-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; column-gap: 40px; border-top: 1px solid var(--rule); }
+/* The emergencies: one column of rows, read top to bottom in their order, each its name, its ratings, score and needs,
+   with an opened one's panel under its row. The name's button covers the whole row. */
+.hz-grid { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--rule); }
 .hz-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; align-content: start; padding: 9px 0 10px; border-bottom: 1px solid var(--rule); font-size: .9rem; }
 .hz-row.off :is(.hz-nm, .hz-needs, .bar, .pct) { opacity: .5; }
 .kit-name { display: flex; gap: 8px; align-items: baseline; background: none; border: 0; padding: 2px 0; text-align: left; cursor: pointer; }
@@ -232,8 +231,6 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 /* The bar and score take no clicks of their own, so a tap on them reaches the row's toggle even on a dimmed row, whose opacity lifts them over it */
 .hz-sc .bar { grid-column: 3; pointer-events: none; }
 .hz-sc .pct { grid-column: 4; text-align: right; pointer-events: none; }
-/* Two narrow columns: the bars say how likely without the word, which leaves the name its room beside the score's bar */
-@media (min-width: 761px) and (max-width: 1050px) { .hz-sc .pick-t { display: none; } }
 /* A picker on a row: its skin (bars or stars, a word, a chevron) with the real select lying invisibly over it, so a
    tap anywhere on it opens the browser's own list. 16px text stops phones zooming in on it. */
 /* An emergency's marks are only to read, and sit under the row's toggle, so a tap on them opens the emergency */
@@ -272,7 +269,6 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .hzp-need.have, .hzp-need.have .ic { color: var(--good); }
 .hzp-need .amt { font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; font-size: .8rem; text-align: right; }
 .hzp-note { display: block; font-size: .8rem; }
-@media (max-width: 760px) { .hz-grid { grid-template-columns: minmax(0, 1fr); } }
 .mode { font-size: .8rem; color: var(--ink-2); }
 .bar { height: 6px; background: var(--rule); border-radius: 999px; overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--c); border-radius: 999px; }
