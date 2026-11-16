@@ -229,6 +229,17 @@ test("a group's unlikely emergencies wait behind a button at its end, unless the
   assert.deepEqual(buttons(), [{ g: "health", open: "true", label: `Hide ${health.length} less likely` }]);
   run(`ACT.toggleLow({ dataset: { g: "health" } })`);
   assert.equal(drawn().length, rows.filter(r => r.level > 1).length, "and hidden again");
+  // An opened one is never hidden either: rated Low in its own panel, it stays where it is, and out of the count
+  const mod = rows.find(r => r.group === "health" && r.level === 2).id;
+  run(`S.openHz = new Set([${JSON.stringify(mod)}]); S.hazards = { ...S.hazards, levels: { ...S.hazards?.levels, [${JSON.stringify(mod)}]: "low" } }`);
+  assert.equal(json(`LEVELS[model().results.find(r => r.hz.id === ${JSON.stringify(mod)}).rel][1]`), 1, "it is rated Low now");
+  assert.ok(drawn().includes(mod), "rated Low while open, it still shows");
+  assert.match(run("viewOverview(model())"), new RegExp(`id="hzp-${mod}"`), "with its panel");
+  assert.deepEqual(buttons(), [{ g: "health", open: "false", label: `Show ${health.length} less likely` }]);
+  run(`S.openHz = new Set()`);
+  assert.ok(!drawn().includes(mod), "closed, it joins the others behind the button");
+  assert.deepEqual(buttons(), [{ g: "health", open: "false", label: `Show ${health.length + 1} less likely` }]);
+  run(`S.hazards = { ...S.hazards, levels: { ...S.hazards.levels, [${JSON.stringify(mod)}]: "moderate" } }`);
   // One the household marked as mattering more is never hidden, and isn't in the count
   run(`S.hazards = { ...S.hazards, importance: { ...S.hazards?.importance, [${JSON.stringify(health[0])}]: "more" } }`);
   assert.ok(drawn().includes(health[0]), "the starred one shows");

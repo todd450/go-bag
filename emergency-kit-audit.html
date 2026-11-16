@@ -1078,10 +1078,11 @@ function viewOverview(M) {
   const offCount = results.filter(r => !applies(r)).length;
   const hc = householdCost(M);
   /* A group's rows. Its unlikely emergencies (rated Low, and not marked as mattering more) wait behind a button at its
-     end, so the list is the ones to act on; they still count in the score. S.showLow holds the groups showing theirs. */
+     end, so the list is the ones to act on; they still count in the score. S.showLow holds the groups showing theirs.
+     An opened one is never hidden: its ratings are set in its panel, so rating it Low there must not take it away. */
   const group = (key, label, rows, note) => {
     rows = S.showOff ? rows : rows.filter(applies);
-    const low = new Set(rows.filter(r => applies(r) && LEVELS[r.rel][1] === 1 && impOf(r.hz) === "normal")), open = S.showLow.has(key);
+    const low = new Set(rows.filter(r => applies(r) && LEVELS[r.rel][1] === 1 && impOf(r.hz) === "normal" && !S.openHz.has(r.hz.id))), open = S.showLow.has(key);
     const shown = open ? rows : rows.filter(r => !low.has(r));
     return rows.length ? `<div class="grp">
     <div class="grp-h"><span class="eyebrow">${label}</span>${note ? `<span class="small muted">${note}</span>` : ""}</div>
