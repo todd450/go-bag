@@ -1359,7 +1359,7 @@ function planBar(M) {
   const left = shopItems().filter(e => !e.done);
   if (!left.length) return "";
   const price = e => lineCost(e, M.h) || 0;
-  return `<aside class="plan-bar" aria-label="Your plan"><div class="stack"><b>${left.length} planned · about $${left.reduce((a, e) => a + price(e), 0).toLocaleString()}</b>${M.overall == null ? "" : `<span class="small">Readiness ${M.overall} → <b>${scoreIfBought(left)}</b> once packed</span>`}</div><button class="btn sm" id="plan-review" data-act="allKits">${icon("cart")}Shopping list<span class="vh">, the whole plan</span></button></aside>`;
+  return `<aside class="plan-bar" aria-label="Your plan"><div class="stack"><b>${left.length} planned · about $${left.reduce((a, e) => a + price(e), 0).toLocaleString()}</b>${M.overall == null ? "" : `<span class="small">Readiness ${M.overall} → <b>${scoreIfBought(left, M)}</b> once packed</span>`}</div><button class="btn sm" id="plan-review" data-act="allKits">${icon("cart")}Shopping list<span class="vh">, the whole plan</span></button></aside>`;
 }
 /* An item's fields, as [class, label, html]: its List row's cells and its opened tile's fields, so the two never drift.
    Each writes through the data-change="item" handler. The Essential html is empty outside the five checklist categories. */
@@ -1758,7 +1758,7 @@ function shopRow(e, i, over) {
 function shopTools(M, P, kit) {
   const { left, I, sort, budget, pick, spent } = P;
   if (!left.length) return "";
-  const after = M.overall == null ? null : scoreIfBought(left), pickAfter = pick && M.overall != null ? scoreIfBought(left.filter(e => pick.has(e.id))) : null;
+  const after = M.overall == null ? null : scoreIfBought(left, M), pickAfter = pick && M.overall != null ? scoreIfBought(left.filter(e => pick.has(e.id)), M) : null;
   const total = left.reduce((a, e) => a + (I(e).price || 0), 0), rx = left.filter(e => I(e).price === null).length;
   return `<div class="row" style="justify-content:space-between"><b>${left.length} to buy</b><button class="btn ghost sm" data-act="shopShare"${kit ? ` data-kit="${esc(kit.id)}"` : ""}>Share list</button></div>
     <p class="shop-sum">About <b>$${total.toLocaleString()}</b>${rx ? ` plus ${rx} prescription item${rx === 1 ? "" : "s"}` : ""}.${after != null && after > M.overall ? ` Buying it all takes readiness from ${M.overall} to <b>${after}</b>.` : ""}</p>
@@ -1796,7 +1796,7 @@ function shopSection(M, P, kit) {
 /* Review (#121): the tools, every open line grouped by trip (#123), Free tonight, the gaps no kit takes, then Got it. */
 function viewShop(M) {
   const items = shopItems(), left = items.filter(x => !x.done), got = items.filter(x => x.done), P = shopPlan(M, left);
-  const loose = shopSection(M, { ...P, order: [] }, null), free = freeGaps(M), base = scoreIfBought(left), to = free.length && scoreIfBought([...left, ...free.map(g => shopFromGap(g, M.h))]);
+  const loose = shopSection(M, { ...P, order: [] }, null), free = freeGaps(M), base = scoreIfBought(left, M), to = free.length && scoreIfBought([...left, ...free.map(g => shopFromGap(g, M.h))], M);
   return `
   <div class="stack">
     <p class="muted" style="max-width:70ch">Tick things off as you buy them, and each goes straight into a kit.</p>
