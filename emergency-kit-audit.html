@@ -1142,7 +1142,7 @@ function kitRow(k, r) {
     : [lacks.length ? `Missing ${lacks.length > 3 ? `${lacks.slice(0, 2).join(", ")} and ${lacks.length - 2} more` : orList(lacks, "and")}.` : "",
       short.length ? `Short on ${short.join(", ")}.` : ""].filter(Boolean).join(" ");
   return `<div class="kit-row">
-    <button class="kit-name ell" data-act="gotoKit" data-id="${esc(k.id)}" title="Open ${esc(k.name)}. ${esc(missText)}"><b>${esc(k.name)}</b><span class="mode">${esc(r.std.label)} · ${esc(servesLine(r))}</span></button>
+    <button class="kit-name ell" data-act="gotoKit" data-id="${esc(k.id)}" title="Open ${esc(k.name)}"><b>${esc(k.name)}</b><span class="mode">${esc(r.std.label)} · ${esc(servesLine(r))}</span></button>
     <div class="bar" style="--c:${c}"><span style="width:${r.score}%"></span></div>
     <div class="pct">${r.score}%</div>
     ${icon("chev", "ic chev")}
