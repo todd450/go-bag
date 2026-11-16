@@ -597,14 +597,15 @@ function scoreIfBought(list, M = model()) {
 function overallWith(M, add) {
   const tw = M.active.reduce((a, r) => a + r.wt, 0);
   if (!tw) return null;
-  const typeOf = Object.fromEntries(HOUSEHOLD.kits.map(k => [k.id, k.type]));
   // The stock of kits of these types with the added items that sit in one of them, or null when none does:
   // what stock(types) would be with the items in the household. Worked out once per set of types.
   const base = modelStocks.get(M), plus = new Map();
   const stockWith = types => {
     const k = types.join();
     if (!plus.has(k)) {
-      const more = add.filter(it => Object.hasOwn(typeOf, it.kitId) && types.includes(typeOf[it.kitId]));
+      // The kits itemsIn(types) looks in, found the way it finds them
+      const kitIds = new Set(HOUSEHOLD.kits.filter(kit => types.includes(kit.type)).map(kit => kit.id));
+      const more = add.filter(it => kitIds.has(it.kitId));
       plus.set(k, more.length ? stockPlus(base?.get(k) || stock(types), more) : null);
     }
     return plus.get(k);

@@ -68,6 +68,35 @@ test("it holds for an item past its date, an item in a kit that is gone, and a h
   assert.equal(app.run(`(M => scoreIfBought(${LINES}(model()), M))(model())`), null, "nothing rated scores nothing, bought or not");
 });
 
+test("an emergency with a mode and kits of its own is filled from its mode's stock, as the model fills it", () => {
+  // No emergency is shaped like this today. model() scores one from its mode's stock and ignores its own kits,
+  // so a line bought into a kit of its mode moves it, and one bought into its own kits alone doesn't.
+  const app = load({ fixture: "tests/household" });
+  app.run(SLOW);
+  app.run(`HAZARDS.push({ id: "made_up", name: "Made up", severity: "critical", mode: "shelter", kits: ["car"], days: 30, base: () => "high", needs: ["water", "food"] })`);
+  const r = app.json(`(() => {
+    const M = model(), home = HOUSEHOLD.kits.find(k => k.type === "home").id, car = HOUSEHOLD.kits.find(k => k.type === "car").id;
+    const line = kitId => ({ cat: "water", qty: 5000, unit: "L", name: "Water", kits: ["home"], kitId });
+    return { active: M.active.some(x => x.hz.id === "made_up"), now: M.overall,
+      home: [scoreIfBought([line(home)], M), slowIfBought([line(home)])], car: [scoreIfBought([line(car)], M), slowIfBought([line(car)])] };
+  })()`);
+  assert.ok(r.active, "the made-up emergency counts");
+  assert.equal(r.home[0], r.home[1], "into a home kit");
+  assert.equal(r.car[0], r.car[1], "into a car kit");
+  assert.ok(r.home[1] > r.now, "water at home moves the score, so the case is a real one");
+  assert.notEqual(r.home[1], r.car[1], "and where it goes matters");
+});
+
+test("two kits with one id, which the database rules out, still score as the model scores them", () => {
+  const app = load({ fixture: "tests/household" });
+  app.run(SLOW);
+  for (const types of [["home", "car"], ["car", "home"]]) {
+    app.run(`S.kits = ${JSON.stringify(types.map(type => ({ id: "dup", type, name: type })))}; S.items = []`);
+    const [a, b] = app.json(`(() => { const e = { cat: "water", qty: 500, unit: "L", name: "Water", kits: ["home"], kitId: "dup" }; return [scoreIfBought([e], model()), slowIfBought([e])]; })()`);
+    assert.equal(a, b, types.join(" then "));
+  }
+});
+
 test("scoring a line changes neither the household's items nor the model it was scored from", () => {
   const app = load({ fixture: "tests/household" });
   const r = app.json(`(() => {
