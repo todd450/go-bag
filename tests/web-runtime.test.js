@@ -26,12 +26,13 @@ function fakeSupabase({ session = SESSION, rpc = {}, rows = [] } = {}) {
   const writes = [], reads = [], rpcCalls = [], log = [], uploads = [], removes = [], signIns = [];
   const channels = [];
   const authFns = [];
-  let failNext = null;
+  let failNext = null, failRead = null;
   const answers = { my_household: () => ({ data: HID, error: null }), ...rpc };
   const matches = (r, filters) => filters.every(([k, v]) => r[k] === v);
   const run = st => {
     if (st.op === "select") {
       reads.push(st);
+      if (failRead) { const error = failRead; failRead = null; return { data: null, error }; }
       const found = [...table.values()].filter(r => matches(r, st.filters)).map(r => Object.fromEntries(st.cols.split(",").map(c => [c, r[c]])));
       if (st.single) return { data: found[0] ?? null, error: null };
       return { data: st.range ? found.slice(st.range[0], st.range[1] + 1) : found, error: null };
@@ -86,25 +87,31 @@ function fakeSupabase({ session = SESSION, rpc = {}, rows = [] } = {}) {
     client, table, writes, reads, rpcCalls, log, uploads, removes, channels, signIns, broadcast,
     authChange: (event, s) => authFns.forEach(fn => fn(event, s)),
     failNextWrite: e => { failNext = e; },
+    failNextRead: e => { failRead = e; },
   };
 }
 
 // Runs web/runtime.js in its own context and returns the window.claude it made.
-function runtime({ search = "", dom = null, ...opts } = {}) {
+// `storage` is the browser's localStorage as a Map (left out, there is none, as in a private window that blocks it).
+function runtime({ search = "", dom = null, storage = null, ...opts } = {}) {
   const sb = fakeSupabase(opts);
-  const replaced = [], reloads = [];
+  const replaced = [], reloads = [], heard = {};
   const window = {
     supabase: { createClient: () => sb.client },
     GO_BAG_CONFIG: { supabaseUrl: "https://db.example", supabaseKey: "pk" },
     goBagSignIn: (...args) => sb.signIns.push({ client: args[0], argc: args.length, opts: args.length > 1 ? JSON.parse(JSON.stringify(args[1])) : undefined }),
   };
-  const document = { body: {}, head: { append() {} }, addEventListener() {}, cookie: "", visibilityState: "visible", ...dom };
+  const document = { body: {}, head: { append() {} }, addEventListener: (type, fn) => (heard[type] ||= []).push(fn), cookie: "", visibilityState: "visible", ...dom };
+  const localStorage = storage && { getItem: k => (storage.has(k) ? storage.get(k) : null), setItem: (k, v) => storage.set(k, String(v)) };
   vm.runInNewContext(RUNTIME, {
     window, document, crypto: globalThis.crypto, queueMicrotask, setTimeout, TextDecoder,
     location: { search, pathname: "/app", origin: "https://go-bag.example", reload: () => reloads.push(1) },
     history: { replaceState: (_s, _t, url) => replaced.push(url) },
+    ...(localStorage ? { localStorage } : {}),
   });
-  return { claude: window.claude, sb, document, replaced, reloads };
+  // Comes back to the tab, the way the browser tells the page.
+  const comeBack = () => (heard.visibilitychange || []).forEach(fn => fn());
+  return { claude: window.claude, sb, document, replaced, reloads, comeBack };
 }
 
 const pending = (p, ms = 30) => Promise.race([p.then(() => "resolved"), new Promise(r => setTimeout(() => r("pending"), ms))]);
@@ -423,6 +430,174 @@ test("a rejoin reloads everything, since changes made while the socket was down 
   assert.deepEqual(seen.at(-1), [{ id: "k5", name: "Missed" }]);
 });
 
+/* ---------- one draw, and none for nothing new (#159) ---------- */
+
+const ALL = [["kits"], ["items"], ["household", "profile"], ["household", "hazards"], ["household", "review"], ["household", "shopping"], ["household", "plan"]];
+// Listens the way the page does, on both collections and the five household docs, and counts what each hears.
+function listenAll(db) {
+  const heard = Object.fromEntries(ALL.map(([c, id]) => [id || c, 0])), ticks = [];
+  let tick = 0;
+  for (const [c, id] of ALL) {
+    const on = () => { heard[id || c]++; ticks.push(tick); queueMicrotask(() => tick++); };
+    if (id) db.doc(`${c}/${id}`).onSnapshot(on); else db.collection(c).onSnapshot(on);
+  }
+  return { heard, ticks, total: () => Object.values(heard).reduce((a, b) => a + b, 0) };
+}
+const SOME = [
+  { col: "kits", id: "k1", data: { name: "Car", where: { room: "garage", shelf: 2 } } },
+  { col: "items", id: "i1", data: { name: "Water", qty: 2 } },
+  { col: "household", id: "profile", data: { location: "Anytown" } },
+  { col: "household", id: "plan", data: { meet: "The oak" } },
+];
+
+test("when the household loads, every listener hears once and all in the same tick, so the page can draw once", async () => {
+  const { claude } = runtime({ rows: SOME });
+  const l = listenAll(await claude.use("db"));
+  await settle();
+  assert.deepEqual(l.heard, { kits: 1, items: 1, profile: 1, hazards: 1, review: 1, shopping: 1, plan: 1 });
+  assert.deepEqual(l.ticks, [0, 0, 0, 0, 0, 0, 0], "no microtask ran between the first and the last");
+});
+
+test("coming back to the tab, or a rejoin, with nothing changed tells the page nothing", async () => {
+  const { claude, sb, comeBack } = runtime({ rows: SOME });
+  const l = listenAll(await claude.use("db"));
+  await settle();
+  const reads = sb.reads.length;
+  // The database hands a doc back with its keys in its own order: that is not a change.
+  sb.table.set(`${HID}/kits/k1`, { household_id: HID, col: "kits", id: "k1", data: { where: { shelf: 2, room: "garage" }, name: "Car" } });
+  comeBack();
+  await settle();
+  sb.channels[0].status("SUBSCRIBED");
+  await settle();
+  assert.ok(sb.reads.length > reads, "it did read again");
+  assert.equal(l.total(), 7, "and nobody heard a thing");
+});
+
+test("coming back to a change tells only the listeners on what changed, once each", async () => {
+  const { claude, sb, comeBack } = runtime({ rows: SOME });
+  const db = await claude.use("db");
+  const l = listenAll(db);
+  const seen = [];
+  db.collection("kits").onSnapshot(s => seen.push(docsOf(s)));
+  await settle();
+  const put = (col, id, data) => sb.table.set(`${HID}/${col}/${id}`, { household_id: HID, col, id, data });
+
+  put("kits", "k1", { name: "Car", where: { room: "garage", shelf: 3 } });
+  comeBack();
+  await settle();
+  assert.deepEqual(l.heard, { kits: 2, items: 1, profile: 1, hazards: 1, review: 1, shopping: 1, plan: 1 }, "a change deep in one kit");
+  assert.equal(seen.at(-1)[0].where.shelf, 3);
+
+  put("household", "plan", { meet: "The gate" });
+  sb.table.delete(`${HID}/items/i1`);
+  put("household", "review", { done: true });
+  comeBack();
+  await settle();
+  assert.deepEqual(l.heard, { kits: 2, items: 2, profile: 1, hazards: 1, review: 2, shopping: 1, plan: 2 }, "a changed doc, a deleted item and a new doc");
+  assert.deepEqual(l.ticks.slice(-3), [l.ticks.at(-1), l.ticks.at(-1), l.ticks.at(-1)], "all three in one tick");
+});
+
+test("a save or a live update to one household doc is heard by that doc's listener alone", async () => {
+  const { claude, sb } = runtime({ rows: SOME });
+  const db = await claude.use("db");
+  const l = listenAll(db);
+  await settle();
+  await db.doc("household/plan").set({ meet: "The gate" });
+  assert.deepEqual(l.heard, { kits: 1, items: 1, profile: 1, hazards: 1, review: 1, shopping: 1, plan: 2 });
+
+  sb.table.set(`${HID}/household/profile`, { household_id: HID, col: "household", id: "profile", data: { location: "Elsewhere" } });
+  sb.broadcast("update", { col: "household", id: "profile" });
+  await settle();
+  assert.deepEqual(l.heard, { kits: 1, items: 1, profile: 2, hazards: 1, review: 1, shopping: 1, plan: 2 });
+
+  sb.failNextWrite({ code: "500", message: "down" });
+  await assert.rejects(db.doc("household/plan").set({ meet: "Nowhere" }));
+  assert.equal(l.heard.plan, 4, "the refused save shows and rolls back");
+  assert.equal(l.total(), 11, "and no other listener hears it");
+});
+
+test("the page's own save coming back as a live update tells it nothing", async () => {
+  const { claude, sb } = runtime({ rows: SOME });
+  const db = await claude.use("db");
+  const l = listenAll(db);
+  await settle();
+  await db.doc("items/i2").set({ name: "Torch", qty: 1 });
+  await db.doc("items/i1").delete();
+  assert.equal(l.heard.items, 3);
+  sb.broadcast("insert", { col: "items", id: "i2" });
+  sb.broadcast("delete", { col: "items", id: "i1" });
+  await settle();
+  assert.equal(l.heard.items, 3, "what came back is what the page already shows");
+  assert.equal(l.total(), 9);
+});
+
+/* ---------- the read that doesn't wait for the household (#159) ---------- */
+
+// Holds back the database's answer to "which household is mine" until the test lets it go.
+function heldHousehold(answer = HID) {
+  let go;
+  const held = new Promise(r => { go = r; });
+  return { rpc: { my_household: () => held.then(() => ({ data: answer, error: null })) }, go: () => go() };
+}
+
+test("a first visit reads the household's docs only once the database has said which household it is, then remembers it", async () => {
+  const storage = new Map(), h = heldHousehold();
+  const { claude, sb } = runtime({ rows: SOME, storage, rpc: h.rpc });
+  const use = claude.use("db");
+  await settle();
+  assert.equal(sb.reads.length, 0, "nothing to name yet");
+  h.go();
+  const kits = await new Promise(async r => (await use).collection("kits").onSnapshot(r));
+  assert.equal(docsOf(kits).length, 1);
+  assert.equal(storage.get("gb_hid:u1"), HID, "kept under the account, not for whoever signs in next");
+  assert.equal(storage.size, 1);
+});
+
+test("on a later visit the read starts at once, beside the household lookup, and is the only read", async () => {
+  const storage = new Map([["gb_hid:u1", HID.toUpperCase()]]), h = heldHousehold();
+  const { claude, sb } = runtime({ rows: SOME, storage, rpc: h.rpc });
+  const use = claude.use("db");
+  await settle();
+  assert.equal(sb.reads.length, 1, "already reading while the lookup is out");
+  assert.equal(filtersOf(sb.reads[0]).household_id, HID);
+  assert.equal(await pending(use), "pending", "but nothing is handed to the page until the database answers");
+  h.go();
+  const kits = await new Promise(async r => (await use).collection("kits").onSnapshot(r));
+  assert.deepEqual(docsOf(kits).map(k => k.id), ["k1"]);
+  await settle();
+  assert.equal(sb.reads.length, 1, "the household was not read twice");
+});
+
+test("a remembered household the database no longer agrees with is dropped, and its rows never reach the page", async () => {
+  const storage = new Map([["gb_hid:u1", OTHER], ["gb_hid:u2", OTHER]]);
+  const { claude, sb } = runtime({ storage, rows: [...SOME, { household_id: OTHER, col: "kits", id: "k2", data: { name: "Not ours" } }] });
+  const db = await claude.use("db");
+  const kits = await new Promise(r => db.collection("kits").onSnapshot(r));
+  assert.deepEqual(docsOf(kits).map(k => k.id), ["k1"], "the stand-in has no row-level security, so this is the runtime's own doing");
+  assert.equal(filtersOf(sb.reads.at(-1)).household_id, HID);
+  assert.equal(storage.get("gb_hid:u1"), HID, "and the right one is remembered now");
+  assert.equal(storage.get("gb_hid:u2"), OTHER, "another account's is left alone");
+});
+
+test("a remembered value that is no household id, an early read that fails, or no storage at all: the page still loads", async () => {
+  const junk = runtime({ rows: SOME, storage: new Map([["gb_hid:u1", "x' or 1=1"]]), rpc: heldHousehold().rpc });
+  junk.claude.use("db");
+  await settle();
+  assert.equal(junk.sb.reads.length, 0, "nothing is read for a value that isn't an id");
+
+  const flaky = runtime({ rows: SOME, storage: new Map([["gb_hid:u1", HID]]) });
+  flaky.sb.failNextRead({ message: "down" });
+  const kits = await new Promise(async r => (await flaky.claude.use("db")).collection("kits").onSnapshot(r));
+  assert.equal(docsOf(kits).length, 1, "read again once the household is known");
+
+  const none = runtime({ rows: SOME });
+  const again = await new Promise(async r => (await none.claude.use("db")).collection("kits").onSnapshot(r));
+  assert.equal(docsOf(again).length, 1);
+
+  const refused = runtime({ rows: SOME, storage: new Map([["gb_hid:u1", HID]]), rpc: { my_household: () => ({ data: null, error: { message: "no" } }) } });
+  assert.equal(await pending(refused.claude.use("db")), "pending", "no household, no page, whatever was remembered");
+});
+
 /* ---------- assets ---------- */
 
 test("photos go in the household's folder, and the page keeps its <uuid>.<ext> ids", async () => {
@@ -470,6 +645,32 @@ test("the page boots on the Vercel runtime and loads the standard household", as
 });
 
 /* ---------- the build ---------- */
+
+test("the page draws once when the household arrives, and at once for each change after that", async () => {
+  const f = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "household.json"), "utf8"));
+  const rows = [
+    ...["kits", "items"].flatMap(col => f[col].map(({ id, ...data }) => ({ col, id, data }))),
+    ...["profile", "hazards"].map(id => ({ col: "household", id, data: f[id] })),
+  ];
+  const { claude, sb, comeBack } = runtime({ rows });
+  const app = load({ boot: true, claude });
+  app.run("globalThis.__draws = 0; { const r = render; render = function () { __draws++; return r.apply(this, arguments); }; }");
+  await settle(6);
+  assert.equal(app.json("S.loaded"), true);
+  assert.equal(app.json("__draws"), 1, "seven snapshots, one draw");
+
+  comeBack();
+  await settle(6);
+  assert.equal(app.json("__draws"), 1, "back on the tab with nothing new: no draw");
+
+  const db = await claude.use("db");
+  await db.doc("items/new1").set({ name: "Torch", qty: 1, kitId: f.kits[0].id });
+  assert.equal(app.json("__draws"), 2, "a save draws before it returns");
+  assert.equal(app.json("S.items.length"), f.items.length + 1);
+  sb.broadcast("insert", { col: "items", id: "new1" });
+  await settle(6);
+  assert.equal(app.json("__draws"), 2, "and its echo draws nothing");
+});
 
 const walk = (dir, base = "") => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e =>
   e.isDirectory() ? walk(path.join(dir, e.name), base + e.name + "/") : [base + e.name]);

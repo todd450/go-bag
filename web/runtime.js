@@ -34,6 +34,14 @@
   // The household every read and write names. Set once, before anything resolves.
   let hid = null;
 
+  // An account's household never changes, so this browser remembers it per account. On the next visit the
+  // household's docs are asked for at once, naming that household, while the database is asked which
+  // household it really is (#159). The answer still decides: a read for any other household is dropped.
+  const hidKey = uid => `gb_hid:${uid}`;
+  const remembered = uid => { try { const v = uid && localStorage.getItem(hidKey(uid)); return UUID.test(v || "") ? v.toLowerCase() : null; } catch { return null; } };
+  const remember = (uid, h) => { try { if (uid) localStorage.setItem(hidKey(uid), h); } catch {} };
+  let early = null; // { hid, rows: Promise<rows | null> }: the read started before the household was confirmed
+
   /* ---------- the account button (#154) ---------- */
   // A round button with the signed-in person's initial, at the right end of the page's header (.hdr-end),
   // after the readiness score. It opens a small panel saying who is signed in, with Log out: a plain link to
@@ -102,10 +110,13 @@
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { setCookie(null); card(); return never(); }
     setCookie(session);
+    const uid = session.user?.id, guess = remembered(uid);
+    if (guess) early = { hid: guess, rows: Promise.resolve().then(() => readAll(guess)).catch(() => null) };
     const { data, error } = await Promise.resolve().then(() => sb.rpc("my_household")).catch(e => ({ error: e }));
-    if (error || typeof data !== "string" || !UUID.test(data)) { card({ state: "unavailable" }); return never(); }
+    if (error || typeof data !== "string" || !UUID.test(data)) { early = null; card({ state: "unavailable" }); return never(); }
     hid = data.toLowerCase();
-    const uid = session.user?.id;
+    if (early?.hid !== hid) early = null;
+    remember(uid, hid);
     sb.auth.onAuthStateChange((event, s) => {
       if (event === "SIGNED_OUT" || !s) { setCookie(null); location.reload(); return; }
       // Another account signed in in another tab: its household isn't this one.
@@ -122,20 +133,49 @@
   const subs = new Set();
   const metadata = { fromCache: false, hasPendingWrites: false };
   let loaded = false, loading = null;
-  const notify = col => { for (const s of subs) if (s.col === col) s.fire(); };
+  // Tells the page about a change in `col`: every listener on the collection, and of the listeners on one doc
+  // only those whose doc is in `ids` (every one when `ids` is left out). They all fire in the same tick, so the
+  // page can draw once for the lot.
+  const notify = (col, ids) => { for (const s of subs) if (s.col === col && (s.id === undefined || !ids || ids.has(s.id))) s.fire(); };
   const docs = () => sb.from("docs");
+  // The same JSON value, whatever order its keys come in: the database hands a doc back with its keys reordered.
+  const same = (a, b) => {
+    if (a === b) return true;
+    if (!a || !b || typeof a !== "object" || typeof b !== "object" || Array.isArray(a) !== Array.isArray(b)) return false;
+    const ka = Object.keys(a), kb = Object.keys(b);
+    return ka.length === kb.length && ka.every(k => Object.hasOwn(b, k) && same(a[k], b[k]));
+  };
 
-  async function loadAll() {
-    const fresh = Object.fromEntries(COLS.map(c => [c, new Map()]));
+  // Every doc of household `h`, a thousand rows at a time.
+  async function readAll(h) {
+    const rows = [];
     for (let from = 0; ; from += 1000) {
-      const { data, error } = await docs().select("col,id,data").eq("household_id", hid).order("col").order("id").range(from, from + 999);
+      const { data, error } = await docs().select("col,id,data").eq("household_id", h).order("col").order("id").range(from, from + 999);
       if (error) throw fail("unavailable", error.message);
-      for (const r of data) fresh[r.col]?.set(r.id, r.data);
+      rows.push(...data);
       if (data.length < 1000) break;
     }
-    for (const c of COLS) store[c] = fresh[c];
+    return rows;
+  }
+
+  // Reads the household's docs and tells the page what is different from what it has: everything the first
+  // time, and after that only the collections and docs that changed, so a reload that finds nothing new
+  // (coming back to the tab, a rejoin) draws nothing.
+  async function loadAll() {
+    const head = early; early = null; // the read started at sign-in is used once, and only for this household
+    const rows = (head?.hid === hid && await head.rows) || await readAll(hid);
+    const fresh = Object.fromEntries(COLS.map(c => [c, new Map()]));
+    for (const r of rows) fresh[r.col]?.set(r.id, r.data);
+    const first = !loaded, changes = [];
+    for (const c of COLS) {
+      const old = store[c], now = fresh[c], ids = new Set();
+      for (const [id, d] of now) if (!old.has(id) || !same(old.get(id), d)) ids.add(id);
+      for (const id of old.keys()) if (!now.has(id)) ids.add(id);
+      store[c] = now;
+      if (first) changes.push([c]); else if (ids.size) changes.push([c, ids]);
+    }
     loaded = true;
-    COLS.forEach(notify);
+    for (const [c, ids] of changes) notify(c, ids);
   }
   const ensureLoaded = () => loading || (loading = loadAll().catch(e => { loading = null; for (const s of subs) s.err?.(e); throw e; }));
 
@@ -153,9 +193,10 @@
       if (error || seq.get(key) !== mine) return;
       found = data;
     }
-    if (found) store[col].set(id, found.data);
+    // A message about what the page already shows (its own save coming back, say) draws nothing.
+    if (found) { if (store[col].has(id) && same(store[col].get(id), found.data)) return; store[col].set(id, found.data); }
     else if (!store[col].delete(id)) return;
-    notify(col);
+    notify(col, new Set([id]));
   }
 
   async function listen(session) {
@@ -168,8 +209,9 @@
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && loaded) loadAll().catch(() => {}); });
   }
 
-  const subscribe = (col, fire, err) => {
-    const s = { col, fire, err };
+  // `id` names one doc; without it the listener is on the whole collection.
+  const subscribe = (col, id, fire, err) => {
+    const s = { col, id, fire, err };
     subs.add(s);
     if (loaded) queueMicrotask(fire); else ensureLoaded().catch(() => {});
     return () => subs.delete(s);
@@ -179,25 +221,25 @@
   async function write(col, id, next, run) {
     const map = store[col];
     if (!map) throw fail("invalid_argument", "unknown collection " + col);
-    const had = map.has(id), prev = map.get(id);
+    const had = map.has(id), prev = map.get(id), one = new Set([id]);
     if (next === undefined) map.delete(id); else map.set(id, clone(next));
-    notify(col);
+    notify(col, one);
     const { error } = await run();
     if (error) {
       if (had) map.set(id, prev); else map.delete(id);
-      notify(col);
+      notify(col, one);
       throw fail(error.code === "42501" ? "invalid_argument" : "unavailable", error.message);
     }
   }
 
   const db = {
     collection: col => ({
-      onSnapshot: (cb, err) => subscribe(col, () => cb({ metadata, docs: [...(store[col] || [])].map(([id, d]) => ({ id, data: () => clone(d) })) }), err),
+      onSnapshot: (cb, err) => subscribe(col, undefined, () => cb({ metadata, docs: [...(store[col] || [])].map(([id, d]) => ({ id, data: () => clone(d) })) }), err),
     }),
     doc: path => {
       const [col, id] = String(path).split("/");
       return {
-        onSnapshot: (cb, err) => subscribe(col, () => {
+        onSnapshot: (cb, err) => subscribe(col, id, () => {
           const m = store[col], exists = !!m?.has(id);
           cb({ metadata, id, exists, data: () => (exists ? clone(m.get(id)) : undefined) });
         }, err),

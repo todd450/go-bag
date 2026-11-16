@@ -2653,14 +2653,18 @@ render();
   // Someone with no household and no kits yet, who opened no tab by its link, starts where setting up starts: Household
   const done = (k, snap) => { if (!snap.metadata?.fromCache) seen.add(k); if (seen.size >= all) { if (!S.loaded && !location.hash && !S.profile && !S.kits.length) S.view = "household"; S.loaded = true; S.slow = false; clearTimeout(timer); } };
   const fail = () => { clearTimeout(timer); S.loaded = true; render(); };
+  // While the household loads, its snapshots (all seven arrive together) draw once, after the last of them (#159).
+  // Once it has loaded, a change draws at once, so what a save changes is on the page before the action that saved returns.
+  let owed = false;
+  const draw = () => { if (owed) return; if (S.loaded) return render(); owed = true; Promise.resolve().then(() => { owed = false; render(); }); };
   for (const [key, col] of Object.entries(COLS)) {
-    db.collection(col).onSnapshot(snap => { S[key] = snap.docs.map(x => ({ id: x.id, ...x.data() })); done(key, snap); render(); }, fail);
+    db.collection(col).onSnapshot(snap => { S[key] = snap.docs.map(x => ({ id: x.id, ...x.data() })); done(key, snap); draw(); }, fail);
   }
   for (const key of HOUSEHOLD_DOCS) {
     db.doc("household/" + key).onSnapshot(snap => {
       S[key] = snap.exists ? clone(snap.data()) : null;
       if (key === "profile") syncDraft();
-      done(key, snap); render();
+      done(key, snap); draw();
     }, fail);
   }
 })();
