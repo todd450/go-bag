@@ -233,6 +233,25 @@ test("an emergency's amount stands out from the words beside it: in the name's i
   });
 });
 
+// On a phone the amount stands alone (the founder, 17 Nov 2026): "to be ready" goes from sight, not from a screen reader,
+// and the needs get the room it gave back. At desktop width the words stay.
+test("on a phone an emergency's cost shows just the amount, with the words kept for screen readers; on a desktop the words show", { skip }, async () => {
+  for (const width of [390, 1440]) await onPage("tests/household", width, "overview", async ev => {
+    const rows = JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll(".hz-cost")].filter(c => c.querySelector("b")).map(c => { const w = c.querySelector(".hz-ready"), x = w.getBoundingClientRect();
+      const box = c.getBoundingClientRect(), end = Math.max(...[...c.children].filter(e => e !== w).map(e => e.getBoundingClientRect().right));
+      return { said: c.textContent, past: box.right - end, w: x.width, h: x.height }; }))`));
+    assert.ok(rows.length > 3, `${width}px: ${rows.length} priced rows`);
+    for (const r of rows) {
+      assert.match(r.said, /^\$[\d,]+( \+\d+)? to be ready$/, `${width}px: a screen reader hears the whole line (${r.said})`);
+      if (width < 561) {
+        assert.ok(r.w <= 1 && r.h <= 1, `${width}px: "to be ready" takes no room (${r.w}×${r.h})`);
+        assert.ok(r.past <= 1, `${width}px: the line ends where the amount does (${r.past}px past it)`);
+      } else assert.ok(r.w > 40 && r.past > 40, `${width}px: the words show after the amount (${r.w}px wide, ${r.past}px past it)`);
+    }
+    assert.ok(await ev(`document.documentElement.scrollWidth <= innerWidth`), `${width}px: the page doesn't scroll sideways`);
+  });
+});
+
 // Photos as the hero (the founder, 11 Nov 2026): a kit with a photo leads its card with it, an item's own picture
 // fills the top of its tile, and the photo prompt sits above Contents.
 test("a kit's photo runs across the top of its card, clear of its name and score, and an item's picture is wider than an icon", { skip }, async () => {
