@@ -154,11 +154,71 @@
     return ka.length === kb.length && ka.every(k => Object.hasOwn(b, k) && same(a[k], b[k]));
   };
 
+  /* Shared docs (#161): the shopping list and the plan are one doc each, which anyone in the household may be
+     editing at once. A save goes through only if the row is still the version this device last read
+     (`updated_at`); otherwise the device reads what is there now, puts its own change on top and tries again.
+     `synced` keeps, per shared doc, the database's last known version and value. */
+  const SHARED = new Set(["household/shopping", "household/plan"]);
+  const synced = new Map(), lanes = new Map();
+  const sync = (col, id, row) => { const key = col + "/" + id; if (!SHARED.has(key)) return; if (row) synced.set(key, { ver: row.updated_at, data: row.data }); else synced.delete(key); };
+  const isObj = x => !!x && typeof x === "object" && !Array.isArray(x);
+  const byId = a => Array.isArray(a) && a.every(x => isObj(x) && typeof x.id === "string");
+  // `mine` and `theirs` both started from `base`: keeps both sides' changes. Lists of things with ids (shopping
+  // lines) merge by id, objects key by key; where both changed the same value, or a list has no ids, mine wins.
+  // A line one side removed stays removed.
+  function merge3(base, mine, theirs) {
+    if (same(mine, base)) return theirs;
+    if (same(theirs, base) || same(theirs, mine)) return mine;
+    if (byId(mine) && byId(theirs) && (base === undefined || byId(base))) {
+      const b = new Map((base || []).map(x => [x.id, x])), m = new Map(mine.map(x => [x.id, x])), t = new Set(theirs.map(x => x.id));
+      const out = [];
+      for (const x of theirs) if (m.has(x.id)) out.push(merge3(b.get(x.id), m.get(x.id), x)); else if (!b.has(x.id)) out.push(x);
+      for (const x of mine) if (!b.has(x.id) && !t.has(x.id)) out.push(x);
+      return out;
+    }
+    if (isObj(mine) && isObj(theirs) && (base === undefined || isObj(base))) {
+      const out = {};
+      for (const k of new Set([...Object.keys(theirs), ...Object.keys(mine)])) {
+        const v = merge3(base?.[k], mine[k], theirs[k]);
+        if (v !== undefined) out[k] = v;
+      }
+      return out;
+    }
+    return mine;
+  }
+  // Saves `mine`, made from `base`, to a shared doc, and answers the value the database now holds.
+  async function saveShared(col, id, base, mine) {
+    const key = col + "/" + id, one = () => docs().select("data,updated_at").eq("household_id", hid).eq("col", col).eq("id", id).maybeSingle();
+    for (let tries = 0; tries < 5; tries++) {
+      const known = synced.get(key);
+      // Start from what the database is known to hold, not from what this page showed (an earlier save of
+      // this device's may have taken in someone else's change).
+      if (known && !same(known.data, base)) { mine = merge3(base, mine, known.data); base = known.data; }
+      const ver = known?.ver, row = { data: mine, updated_at: new Date(Math.max(Date.now(), ver ? Date.parse(ver) + 1 : 0)).toISOString() };
+      const { data, error } = ver
+        ? await docs().update(row).eq("household_id", hid).eq("col", col).eq("id", id).eq("updated_at", ver).select("updated_at")
+        : await docs().insert({ household_id: hid, col, id, ...row }).select("updated_at");
+      if (!error && data?.length) { synced.set(key, { ver: data[0].updated_at, data: mine }); return { error: null, value: mine }; }
+      if (error && !(!ver && error.code === "23505")) return { error };
+      // Someone saved since this device read it: read what is there and go round again.
+      const now = await one();
+      if (now.error) return { error: now.error };
+      // Still the version it tried: nobody else saved, so the database refused the update (row-level security
+      // answers an update it won't make with no rows, not an error).
+      if (ver && now.data?.updated_at === ver) return { error: { code: "42501", message: "update refused" } };
+      sync(col, id, now.data);
+      if (!now.data) base = undefined;
+    }
+    return { error: { message: "the doc kept changing under this save" } };
+  }
+  // A device's saves to one shared doc go one at a time, each from what the one before it left.
+  const inLane = (key, fn) => { const go = (lanes.get(key) || Promise.resolve()).then(fn); lanes.set(key, go.catch(() => {})); return go; };
+
   // Every doc of household `h`, a thousand rows at a time.
   async function readAll(h) {
     const rows = [];
     for (let from = 0; ; from += 1000) {
-      const { data, error } = await docs().select("col,id,data").eq("household_id", h).order("col").order("id").range(from, from + 999);
+      const { data, error } = await docs().select("col,id,data,updated_at").eq("household_id", h).order("col").order("id").range(from, from + 999);
       if (error) throw fail("unavailable", error.message);
       rows.push(...data);
       if (data.length < 1000) break;
@@ -181,7 +241,7 @@
     if (start < newest) return;
     newest = start;
     const fresh = Object.fromEntries(COLS.map(c => [c, new Map()]));
-    for (const r of rows) fresh[r.col]?.set(r.id, r.data);
+    for (const r of rows) { fresh[r.col]?.set(r.id, r.data); sync(r.col, r.id, r); }
     // A doc saved or changed live after this read started keeps what the store has: the read can't know of it.
     for (const key of new Set([...stamp.keys(), ...busy.keys()])) {
       if (!newer(key, start)) continue;
@@ -213,10 +273,11 @@
     seq.set(key, mine);
     let found;
     if (event !== "delete") {
-      const { data, error } = await docs().select("data").eq("household_id", hid).eq("col", col).eq("id", id).maybeSingle();
+      const { data, error } = await docs().select("data,updated_at").eq("household_id", hid).eq("col", col).eq("id", id).maybeSingle();
       if (error || seq.get(key) !== mine) return;
       found = data;
     }
+    sync(col, id, found);
     // A reload or a save that started after this read already has something newer. A message heard while a save
     // is out may be another device's later edit, so the doc is read again once the save is done.
     if (busy.has(key)) { recheck.add(key); return; }
@@ -262,9 +323,9 @@
     if (next === undefined) map.delete(id); else map.set(id, clone(next));
     busy.set(key, (busy.get(key) || 0) + 1);
     notify(col, one);
-    let error;
-    try { ({ error } = await run()); } finally {
-      const left = busy.get(key) - 1;
+    let error, value, left;
+    try { ({ error, value } = await run(prev)); } finally {
+      left = busy.get(key) - 1;
       if (left) busy.set(key, left); else busy.delete(key);
       stamp.set(key, ++clock);
       if (!left && recheck.delete(key)) changed("update", { col, id }).catch(() => {});
@@ -275,6 +336,9 @@
       notify(col, one);
       throw fail(error.code === "42501" ? "invalid_argument" : "unavailable", error.message);
     }
+    // A shared doc's save may have taken in someone else's change: show what the database holds now, unless a
+    // later save of this device's is still to come and will.
+    if (!left && value !== undefined && !same(store[col].get(id), value)) { store[col].set(id, clone(value)); notify(col, one); }
   }
 
   const db = {
@@ -288,7 +352,9 @@
           const m = store[col], exists = !!m?.has(id);
           cb({ metadata, id, exists, data: () => (exists ? clone(m.get(id)) : undefined) });
         }, err),
-        set: data => write(col, id, data, () => docs().upsert({ household_id: hid, col, id, data, updated_at: new Date().toISOString() }, { onConflict: "household_id,col,id" })),
+        set: data => SHARED.has(col + "/" + id)
+          ? write(col, id, data, prev => inLane(col + "/" + id, () => saveShared(col, id, prev, clone(data))))
+          : write(col, id, data, () => docs().upsert({ household_id: hid, col, id, data, updated_at: new Date().toISOString() }, { onConflict: "household_id,col,id" })),
         delete: () => write(col, id, undefined, () => docs().delete().eq("household_id", hid).eq("col", col).eq("id", id)),
       };
     },
