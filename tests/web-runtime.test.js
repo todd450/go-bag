@@ -40,6 +40,8 @@ function fakeSupabase({ session = SESSION, rpc = {}, rows = [], table: shared = 
     if (st.op === "select") {
       reads.push(st);
       if (failRead) { const error = failRead; failRead = null; return { data: null, error }; }
+      // Refusing, as row-level security does when the caller isn't in the household: nothing to read either.
+      if (refusing) return { data: st.single ? null : [], error: null };
       const found = [...table.values()].filter(r => matches(r, st.filters)).map(r => Object.fromEntries(st.cols.split(",").map(c => [c, r[c]])));
       if (st.single) return { data: found[0] ?? null, error: null };
       return { data: st.range ? found.slice(st.range[0], st.range[1] + 1) : found, error: null };
@@ -48,6 +50,7 @@ function fakeSupabase({ session = SESSION, rpc = {}, rows = [], table: shared = 
     if (failNext) { const error = failNext; failNext = null; return { error }; }
     const wrote = [];
     if (st.op === "upsert") { const r = { ...st.row, updated_at: PG_TIME(st.row.updated_at) }; table.set(key(r), r); wrote.push(r); }
+    if (st.op === "insert" && refusing) return { data: null, error: { code: "42501", message: "new row violates row-level security policy" } };
     if (st.op === "insert") {
       if (table.has(key(st.row))) return { data: null, error: { code: "23505", message: "duplicate key" } };
       const r = { ...st.row, updated_at: PG_TIME(st.row.updated_at) }; table.set(key(r), r); wrote.push(r);
@@ -817,6 +820,20 @@ test("two phones starting a list nobody has saved yet both keep their lines", as
   assert.deepEqual(saved("shopping").items.map(x => x.id), ["s1", "a1"], "the first saved first, the second added after");
 });
 
+test("a reload that read before a save never sets the version back, so the next save needs no extra try", async () => {
+  const { phones: [sam], saved } = await twoPhones();
+  const go = sam.sb.holdNextRead();
+  sam.comeBack(); // reads the household as it is now, and answers later
+  await settle();
+  await tick(sam, "a");
+  go();
+  await settle(6);
+  const writes = sam.sb.writes.length;
+  await tick(sam, "b");
+  assert.equal(sam.sb.writes.length, writes + 1, "one write, straight through");
+  assert.deepEqual(doneIds(saved("shopping")), ["a", "b"]);
+});
+
 test("quick taps on one phone go one at a time, each from what the database holds, and keep someone else's change", async () => {
   const { table, phones: [sam], saved } = await twoPhones();
   // Someone else ticked c a moment ago; Sam's phone hasn't heard.
@@ -849,7 +866,7 @@ test("a save the database refuses rolls back at once instead of retrying, and a 
   sam.sb.refuseUpdates();
   await assert.rejects(tick(sam, "a"), e => e.code === "invalid_argument");
   assert.deepEqual(doneIds(sam.shown.shopping), [], "rolled back");
-  assert.equal(sam.sb.writes.filter(w => w.op === "update").length, 1, "tried once");
+  assert.deepEqual(sam.sb.writes.map(w => w.op), ["update", "insert"], "the update finds no row it may change, the insert is refused: no retrying");
 
   const { phones: [alex] } = await twoPhones();
   alex.sb.failNextWrite({ code: "500", message: "down" });

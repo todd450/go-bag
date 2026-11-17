@@ -241,7 +241,9 @@
     if (start < newest) return;
     newest = start;
     const fresh = Object.fromEntries(COLS.map(c => [c, new Map()]));
-    for (const r of rows) { fresh[r.col]?.set(r.id, r.data); sync(r.col, r.id, r); }
+    for (const r of rows) fresh[r.col]?.set(r.id, r.data);
+    // A shared doc's version is taken only where the store takes the read's value, never older than a save.
+    for (const r of rows) if (!newer(r.col + "/" + r.id, start)) sync(r.col, r.id, r);
     // A doc saved or changed live after this read started keeps what the store has: the read can't know of it.
     for (const key of new Set([...stamp.keys(), ...busy.keys()])) {
       if (!newer(key, start)) continue;
@@ -277,11 +279,11 @@
       if (error || seq.get(key) !== mine) return;
       found = data;
     }
-    sync(col, id, found);
     // A reload or a save that started after this read already has something newer. A message heard while a save
     // is out may be another device's later edit, so the doc is read again once the save is done.
     if (busy.has(key)) { recheck.add(key); return; }
     if (at < newest || newer(key, at)) return;
+    sync(col, id, found);
     stamp.set(key, at);
     // A message about what the page already shows (its own save coming back, say) draws nothing.
     if (found) { if (store[col].has(id) && same(store[col].get(id), found.data)) return; store[col].set(id, found.data); }
