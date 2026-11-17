@@ -2627,7 +2627,11 @@ async function shopTick(id, on, rowEl, undoItem) {
     if (out && (undoItem || S.items.some(i => i.id === out))) await delDoc("items", out).catch(() => {});
     e.done = false; delete e.itemId; delete e.inKit;
   }
-  const ok = await saveShop(items); ticking.delete(id);
+  // Saved from the list as it is now, with only this line changed: while the item was saving, another tap or
+  // another phone may have changed other lines, and the copy taken above would undo them (#161).
+  const now = clone(shopItems()), cur = now.find(x => x.id === id);
+  if (cur) { cur.done = e.done; for (const k of ["itemId", "inKit"]) if (k in e) cur[k] = e[k]; else delete cur[k]; }
+  const ok = cur ? await saveShop(now) : 0; ticking.delete(id);
   ok && undo && toast(...undo);
 }
 // Every open line, or with one of the household's kits only the lines that go in it

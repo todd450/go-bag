@@ -173,3 +173,21 @@ test("each kit's share of the gaps, on the standard household and the edge cases
   const one = loadCore("fixtures/empty-and-one/one-person");
   assert.deepEqual(one(`kitGaps(model(), "").map(g => g.cat).sort()`), ["co_alarm", "poison"]);
 });
+
+test("two quick ticks, one still putting its item in a kit, both stay ticked (#161)", async () => {
+  const app = household();
+  // "moved" saves an item first; "typed" has no kit, so its list save goes first and "moved" saves after it.
+  await app.run(`Promise.all([shopTick("moved", true), shopTick("typed", true)])`);
+  const done = app.json(`shopItems().filter(e => e.done).map(e => e.id).sort()`);
+  assert.deepEqual(done, ["moved", "ticked", "typed"]);
+  assert.equal(app.json(`shopItems().find(e => e.id === "moved").inKit`), "car");
+  assert.equal(app.json(`S.items.filter(i => i.source === "list").length`), 1);
+});
+
+test("a line removed while its tick was saving its item is not brought back", async () => {
+  const app = household();
+  const tick = app.run(`globalThis.T = shopTick("moved", true)`);
+  app.run(`S.shopping = { items: shopItems().filter(e => e.id !== "moved") }`);
+  await app.run("T");
+  assert.deepEqual(app.json(`shopItems().map(e => e.id)`), ["typed", "ticked"]);
+});

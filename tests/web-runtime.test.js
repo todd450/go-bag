@@ -22,12 +22,17 @@ const SESSION = { access_token: "tok", expires_at: Math.floor(Date.now() / 1000)
 // next write fail. `log` keeps the order of setAuth and subscribe. `holdNextRead` makes the next read of the
 // whole household (or with "doc", of one doc) take what the table holds at once but answer only when the test
 // lets it go; `holdNextWrite` makes the next write wait for the test before it reaches the table.
-function fakeSupabase({ session = SESSION, rpc = {}, rows = [] } = {}) {
+// Like Postgres, it hands `updated_at` back in its own format, and an update or insert with `.select()` answers
+// the rows it wrote; an update that matches nothing writes nothing. Two fakes given one `table` are two devices on
+// one database.
+const PG_TIME = t => new Date(t).toISOString().replace("Z", "+00:00");
+function fakeSupabase({ session = SESSION, rpc = {}, rows = [], table: shared = null } = {}) {
   const key = r => `${r.household_id}/${r.col}/${r.id}`;
-  const table = new Map(rows.map(r => [key({ household_id: HID, ...r }), { household_id: HID, ...r }]));
+  const table = shared || new Map(rows.map(r => [key({ household_id: HID, ...r }), { household_id: HID, updated_at: PG_TIME("2026-11-01"), ...r }]));
   const writes = [], reads = [], rpcCalls = [], log = [], uploads = [], removes = [], signIns = [];
   const channels = [];
   const authFns = [];
+  let refusing = false;
   let failNext = null, failRead = null, holds = [], writeHolds = [];
   const answers = { my_household: () => ({ data: HID, error: null }), ...rpc };
   const matches = (r, filters) => filters.every(([k, v]) => r[k] === v);
@@ -35,15 +40,24 @@ function fakeSupabase({ session = SESSION, rpc = {}, rows = [] } = {}) {
     if (st.op === "select") {
       reads.push(st);
       if (failRead) { const error = failRead; failRead = null; return { data: null, error }; }
+      // Refusing, as row-level security does when the caller isn't in the household: nothing to read either.
+      if (refusing) return { data: st.single ? null : [], error: null };
       const found = [...table.values()].filter(r => matches(r, st.filters)).map(r => Object.fromEntries(st.cols.split(",").map(c => [c, r[c]])));
       if (st.single) return { data: found[0] ?? null, error: null };
       return { data: st.range ? found.slice(st.range[0], st.range[1] + 1) : found, error: null };
     }
     writes.push(st);
     if (failNext) { const error = failNext; failNext = null; return { error }; }
-    if (st.op === "upsert") table.set(key(st.row), st.row);
+    const wrote = [];
+    if (st.op === "upsert") { const r = { ...st.row, updated_at: PG_TIME(st.row.updated_at) }; table.set(key(r), r); wrote.push(r); }
+    if (st.op === "insert" && refusing) return { data: null, error: { code: "42501", message: "new row violates row-level security policy" } };
+    if (st.op === "insert") {
+      if (table.has(key(st.row))) return { data: null, error: { code: "23505", message: "duplicate key" } };
+      const r = { ...st.row, updated_at: PG_TIME(st.row.updated_at) }; table.set(key(r), r); wrote.push(r);
+    }
+    if (st.op === "update" && !refusing) for (const [k, r] of table) if (matches(r, st.filters)) { const n = { ...r, ...st.row, updated_at: PG_TIME(st.row.updated_at) }; table.set(k, n); wrote.push(n); }
     if (st.op === "delete") for (const [k, r] of table) if (matches(r, st.filters)) table.delete(k);
-    return { error: null };
+    return st.cols ? { data: wrote.map(r => Object.fromEntries(st.cols.split(",").map(c => [c, r[c]]))), error: null } : { error: null };
   };
   const query = name => {
     const st = { op: "select", table: name, filters: [], cols: "" };
@@ -51,6 +65,8 @@ function fakeSupabase({ session = SESSION, rpc = {}, rows = [] } = {}) {
       select: cols => { st.cols = cols; return q; }, order: () => q, range: (a, z) => { st.range = [a, z]; return q; },
       upsert: (row, opts) => { st.op = "upsert"; st.row = row; st.opts = opts; return q; },
       delete: () => { st.op = "delete"; return q; },
+      insert: row => { st.op = "insert"; st.row = row; return q; },
+      update: row => { st.op = "update"; st.row = row; return q; },
       eq: (k, v) => { st.filters.push([k, v]); return q; },
       maybeSingle: () => { st.single = true; return q; },
       then: (ok, bad) => {
@@ -96,6 +112,7 @@ function fakeSupabase({ session = SESSION, rpc = {}, rows = [] } = {}) {
     authChange: (event, s) => authFns.forEach(fn => fn(event, s)),
     failNextWrite: e => { failNext = e; },
     failNextRead: e => { failRead = e; },
+    refuseUpdates: () => { refusing = true; },
     holdNextWrite: () => { let go; writeHolds.push(new Promise(r => { go = r; })); return () => go(); },
     holdNextRead: kind => { let go; holds.push({ doc: kind === "doc", p: new Promise(r => { go = r; }) }); return () => go(); },
   };
@@ -389,7 +406,7 @@ test("an insert or update reads that one doc and shows it; a delete drops it", a
   assert.deepEqual(seen.at(-1), [{ id: "k9", name: "Go bag" }]);
   const read = sb.reads.at(-1);
   assert.deepEqual(filtersOf(read), { household_id: HID, col: "kits", id: "k9" }, "that one doc, in this household");
-  assert.equal(read.cols, "data");
+  assert.equal(read.cols, "data,updated_at");
 
   sb.table.set(`${HID}/kits/k9`, { household_id: HID, col: "kits", id: "k9", data: { name: "Go bag 2" } });
   sb.broadcast("update", { col: "kits", id: "k9" });
@@ -723,6 +740,139 @@ test("a remembered value that is no household id, an early read that fails, or n
 
   const refused = runtime({ rows: SOME, storage: new Map([["gb_hid:u1", HID]]), rpc: { my_household: () => ({ data: null, error: { message: "no" } }) } });
   assert.equal(await pending(refused.claude.use("db")), "pending", "no household, no page, whatever was remembered");
+});
+
+/* ---------- two people on one shopping list (#161) ---------- */
+
+const line = (id, extra = {}) => ({ id, cat: "water", text: id, done: false, at: 1, ...extra });
+const LIST = { items: [line("a"), line("b"), line("c")], updatedAt: 1 };
+// Two devices signed in to one household, on one database. Neither hears the other's live updates.
+async function twoPhones(docs = { shopping: LIST }) {
+  const table = fakeSupabase({ rows: Object.entries(docs).map(([id, data]) => ({ col: "household", id, data })) }).table;
+  const phones = [];
+  for (let i = 0; i < 2; i++) {
+    const r = runtime({ table });
+    const db = await r.claude.use("db");
+    const shown = {};
+    for (const id of ["shopping", "plan"]) db.doc(`household/${id}`).onSnapshot(s => { shown[id] = s.exists ? plain(s.data()) : null; });
+    phones.push({ ...r, db, shown });
+  }
+  await settle(6);
+  const saved = id => plain(table.get(`${HID}/household/${id}`)?.data);
+  return { table, phones, saved };
+}
+// What the page does on a tick: the whole list, from what this phone shows, with one line changed.
+const tick = (p, id, f = x => ({ ...x, done: true })) => p.db.doc("household/shopping").set({ ...p.shown.shopping, items: p.shown.shopping.items.map(x => x.id === id ? f(x) : x), updatedAt: Date.now() });
+const doneIds = list => list.items.filter(x => x.done).map(x => x.id).sort();
+
+test("two people ticking different lines at the same moment both keep their ticks", async () => {
+  const { phones: [sam, alex], saved } = await twoPhones();
+  await tick(sam, "a");
+  await tick(alex, "b"); // Alex's phone still shows a unticked: it never heard Sam's save
+  assert.deepEqual(doneIds(saved("shopping")), ["a", "b"]);
+  assert.deepEqual(doneIds(alex.shown.shopping), ["a", "b"], "and Alex's phone now shows Sam's tick too");
+  assert.deepEqual(saved("shopping").items.map(x => x.id), ["a", "b", "c"], "in the same order");
+});
+
+test("both ticks survive even when the two saves are on their way at the same time", async () => {
+  const { phones: [sam, alex], saved } = await twoPhones();
+  const go = sam.sb.holdNextWrite();
+  const s = tick(sam, "a");
+  await tick(alex, "b");
+  go();
+  await s;
+  assert.deepEqual(doneIds(saved("shopping")), ["a", "b"]);
+});
+
+test("a line added on one phone and a line removed on the other: both happen, and a removed line stays gone", async () => {
+  const { phones: [sam, alex], saved } = await twoPhones();
+  await sam.db.doc("household/shopping").set({ ...sam.shown.shopping, items: [...sam.shown.shopping.items, line("d")] });
+  await alex.db.doc("household/shopping").set({ ...alex.shown.shopping, items: alex.shown.shopping.items.filter(x => x.id !== "b") });
+  assert.deepEqual(saved("shopping").items.map(x => x.id), ["a", "c", "d"]);
+  await tick(sam, "b"); // Sam's phone still shows b, which Alex removed
+  assert.deepEqual(saved("shopping").items.map(x => x.id), ["a", "c", "d"], "ticking a removed line doesn't bring it back");
+});
+
+test("the same line changed on both phones: the later save wins, and nothing else is lost", async () => {
+  const { phones: [sam, alex], saved } = await twoPhones();
+  await tick(sam, "a", x => ({ ...x, kitId: "car" }));
+  await tick(alex, "c");
+  await tick(alex, "a", x => ({ ...x, kitId: "home" }));
+  assert.deepEqual(saved("shopping").items.find(x => x.id === "a").kitId, "home");
+  assert.deepEqual(doneIds(saved("shopping")), ["c"]);
+});
+
+test("plan edits to different fields on two phones both stay; the medicines list, which has no ids, is the later save's", async () => {
+  const plan = { meet: "The oak", phone: "", meds: [{ who: "Sam", name: "Inhaler", refill: "" }] };
+  const { phones: [sam, alex], saved } = await twoPhones({ plan });
+  await sam.db.doc("household/plan").set({ ...sam.shown.plan, meet: "The gate", meds: [] });
+  await alex.db.doc("household/plan").set({ ...alex.shown.plan, phone: "555-0100", meds: [...alex.shown.plan.meds, { who: "Alex", name: "Insulin", refill: "" }] });
+  const p = saved("plan");
+  assert.equal(p.meet, "The gate");
+  assert.equal(p.phone, "555-0100");
+  assert.deepEqual(p.meds.map(m => m.name), ["Inhaler", "Insulin"]);
+});
+
+test("two phones starting a list nobody has saved yet both keep their lines", async () => {
+  const { phones: [sam, alex], saved } = await twoPhones({});
+  await sam.db.doc("household/shopping").set({ items: [line("s1")] });
+  await alex.db.doc("household/shopping").set({ items: [line("a1")] });
+  assert.deepEqual(saved("shopping").items.map(x => x.id), ["s1", "a1"], "the first saved first, the second added after");
+});
+
+test("a reload that read before a save never sets the version back, so the next save needs no extra try", async () => {
+  const { phones: [sam], saved } = await twoPhones();
+  const go = sam.sb.holdNextRead();
+  sam.comeBack(); // reads the household as it is now, and answers later
+  await settle();
+  await tick(sam, "a");
+  go();
+  await settle(6);
+  const writes = sam.sb.writes.length;
+  await tick(sam, "b");
+  assert.equal(sam.sb.writes.length, writes + 1, "one write, straight through");
+  assert.deepEqual(doneIds(saved("shopping")), ["a", "b"]);
+});
+
+test("quick taps on one phone go one at a time, each from what the database holds, and keep someone else's change", async () => {
+  const { table, phones: [sam], saved } = await twoPhones();
+  // Someone else ticked c a moment ago; Sam's phone hasn't heard.
+  const row = table.get(`${HID}/household/shopping`);
+  table.set(`${HID}/household/shopping`, { ...row, data: { ...row.data, items: row.data.items.map(x => x.id === "c" ? { ...x, done: true } : x) }, updated_at: PG_TIME("2026-11-02") });
+  const go = sam.sb.holdNextWrite();
+  const first = tick(sam, "a");
+  const second = tick(sam, "b");
+  assert.deepEqual(doneIds(sam.shown.shopping), ["a", "b"], "both show at once");
+  go();
+  await Promise.all([first, second]);
+  assert.deepEqual(doneIds(saved("shopping")), ["a", "b", "c"]);
+  assert.deepEqual(doneIds(sam.shown.shopping), ["a", "b", "c"]);
+});
+
+test("each save names the version it read and writes only if the row is still that version", async () => {
+  const { phones: [sam], table } = await twoPhones();
+  const before = table.get(`${HID}/household/shopping`).updated_at;
+  await tick(sam, "a");
+  const up = sam.sb.writes.at(-1);
+  assert.equal(up.op, "update");
+  assert.deepEqual(filtersOf(up), { household_id: HID, col: "household", id: "shopping", updated_at: before });
+  assert.ok(Date.parse(table.get(`${HID}/household/shopping`).updated_at) > Date.parse(before), "the version moves on");
+  await sam.db.doc("household/profile").set({ location: "Anytown" });
+  assert.equal(sam.sb.writes.at(-1).op, "upsert", "other household docs save as before");
+});
+
+test("a save the database refuses rolls back at once instead of retrying, and a save that fails rolls back", async () => {
+  const { phones: [sam], saved } = await twoPhones();
+  sam.sb.refuseUpdates();
+  await assert.rejects(tick(sam, "a"), e => e.code === "invalid_argument");
+  assert.deepEqual(doneIds(sam.shown.shopping), [], "rolled back");
+  assert.deepEqual(sam.sb.writes.map(w => w.op), ["update", "insert"], "the update finds no row it may change, the insert is refused: no retrying");
+
+  const { phones: [alex] } = await twoPhones();
+  alex.sb.failNextWrite({ code: "500", message: "down" });
+  await assert.rejects(tick(alex, "b"), e => e.code === "unavailable");
+  assert.deepEqual(doneIds(alex.shown.shopping), []);
+  assert.deepEqual(doneIds(saved("shopping")), []);
 });
 
 /* ---------- assets ---------- */
