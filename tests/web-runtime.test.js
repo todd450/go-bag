@@ -19,14 +19,16 @@ const SESSION = { access_token: "tok", expires_at: Math.floor(Date.now() / 1000)
 // A stand-in for supabase-js: one `docs` table in memory keyed like the real one (household, col, id),
 // rpc answers per function name, a Broadcast channel that records its topic and config and lets the
 // test push messages through it, a storage bucket that records its paths, and a switch to make the
-// next write fail. `log` keeps the order of setAuth and subscribe.
+// next write fail. `log` keeps the order of setAuth and subscribe. `holdNextRead` makes the next read of the
+// whole household (or with "doc", of one doc) take what the table holds at once but answer only when the test
+// lets it go; `holdNextWrite` makes the next write wait for the test before it reaches the table.
 function fakeSupabase({ session = SESSION, rpc = {}, rows = [] } = {}) {
   const key = r => `${r.household_id}/${r.col}/${r.id}`;
   const table = new Map(rows.map(r => [key({ household_id: HID, ...r }), { household_id: HID, ...r }]));
   const writes = [], reads = [], rpcCalls = [], log = [], uploads = [], removes = [], signIns = [];
   const channels = [];
   const authFns = [];
-  let failNext = null, failRead = null;
+  let failNext = null, failRead = null, holds = [], writeHolds = [];
   const answers = { my_household: () => ({ data: HID, error: null }), ...rpc };
   const matches = (r, filters) => filters.every(([k, v]) => r[k] === v);
   const run = st => {
@@ -51,7 +53,13 @@ function fakeSupabase({ session = SESSION, rpc = {}, rows = [] } = {}) {
       delete: () => { st.op = "delete"; return q; },
       eq: (k, v) => { st.filters.push([k, v]); return q; },
       maybeSingle: () => { st.single = true; return q; },
-      then: (ok, bad) => Promise.resolve(run(st)).then(ok, bad),
+      then: (ok, bad) => {
+        if (st.op !== "select") { const w = writeHolds.shift(); return (w || Promise.resolve()).then(() => run(st)).then(ok, bad); }
+        const i = holds.findIndex(h => h.doc === !!st.single);
+        const held = i >= 0 && holds.splice(i, 1)[0].p;
+        const answer = run(st);
+        return (held ? held.then(() => answer) : Promise.resolve(answer)).then(ok, bad);
+      },
     };
     return q;
   };
@@ -88,6 +96,8 @@ function fakeSupabase({ session = SESSION, rpc = {}, rows = [] } = {}) {
     authChange: (event, s) => authFns.forEach(fn => fn(event, s)),
     failNextWrite: e => { failNext = e; },
     failNextRead: e => { failRead = e; },
+    holdNextWrite: () => { let go; writeHolds.push(new Promise(r => { go = r; })); return () => go(); },
+    holdNextRead: kind => { let go; holds.push({ doc: kind === "doc", p: new Promise(r => { go = r; }) }); return () => go(); },
   };
 }
 
@@ -529,6 +539,86 @@ test("the page's own save coming back as a live update tells it nothing", async 
   await settle();
   assert.equal(l.heard.items, 3, "what came back is what the page already shows");
   assert.equal(l.total(), 9);
+});
+
+/* ---------- a reload that lands late never undoes something newer ---------- */
+
+test("a save made while a reload is reading still shows after the reload lands", async () => {
+  const { claude, sb, comeBack } = runtime({ rows: SOME });
+  const db = await claude.use("db");
+  const l = listenAll(db);
+  const plans = [];
+  db.doc("household/plan").onSnapshot(s => plans.push(plain(s.data())));
+  await settle();
+  const go = sb.holdNextRead();
+  comeBack(); // the reload reads the plan as it was
+  await settle();
+  await db.doc("household/plan").set({ meet: "The gate" });
+  sb.broadcast("update", { col: "household", id: "plan" }); // the save's echo: what the page already shows
+  await settle();
+  go();
+  await settle();
+  assert.deepEqual(plans.at(-1), { meet: "The gate" }, "the older read didn't put the old plan back");
+  assert.equal(l.heard.plan, 2, "the save drew once and the late reload not at all");
+  assert.equal(l.total(), 8);
+});
+
+test("a save still on its way when a reload lands keeps showing, and so does its rollback", async () => {
+  const { claude, sb, comeBack } = runtime({ rows: SOME });
+  const db = await claude.use("db");
+  const plans = [];
+  db.doc("household/plan").onSnapshot(s => plans.push(plain(s.data())));
+  await settle();
+  sb.failNextWrite({ code: "500", message: "down" });
+  const go = sb.holdNextWrite();
+  const refused = assert.rejects(db.doc("household/plan").set({ meet: "The gate" }));
+  comeBack(); // reads the old plan and lands while the save is still out
+  await settle();
+  assert.deepEqual(plans.at(-1), { meet: "The gate" }, "the reload left the save in flight alone");
+  go();
+  await refused;
+  assert.deepEqual(plans.at(-1), { meet: "The oak" }, "the rollback reaches the page after a reload swapped the store");
+});
+
+test("of two reloads that overlap, the one that read last wins, whichever lands last", async () => {
+  const { claude, sb, comeBack } = runtime({ rows: SOME });
+  const db = await claude.use("db");
+  const l = listenAll(db);
+  const plans = [];
+  db.doc("household/plan").onSnapshot(s => plans.push(plain(s.data())));
+  await settle();
+  const goOld = sb.holdNextRead();
+  comeBack(); // reads "The oak"
+  await settle();
+  sb.table.set(`${HID}/household/plan`, { household_id: HID, col: "household", id: "plan", data: { meet: "The gate" } });
+  sb.channels[0].status("SUBSCRIBED"); // a rejoin reads "The gate" and lands at once
+  await settle();
+  assert.deepEqual(plans.at(-1), { meet: "The gate" });
+  goOld();
+  await settle();
+  assert.deepEqual(plans.at(-1), { meet: "The gate" }, "the older reload, landing last, changed nothing");
+  assert.equal(l.heard.plan, 2);
+  assert.equal(l.total(), 8);
+});
+
+test("a live update whose read started before a reload's can't undo what the reload found", async () => {
+  const { claude, sb, comeBack } = runtime({ rows: SOME });
+  const db = await claude.use("db");
+  const plans = [];
+  db.doc("household/plan").onSnapshot(s => plans.push(plain(s.data())));
+  await settle();
+  const put = data => sb.table.set(`${HID}/household/plan`, { household_id: HID, col: "household", id: "plan", data });
+  put({ meet: "The gate" });
+  const go = sb.holdNextRead("doc");
+  sb.broadcast("update", { col: "household", id: "plan" }); // reads "The gate", slowly
+  await settle();
+  put({ meet: "The bridge" });
+  comeBack();
+  await settle();
+  assert.deepEqual(plans.at(-1), { meet: "The bridge" });
+  go();
+  await settle();
+  assert.deepEqual(plans.at(-1), { meet: "The bridge" }, "the live update that started first changed nothing");
 });
 
 /* ---------- the read that doesn't wait for the household (#159) ---------- */
