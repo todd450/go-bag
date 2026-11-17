@@ -133,6 +133,14 @@
   const subs = new Set();
   const metadata = { fromCache: false, hasPendingWrites: false };
   let loaded = false, loading = null, readEarly = false;
+  // Every read and save takes a number from one clock, so a read that lands late can tell what is newer than
+  // it. `newest` is where the latest whole-household read started; `stamp` keeps, per "col/id", the number of the
+  // last save or live update the store took for that doc (only while newer than `newest`), and `busy` counts the
+  // saves still on their way to the database.
+  let clock = 0, newest = 0;
+  const stamp = new Map(), busy = new Map(), recheck = new Set();
+  // Whether a doc's value in the store is newer than a read that started at `at`.
+  const newer = (key, at) => busy.has(key) || (stamp.get(key) || 0) > at;
   // Tells the page about a change in `col`: every listener on the collection, and of the listeners on one doc
   // only those whose doc is in `ids` (every one when `ids` is left out). They all fire in the same tick, so the
   // page can draw once for the lot.
@@ -165,9 +173,23 @@
     const head = early; early = null; // the read started at sign-in is used once, and only for this household
     const got = head?.hid === hid && await head.rows;
     if (got) readEarly = true;
+    // The read started at sign-in is older than anything saved or heard since, so it counts as 0.
+    const start = got ? 0 : ++clock;
     const rows = got || await readAll(hid);
+    // Two reloads that overlap (a tab return and a rejoin) can land out of order: the older one, landing
+    // second, has nothing to add.
+    if (start < newest) return;
+    newest = start;
     const fresh = Object.fromEntries(COLS.map(c => [c, new Map()]));
     for (const r of rows) fresh[r.col]?.set(r.id, r.data);
+    // A doc saved or changed live after this read started keeps what the store has: the read can't know of it.
+    for (const key of new Set([...stamp.keys(), ...busy.keys()])) {
+      if (!newer(key, start)) continue;
+      const cut = key.indexOf("/"), c = key.slice(0, cut), id = key.slice(cut + 1);
+      if (!fresh[c]) continue;
+      if (store[c].has(id)) fresh[c].set(id, store[c].get(id)); else fresh[c].delete(id);
+    }
+    for (const [key, at] of stamp) if (at <= newest) stamp.delete(key);
     const first = !loaded, changes = [];
     for (const c of COLS) {
       const old = store[c], now = fresh[c], ids = new Set();
@@ -187,7 +209,7 @@
   async function changed(event, p) {
     const col = p?.col, id = p?.id;
     if (!store[col] || typeof id !== "string" || !id) return;
-    const key = col + "/" + id, mine = (seq.get(key) || 0) + 1;
+    const key = col + "/" + id, mine = (seq.get(key) || 0) + 1, at = ++clock;
     seq.set(key, mine);
     let found;
     if (event !== "delete") {
@@ -195,6 +217,11 @@
       if (error || seq.get(key) !== mine) return;
       found = data;
     }
+    // A reload or a save that started after this read already has something newer. A message heard while a save
+    // is out may be another device's later edit, so the doc is read again once the save is done.
+    if (busy.has(key)) { recheck.add(key); return; }
+    if (at < newest || newer(key, at)) return;
+    stamp.set(key, at);
     // A message about what the page already shows (its own save coming back, say) draws nothing.
     if (found) { if (store[col].has(id) && same(store[col].get(id), found.data)) return; store[col].set(id, found.data); }
     else if (!store[col].delete(id)) return;
@@ -227,15 +254,24 @@
   };
 
   // Writes show at once and roll back if Supabase refuses them.
+  // While a save is on its way, and after it, a reload or live update that read before it can't undo it.
   async function write(col, id, next, run) {
     const map = store[col];
     if (!map) throw fail("invalid_argument", "unknown collection " + col);
-    const had = map.has(id), prev = map.get(id), one = new Set([id]);
+    const had = map.has(id), prev = map.get(id), one = new Set([id]), key = col + "/" + id;
     if (next === undefined) map.delete(id); else map.set(id, clone(next));
+    busy.set(key, (busy.get(key) || 0) + 1);
     notify(col, one);
-    const { error } = await run();
+    let error;
+    try { ({ error } = await run()); } finally {
+      const left = busy.get(key) - 1;
+      if (left) busy.set(key, left); else busy.delete(key);
+      stamp.set(key, ++clock);
+      if (!left && recheck.delete(key)) changed("update", { col, id }).catch(() => {});
+    }
     if (error) {
-      if (had) map.set(id, prev); else map.delete(id);
+      // A reload may have swapped the collection's map while the save was out: roll back in the current one.
+      if (had) store[col].set(id, prev); else store[col].delete(id);
       notify(col, one);
       throw fail(error.code === "42501" ? "invalid_argument" : "unavailable", error.message);
     }
