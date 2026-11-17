@@ -189,7 +189,7 @@ test("an emergency's row says what it still costs to be ready, as its opened pan
 
 test("on a tablet an emergency's name keeps its room beside the score's bar, and every row opens from its bar, dimmed or not", { skip }, async () => {
   for (const width of [768, 900]) await onPage("tests/household", width, "overview", async ev => {
-    await ev(`S.showOff = true; render()`);
+    await ev(`S.showOff = true; S.showLow = new Set(["", "health", "everyday"]); render()`);
     const rows = JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll(".hz-row")].map(r => { r.scrollIntoView({ block: "center" });
       const b = r.querySelector(".hz-tg"), bar = r.querySelector(".hz-sc .bar").getBoundingClientRect();
       return { name: b.textContent, width: b.getBoundingClientRect().width, cut: b.scrollWidth > b.clientWidth, bar: bar.width, off: r.classList.contains("off"),
