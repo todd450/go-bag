@@ -138,7 +138,7 @@
   // last save or live update the store took for that doc (only while newer than `newest`), and `busy` counts the
   // saves still on their way to the database.
   let clock = 0, newest = 0;
-  const stamp = new Map(), busy = new Map();
+  const stamp = new Map(), busy = new Map(), recheck = new Set();
   // Whether a doc's value in the store is newer than a read that started at `at`.
   const newer = (key, at) => busy.has(key) || (stamp.get(key) || 0) > at;
   // Tells the page about a change in `col`: every listener on the collection, and of the listeners on one doc
@@ -217,7 +217,9 @@
       if (error || seq.get(key) !== mine) return;
       found = data;
     }
-    // A reload or a save that started after this read already has something newer.
+    // A reload or a save that started after this read already has something newer. A message heard while a save
+    // is out may be another device's later edit, so the doc is read again once the save is done.
+    if (busy.has(key)) { recheck.add(key); return; }
     if (at < newest || newer(key, at)) return;
     stamp.set(key, at);
     // A message about what the page already shows (its own save coming back, say) draws nothing.
@@ -265,6 +267,7 @@
       const left = busy.get(key) - 1;
       if (left) busy.set(key, left); else busy.delete(key);
       stamp.set(key, ++clock);
+      if (!left && recheck.delete(key)) changed("update", { col, id }).catch(() => {});
     }
     if (error) {
       // A reload may have swapped the collection's map while the save was out: roll back in the current one.

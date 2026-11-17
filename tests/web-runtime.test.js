@@ -621,6 +621,26 @@ test("a live update whose read started before a reload's can't undo what the rel
   assert.deepEqual(plans.at(-1), { meet: "The bridge" }, "the live update that started first changed nothing");
 });
 
+test("another device's edit heard while a save is out shows once the save is done, even if it was refused", async () => {
+  const { claude, sb } = runtime({ rows: SOME });
+  const db = await claude.use("db");
+  const plans = [];
+  db.doc("household/plan").onSnapshot(s => plans.push(plain(s.data())));
+  await settle();
+  sb.failNextWrite({ code: "500", message: "down" });
+  const go = sb.holdNextWrite();
+  const refused = assert.rejects(db.doc("household/plan").set({ meet: "Mine" }));
+  // Another device saves while ours is out, and its message comes before our answer.
+  sb.table.set(`${HID}/household/plan`, { household_id: HID, col: "household", id: "plan", data: { meet: "Theirs" } });
+  sb.broadcast("update", { col: "household", id: "plan" });
+  await settle();
+  assert.deepEqual(plans.at(-1), { meet: "Mine" }, "our save still shows while it is out");
+  go();
+  await refused;
+  await settle(); // no new message: the page reads the doc again on its own
+  assert.deepEqual(plans.at(-1), { meet: "Theirs" }, "the rollback doesn't hide the other device's edit");
+});
+
 /* ---------- the read that doesn't wait for the household (#159) ---------- */
 
 // Holds back the database's answer to "which household is mine" until the test lets it go.
