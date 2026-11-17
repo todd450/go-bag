@@ -177,6 +177,7 @@ test("an emergency's row says what it still costs to be ready, as its opened pan
     for (const r of rows) {
       const want = r.off || !(r.total || r.unpriced) ? null : r.total ? `$${r.total.toLocaleString("en-US")}${r.unpriced ? ` +${r.unpriced}` : ""} to be ready` : "Not priced yet";
       assert.equal(r.shown === null ? null : plain(r.shown), want, `${fixture} ${r.id}`);
+      if (want && r.total) assert.ok(r.shown.startsWith(`<b>$${r.total.toLocaleString("en-US")}</b>`), `${fixture} ${r.id}: the amount alone is marked out (${r.shown})`);
       shown += want !== null;
     }
     assert.ok(shown > 3, `${fixture}: ${shown} rows show a cost`);
@@ -214,6 +215,21 @@ test("an emergency's cost sits under its score, clear of its needs, at phone and
       assert.ok(r.needs.r <= r.cost.l + 1, `${width}px row ${i}: the needs stop before it (${r.needs.r} then ${r.cost.l})`);
     }
     assert.ok(await ev(`document.documentElement.scrollWidth <= innerWidth`), `${width}px: the page doesn't scroll sideways`);
+  });
+});
+
+// The amount is what the line is for (the founder, 16 Nov 2026): it reads before the words around it
+test("an emergency's amount stands out from the words beside it: in the name's ink, bold and larger", { skip }, async () => {
+  for (const width of [390, 1440]) await onPage("tests/household", width, "overview", async ev => {
+    const rows = JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll(".hz-cost b")].map(b => { const st = e => { const c = getComputedStyle(e); return { ink: c.color, w: +c.fontWeight, px: parseFloat(c.fontSize) }; };
+      return { amount: st(b), words: st(b.parentElement), name: st(b.closest(".hz-row").querySelector(".hz-nm")) }; }))`));
+    assert.ok(rows.length > 3, `${width}px: ${rows.length} amounts`);
+    for (const [i, r] of rows.entries()) {
+      assert.equal(r.amount.ink, r.name.ink, `${width}px row ${i}: in the name's ink`);
+      assert.notEqual(r.amount.ink, r.words.ink, `${width}px row ${i}: darker than its words`);
+      assert.ok(r.amount.w >= 600 && r.words.w < 600, `${width}px row ${i}: bold (${r.amount.w}) beside plain words (${r.words.w})`);
+      assert.ok(r.amount.px > r.words.px, `${width}px row ${i}: larger (${r.amount.px} over ${r.words.px})`);
+    }
   });
 });
 
