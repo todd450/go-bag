@@ -561,11 +561,28 @@ test("on a later visit the read starts at once, beside the household lookup, and
   assert.equal(sb.reads.length, 1, "already reading while the lookup is out");
   assert.equal(filtersOf(sb.reads[0]).household_id, HID);
   assert.equal(await pending(use), "pending", "but nothing is handed to the page until the database answers");
+  // Another phone saves after that read, before the channel has joined: no live update will ever say so.
+  sb.table.set(`${HID}/kits/k1`, { household_id: HID, col: "kits", id: "k1", data: { name: "Car, repacked" } });
   h.go();
-  const kits = await new Promise(async r => (await use).collection("kits").onSnapshot(r));
-  assert.deepEqual(docsOf(kits).map(k => k.id), ["k1"]);
-  await settle();
-  assert.equal(sb.reads.length, 1, "the household was not read twice");
+  const l = listenAll(await use);
+  const seen = [];
+  (await use).collection("kits").onSnapshot(s => seen.push(docsOf(s)));
+  await settle(6);
+  assert.equal(sb.reads.length, 2, "read once more after the channel joined");
+  assert.equal(seen.at(-1)[0].name, "Car, repacked", "so the save made in between shows");
+  assert.equal(l.heard.kits, 2, "drawn for the change");
+  assert.equal(l.total(), 8, "and for nothing else");
+});
+
+test("a later visit with nothing saved in between reads once more after the channel joins, and draws nothing for it", async () => {
+  const storage = new Map([["gb_hid:u1", HID]]);
+  const { claude, sb } = runtime({ rows: SOME, storage });
+  const l = listenAll(await claude.use("db"));
+  await settle(6);
+  assert.equal(sb.reads.length, 2);
+  assert.equal(l.total(), 7, "one hearing each, from the first load");
+  await settle(6);
+  assert.equal(sb.reads.length, 2, "and only once more");
 });
 
 test("a remembered household the database no longer agrees with is dropped, and its rows never reach the page", async () => {

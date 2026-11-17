@@ -132,7 +132,7 @@
   const store = Object.fromEntries(COLS.map(c => [c, new Map()]));
   const subs = new Set();
   const metadata = { fromCache: false, hasPendingWrites: false };
-  let loaded = false, loading = null;
+  let loaded = false, loading = null, readEarly = false;
   // Tells the page about a change in `col`: every listener on the collection, and of the listeners on one doc
   // only those whose doc is in `ids` (every one when `ids` is left out). They all fire in the same tick, so the
   // page can draw once for the lot.
@@ -163,7 +163,9 @@
   // (coming back to the tab, a rejoin) draws nothing.
   async function loadAll() {
     const head = early; early = null; // the read started at sign-in is used once, and only for this household
-    const rows = (head?.hid === hid && await head.rows) || await readAll(hid);
+    const got = head?.hid === hid && await head.rows;
+    if (got) readEarly = true;
+    const rows = got || await readAll(hid);
     const fresh = Object.fromEntries(COLS.map(c => [c, new Map()]));
     for (const r of rows) fresh[r.col]?.set(r.id, r.data);
     const first = !loaded, changes = [];
@@ -205,7 +207,14 @@
     const ch = sb.channel(`household:${hid}`, { config: { private: true } });
     for (const event of ["insert", "update", "delete"]) ch.on("broadcast", { event }, m => { changed(event, m?.payload).catch(() => {}); });
     // Changes made while the socket was down never arrive, so a rejoin reloads everything.
-    ch.subscribe(status => { if (status === "SUBSCRIBED") { if (joined) loadAll().catch(() => {}); joined = true; } });
+    // The read started at sign-in ran before the channel joined, so a change saved in between never arrives:
+    // once joined, it is read once more, which tells the page nothing unless something did change.
+    ch.subscribe(status => {
+      if (status !== "SUBSCRIBED") return;
+      if (joined) loadAll().catch(() => {});
+      else ensureLoaded().then(() => { if (readEarly) { readEarly = false; return loadAll(); } }).catch(() => {});
+      joined = true;
+    });
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && loaded) loadAll().catch(() => {}); });
   }
 
