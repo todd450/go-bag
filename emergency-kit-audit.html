@@ -246,6 +246,8 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .imp.up, .imp-k { color: var(--brand); }
 /* What the emergency still costs, under its score */
 .hz-cost { grid-column: 2; grid-row: 2; justify-self: end; font-size: .78rem; color: var(--ink-2); white-space: nowrap; }
+/* The amount is what the line is for: in ink, at the score's size and weight, with the words left quiet */
+.hz-cost b { font-size: .9rem; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 .hz-row:has(.hz-cost) .hz-needs { grid-column: 1; }
 /* Positioned so it clips its hidden words on a phone; clicks pass through it to the row's button. */
 .hz-needs { grid-column: 1 / -1; position: relative; pointer-events: none; display: flex; flex-wrap: wrap; gap: 3px 12px; font-size: .78rem; }
@@ -1310,7 +1312,7 @@ function hzRow(r, h, M = model()) {
     <span class="hz-nm"><button class="hz-tg" data-act="toggleHz" data-id="${id}" aria-expanded="${open}"${open ? ` aria-controls="hzp-${id}"` : ""} title="${esc(r.hz.name)} · ${esc(modeLine(r.hz))}">${esc(r.hz.name)}</button><span class="mode">${esc(modeLine(r.hz))}</span></span>
     <span class="hz-sc">${lockedOff ? `<span class="small muted">No vehicle</span>` : hzMarks(r.hz, r.rel, off)}<span class="bar" aria-hidden="true" style="--c:${statusColor(r.score)}"><span style="width:${r.score}%"></span></span><span class="pct"${alarm ? ` style="color:var(--bad)"` : ""}>${r.score}%${alarm ? `<span class="vh">, needs attention</span>` : ""}</span></span>
     <span class="hz-needs">${gaps.length ? "" : `<span class="need have">${icon("yes")}Everything covered</span>`}${gaps.slice(0, 3).map(x => { const s = needRank(x); return `<span class="need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span class="vh">${NEED_WORD[s]} </span>${esc(catLabel(x.cat))}${s === 1 ? ` <span class="amt">${amount(x, h, "days").replace(/ <span[\s\S]*/, "")}</span>` : ""}</span>`; }).join("")}${more > 0 ? `<span class="need more">+${more} more</span>` : ""}</span>
-    ${c && (c.total || c.unpriced) ? `<span class="hz-cost">${c.total ? `${usd(c.total)}${c.unpriced ? ` <span title="${c.unpriced} more with no price">+${c.unpriced}</span>` : ""} to be ready` : "Not priced yet"}</span>` : ""}
+    ${c && (c.total || c.unpriced) ? `<span class="hz-cost">${c.total ? `<b>${usd(c.total)}</b>${c.unpriced ? ` <span title="${c.unpriced} more with no price">+${c.unpriced}</span>` : ""} to be ready` : "Not priced yet"}</span>` : ""}
   </div>${open ? hzPanel(r, h, M, rows) : ""}`;
 }
 /* What an opened emergency involves: where you'd be and with what, how bad it is and why it's rated as it is, each
