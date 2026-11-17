@@ -233,14 +233,15 @@ test("an emergency's amount stands out from the words beside it: in the name's i
   });
 });
 
-// On a phone the amount stands alone (the founder, 17 Nov 2026): "to be ready" goes from sight, not from a screen reader,
+// On a phone the amount stands alone (the founder, 17 Nov 2026): "to be ready" and the "+N" with no price go from sight, not from a screen reader,
 // and the needs get the room it gave back. At desktop width the words stay.
 test("on a phone an emergency's cost shows just the amount, with the words kept for screen readers; on a desktop the words show", { skip }, async () => {
   for (const width of [390, 1440]) await onPage("tests/household", width, "overview", async ev => {
     const rows = JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll(".hz-cost")].filter(c => c.querySelector("b")).map(c => { const w = c.querySelector(".hz-ready"), x = w.getBoundingClientRect();
-      const box = c.getBoundingClientRect(), end = Math.max(...[...c.children].filter(e => e !== w).map(e => e.getBoundingClientRect().right));
+      const box = c.getBoundingClientRect(), end = c.querySelector("b").getBoundingClientRect().right;
       return { said: c.textContent, past: box.right - end, w: x.width, h: x.height }; }))`));
     assert.ok(rows.length > 3, `${width}px: ${rows.length} priced rows`);
+    assert.ok(rows.some(r => / \+\d+ /.test(r.said)), `${width}px: some row has items with no price, so the +N is tried`);
     for (const r of rows) {
       assert.match(r.said, /^\$[\d,]+( \+\d+)? to be ready$/, `${width}px: a screen reader hears the whole line (${r.said})`);
       if (width < 561) {
