@@ -2,6 +2,8 @@
 // then a "Check your inbox" step. web/runtime.js calls it while nobody is signed in:
 //   window.goBagSignIn(sb)                            the form (copy from ?start=new|login)
 //   window.goBagSignIn(sb, { state: "unavailable" })  "Couldn't open your household", Try again
+// Above the email form sits Continue with Google, only while the Supabase project has the Google
+// provider turned on (asked from its public settings; { google: true|false } answers for it).
 // `sb` is the page's supabase-js client. The sender's address shows when GO_BAG_CONFIG.senderEmail is
 // set. The card sits in the page's document, so it draws only in the page's own tokens (:root in
 // emergency-kit-audit.html), and every class it uses starts with gb-auth.
@@ -37,18 +39,29 @@
     expiredHeading: "That link has expired",
     expiredLead: "Links work once, for an hour. A link can also be used up if your email app opened it first. Send yourself a new one.",
     expiredSend: "Email me a new link",
-    linkFailed: "That link didn't work. Send yourself a new one.",
+    linkFailed: "That sign-in didn't finish. Try again.",
+    google: "Continue with Google",
+    googleOpening: "Opening Google…",
+    googleFailed: "Couldn't open Google. Check your connection and try again.",
+    or: "or",
     unavailableHeading: "Couldn't open your household",
     retry: "Try again",
   });
 
   // Seconds before Send it again opens: after a link goes, and after Supabase answers 429.
   const WAIT = 60, WAIT_TOO_MANY = 300;
+  // Milliseconds the card waits to learn whether Google is on, and before a pressed Google button
+  // opens again (for someone who came Back from Google's page).
+  const GOOGLE_WAIT = 1500, GOOGLE_AGAIN = 4000;
   // A whole address: something, @, then a domain with a dot. A quoted local part may hold spaces.
   const EMAIL = /^(?:[^\s@"]+|"[^"\r\n]*")@[^\s@."]+(?:\.[^\s@."]+)+$/;
 
   // The page's caseMark(75, 40), copied as markup, with its classes renamed into the card's own.
   const MARK = '<svg class="gb-auth-case" viewBox="0 0 64 64" width="40" height="40" aria-hidden="true"><g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path class="gb-auth-cf" d="M25 21V17A2 2 0 0 1 27 15H37A2 2 0 0 1 39 17V21"/><path class="gb-auth-ct" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32"/><path class="gb-auth-ct" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32"/><path class="gb-auth-cf" d="M32 54H13A5 5 0 0 1 8 49V26A5 5 0 0 1 13 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="gb-auth-cf" d="M32 54H51A5 5 0 0 0 56 49V26A5 5 0 0 0 51 21H32" pathLength="100" style="stroke-dasharray:75 100"/><path class="gb-auth-cf" d="M10.5 29H53.5"/></g><rect class="gb-auth-cs" x="15" y="25.5" width="6" height="7" rx="1.5"/><rect class="gb-auth-cs" x="43" y="25.5" width="6" height="7" rx="1.5"/><path class="gb-auth-cs" d="M29.7 35H34.3V39.2H38.5V43.8H34.3V48H29.7V43.8H25.5V39.2H29.7Z"/></svg>';
+
+  // Google's own "G", in Google's colours as its sign-in branding asks: the one thing on the card
+  // that isn't drawn in the page's tokens.
+  const G = '<svg class="gb-auth-g" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>';
 
   // The page's .panel, .btn, .btn.ghost, .notice and label.f, redrawn under gb-auth names.
   const CSS = `
@@ -78,6 +91,10 @@
   font:inherit;font-size:.9rem;font-weight:600;font-variant-numeric:tabular-nums;text-align:center;cursor:pointer}
 .gb-auth-ghost{width:auto;background:var(--card);color:var(--ink);border-color:var(--rule-2)}
 .gb-auth-btn[disabled]{opacity:.45;cursor:not-allowed}
+.gb-auth-google{width:100%;gap:10px}
+.gb-auth-g{display:block;flex:none}
+.gb-auth-or{display:flex;align-items:center;gap:12px;font-size:.85rem;color:var(--ink-2)}
+.gb-auth-or::before,.gb-auth-or::after{content:"";flex:1;border-top:1px solid var(--rule)}
 .gb-auth-link{padding:0;border:0;background:none;font:inherit;color:var(--ink);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .gb-auth-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
 .gb-auth-addr{font-weight:600;overflow-wrap:anywhere}
@@ -104,7 +121,7 @@
   const heading = s => text("h2", { class: "gb-auth-h", id: "gb-auth-h", tabindex: "-1" }, s);
   const bad = (s, id) => text("p", { class: "gb-auth-bad", id, role: "alert" }, s);
 
-  let sb, start = "login", root, timer = null, gen = 0;
+  let sb, start = "login", root, timer = null, gen = 0, withGoogle = false, asked = null;
   const stop = () => { if (timer) clearInterval(timer); timer = null; };
   // runtime.js runs from <head>, so the card waits for <body>.
   const bodyReady = () => document.body ? Promise.resolve() : new Promise(r => document.addEventListener("DOMContentLoaded", r, { once: true }));
@@ -124,6 +141,26 @@
     return ++gen;
   }
 
+  // Whether the Supabase project has Google turned on, asked once from its public settings. No answer
+  // within GOOGLE_WAIT, or no way to ask, reads as off: the email form never waits long on it.
+  function googleOn() {
+    if (asked) return asked;
+    const cfg = window.GO_BAG_CONFIG || {};
+    if (typeof fetch !== "function" || !cfg.supabaseUrl || !cfg.supabaseKey) return asked = Promise.resolve(false);
+    const answer = Promise.resolve()
+      .then(() => fetch(String(cfg.supabaseUrl).replace(/\/+$/, "") + "/auth/v1/settings", { headers: { apikey: cfg.supabaseKey } }))
+      .then(r => r && r.ok ? r.json() : null).then(d => !!(d && d.external && d.external.google === true)).catch(() => false);
+    return asked = Promise.race([answer, new Promise(r => setTimeout(() => r(false), GOOGLE_WAIT))]);
+  }
+
+  // Hands the browser to Google. Resolves to null when it's on its way, or the TEXT key that says why not.
+  async function toGoogle() {
+    try {
+      const { error } = (await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + "/app" } })) || {};
+      return error ? "googleFailed" : null;
+    } catch { return "googleFailed"; }
+  }
+
   // Asks Supabase for a link. Resolves to null when it went, or the TEXT key that says why not.
   async function send(email) {
     try {
@@ -134,7 +171,7 @@
   }
 
   // The form. `kind` is new, login or expired; `note` is a problem with the link that brought them here.
-  function showForm({ kind = start, email = "", invalid = false, error = null, note = null, focus = false } = {}) {
+  function showForm({ kind = start, email = "", invalid = false, error = null, note = null, focus = false, googleError = null } = {}) {
     const copy = {
       new: [TEXT.newHeading, TEXT.newLead, TEXT.send, TEXT.newFoot],
       login: [TEXT.loginHeading, TEXT.loginLead, TEXT.send, TEXT.loginFoot],
@@ -147,9 +184,16 @@
     });
     input.value = email;
     const btn = text("button", { class: "gb-auth-btn", type: "submit" }, copy[2]);
+    const gIcon = h("span"), gLabel = text("span", null, TEXT.google);
+    gIcon.innerHTML = G;
+    const gBtn = withGoogle && h("button", { class: "gb-auth-btn gb-auth-ghost gb-auth-google", type: "button" }, gIcon, gLabel);
     const form = h("form", { class: "gb-auth-card", novalidate: true },
-      mark(), heading(copy[0]), text("p", { class: "gb-auth-muted" }, copy[1]),
+      mark(), heading(copy[0]),
       note && bad(note),
+      gBtn,
+      gBtn && googleError && bad(TEXT[googleError]),
+      gBtn && text("p", { class: "gb-auth-or" }, TEXT.or),
+      text("p", { class: "gb-auth-muted" }, copy[1]),
       h("label", { class: "gb-auth-field" }, TEXT.emailLabel, input),
       invalid && bad(TEXT.invalid, "gb-auth-err"),
       btn,
@@ -168,6 +212,17 @@
       if (mine !== gen) return;
       if (why) showForm({ kind, email: addr, error: why });
       else showSent(addr, WAIT);
+    });
+    if (gBtn) gBtn.addEventListener("click", async () => {
+      if (busy) return;
+      busy = true;
+      gBtn.disabled = true;
+      gLabel.textContent = TEXT.googleOpening;
+      const mine = gen, why = await toGoogle();
+      if (mine !== gen) return;
+      if (why) return showForm({ kind, email: input.value, googleError: why });
+      // The browser is leaving for Google. If it comes Back, the button works again.
+      setTimeout(() => { if (mine !== gen) return; busy = false; gBtn.disabled = false; gLabel.textContent = TEXT.google; }, GOOGLE_AGAIN);
     });
     draw(form);
     if (invalid || focus) input.focus();
@@ -250,6 +305,7 @@
     start = new URLSearchParams(location.search).get("start") === "new" ? "new" : "login";
     await bodyReady();
     if (opts && opts.state === "unavailable") return showUnavailable();
+    withGoogle = opts && typeof opts.google === "boolean" ? opts.google : await googleOn();
     const link = linkError();
     if (link === "expired") showForm({ kind: "expired" });
     else showForm({ note: link === "failed" ? TEXT.linkFailed : null });

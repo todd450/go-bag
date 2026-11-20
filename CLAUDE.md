@@ -34,7 +34,8 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
   live. The old claude.ai Artifact (https://claude.ai/artifact/DXn8SMGiZhuKuQFGgKHenz) is retired
   (issue #48, 5 Nov 2026): it points to Vercel, and its data is a frozen copy. Never publish the
   app to it or write to its data.
-- **How it runs on Vercel (issue #48):** signed in with Supabase magic links. `web/runtime.js`
+- **How it runs on Vercel (issue #48):** signed in with Supabase magic links, or Google
+  while the project has that provider on (`web/signin.js` asks; `docs/opening.md` step 2b). `web/runtime.js`
   stands in for `window.claude` (db, assets, sample, user) on Supabase project `go-bag`
   (`jltxxtjlnzpxdozxovmz`) and the functions in `api/`; `tools/build-web.js` wraps the page with it
   into `dist/` (`npm run build`, Vercel's only build step). The page file is never edited for
