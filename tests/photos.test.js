@@ -220,3 +220,78 @@ test("a saved tag counts: the kit scores what model() reports with the essential
   assert.equal(untagged.json(`model().kitRes.go.score`), before, "an untagged line earns nothing");
   assert.ok(tagged.json(`model().kitRes.go.score`) > before, "the tagged line raises the kit's score");
 });
+
+// ---------- A rescan: what the kit already holds is updated, not added again ----------
+// The standard household's go-bag holds a First-aid kit (i4, 450 g), 2 Headlamps (i5) and Old ibuprofen (i7).
+const rescan = reply => withPhotos({ reply });
+const goItems = app => app.json(`S.items.filter(i => i.kitId === "go").map(i => ({ id: i.id, name: i.name, qty: i.qty, grams: i.grams, expires: i.expires, source: i.source }))`);
+
+test("matchScan believes Claude's match, falls back on the name, and uses each item once", () => {
+  const { json } = load({ fixture: "tests/household" });
+  const items = `[{ id: "a", name: "Water bottles" }, { id: "b", name: "Headlamp" }, { id: "c", name: "Duct tape" }]`;
+  assert.deepEqual(json(`matchScan([{ name: "LED head torch", same: "b" }, { name: "bottle, WATER" }, { name: "Headlamps" }, { name: "Rope", same: "zz" }], ${items})`), ["b", "a", "", ""]);
+  // Two rows can't both be the one item, and an item an earlier read claimed is left alone.
+  assert.deepEqual(json(`matchScan([{ name: "Headlamp" }, { name: "Headlamp" }], ${items})`), ["b", ""]);
+  assert.deepEqual(json(`matchScan([{ name: "Duct tape" }], ${items}, ["c"])`), [""]);
+  // What Claude said wins over another row's matching name, whatever order the rows come in.
+  assert.deepEqual(json(`matchScan([{ name: "Headlamp" }, { name: "Torch", same: "b" }], ${items})`), ["", "b"]);
+});
+
+test("the photo prompt lists what the kit holds and asks which line each item is", () => {
+  const { run } = load({ fixture: "tests/household" });
+  const p = run(`photoPrompt(S.kits.find(k => k.id === "go"), S.items.filter(i => i.kitId === "go"))`);
+  assert.match(p, /"same": the number of the line/);
+  assert.match(p, /1 \| First-aid kit \| First aid \| 1\n2 \| Headlamp \| .* \| 2\n/);
+  assert.doesNotMatch(run(`photoPrompt(S.kits.find(k => k.id === "go"))`), /"same"|Already in this kit/);
+});
+
+test("a rescan updates the items it sees again and adds only what is new", async () => {
+  const app = rescan([
+    { name: "LED head torch", category: "light", qty: 3, grams: 300, same: 2 },
+    { name: "first-aid kits", category: "first_aid", qty: 2, expires: "2029-03" },
+    { name: "Duct tape", category: "tools", qty: 1 },
+  ]);
+  const { run, json } = app, before = goItems(app);
+  run(`addToTray([photo(1)])`);
+  await run(`ACT.readTray()`);
+  assert.deepEqual(json(`S.draft.rows.map(r => [r.name, r.match || ""])`), [["Headlamp", "i5"], ["First-aid kit", "i4"], ["Duct tape", ""]]);
+  const html = kitsView(app);
+  assert.match(html, /2 are already in this kit and will be updated, not added again; 1 is new/);
+  assert.match(html, />Update 2, add 1</);
+  assert.match(html, /Already in this kit<\/b>, was ×2/);
+  await run(`ACT.draftSave()`);
+  const after = goItems(app), by = id => after.find(i => i.id === id);
+  assert.equal(after.length, before.length + 1);
+  assert.equal(by("i5").qty, 3);
+  // The headlamps had no saved weight, so the photo's estimate is taken (300 g, shown and saved as 0.7 lb).
+  assert.equal(by("i5").grams, 318);
+  assert.equal(by("i5").name, "Headlamp");
+  // The saved weight wins over the photo's estimate, scaled to the two kits seen now; the date comes from the photo.
+  assert.equal(by("i4").grams, 900);
+  assert.equal(by("i4").expires, "2029-03");
+  assert.equal(by("i4").source, before.find(i => i.id === "i4").source);
+  assert.equal(after.filter(i => i.name === "Duct tape" && i.source === "photo").length, 1);
+});
+
+test("a matched row can be added as a new item instead", async () => {
+  const app = rescan([{ name: "Headlamp", category: "light", qty: 1 }]);
+  const { run, json } = app, n = goItems(app).length;
+  run(`addToTray([photo(1)])`);
+  await run(`ACT.readTray()`);
+  run(`ACT.draftUnmatch({ dataset: { i: "0" } })`);
+  assert.match(kitsView(app), />Add 1 to kit</);
+  await run(`ACT.draftSave()`);
+  assert.equal(goItems(app).length, n + 1);
+  assert.equal(json(`S.items.find(i => i.id === "i5").qty`), 2);
+});
+
+test("a match whose item was deleted meanwhile is added as new", async () => {
+  const app = rescan([{ name: "Headlamp", category: "light", qty: 1 }]);
+  const { run } = app, n = goItems(app).length;
+  run(`addToTray([photo(1)])`);
+  await run(`ACT.readTray()`);
+  run(`S.items = S.items.filter(i => i.id !== "i5")`);
+  assert.doesNotMatch(kitsView(app), /Already in this kit/);
+  await run(`ACT.draftSave()`);
+  assert.equal(goItems(app).length, n);
+});
