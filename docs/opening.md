@@ -70,6 +70,32 @@ Strangers' sign-in links go out through Resend, on your domain (D6, D8).
   so the sign-in card's "one hour" is true. Check that **Confirm email** is on: the family's
   addresses join the family household only once confirmed.
 
+## 2b. Google sign-in
+
+Continue with Google sits above the email form (the founder, 20 Nov 2026, reversing #70's "no
+social logins"). It needs no email from us, so it works for strangers even before Resend does.
+The card shows the button by itself once the provider is on, and hides it again if it is turned
+off: no deploy either way.
+
+- In Google Cloud Console, make a project for Go Bag. Under Google Auth Platform → Branding, set
+  the app name **Go Bag**, your support email, and the site's domain as an authorised domain.
+  Audience: **External**, then **Publish app** (only email and profile are asked for, so Google
+  needs no review). Data Access: just `openid`, `userinfo.email` and `userinfo.profile`.
+- Under Clients, create an OAuth client of type **Web application**:
+  - Authorised JavaScript origins: the site, such as `https://go-bag.example`
+  - Authorised redirect URI: `https://jltxxtjlnzpxdozxovmz.supabase.co/auth/v1/callback`
+- In Supabase, Authentication → Sign In / Providers → Google: turn it on and paste the client ID
+  and client secret. The secret lives there only: not in Doppler, Vercel or the repo.
+- Check that the site's `/app` address is in Authentication → URL Configuration → Redirect URLs
+  (step 3). Google comes back to it, as the email link does.
+- In a private window, `/app` shows **Continue with Google**. Signing in with an address that has
+  never been used makes a new, empty household. Signing in with a family address opens the
+  family household: Supabase joins a Google sign-in to the account that already has that
+  address, because Google has confirmed it.
+
+Google's consent screen names `jltxxtjlnzpxdozxovmz.supabase.co` as where you are signing in to.
+Showing the site's own name there needs a Supabase custom domain, a paid add-on. Not this round.
+
 ## 3. URLs
 
 - In Vercel, project `go-bag` → Settings → Domains, add `go-bag.example` and set the DNS records

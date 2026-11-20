@@ -52,14 +52,20 @@ function fakeDom() {
 const all = root => root.children.flatMap(c => [c, ...all(c)]);
 
 // Runs web/signin.js in a fresh context and returns what a test needs to drive the card.
-function signin({ search = "", hash = "", senderEmail, answer = () => ({ data: {}, error: null }) } = {}) {
+// `fetch` stands in for the browser's, which the card asks whether Google is on; without one it's off.
+// `oauth` answers signInWithOAuth.
+function signin({ search = "", hash = "", senderEmail, answer = () => ({ data: {}, error: null }), fetch, oauth = () => ({ data: {}, error: null }) } = {}) {
   const dom = fakeDom();
-  const calls = [], replaced = [], reloads = [];
-  const sb = { auth: { signInWithOtp: async arg => { calls.push(JSON.parse(JSON.stringify(arg))); return answer(arg); } } };
+  const calls = [], replaced = [], reloads = [], oauthCalls = [], fetched = [];
+  const sb = { auth: {
+    signInWithOtp: async arg => { calls.push(JSON.parse(JSON.stringify(arg))); return answer(arg); },
+    signInWithOAuth: async arg => { oauthCalls.push(JSON.parse(JSON.stringify(arg))); return oauth(arg); },
+  } };
   const window = { GO_BAG_CONFIG: senderEmail ? { supabaseUrl: "https://db.example", supabaseKey: "pk", senderEmail } : { supabaseUrl: "https://db.example", supabaseKey: "pk" } };
   const location = { origin: "https://go-bag.example", pathname: "/app", search, hash, reload: () => reloads.push(1) };
   vm.runInNewContext(SIGNIN, {
     window, document: dom.document, location, URLSearchParams,
+    ...(fetch ? { fetch: (...a) => { fetched.push(a); return fetch(...a); } } : {}),
     history: { replaceState: (...a) => replaced.push(a) },
     // Through the main context's timers and clock, so node:test's mock timers drive the countdown.
     // A real countdown never holds the test run open.
@@ -75,12 +81,13 @@ function signin({ search = "", hash = "", senderEmail, answer = () => ({ data: {
   const els = () => all(card());
   const find = (tag, text) => els().find(e => e.tagName === tag && (text === undefined || e.textContent.trim() === text));
   const ui = {
-    TEXT, sb, calls, replaced, reloads, dom, card, els, find,
+    TEXT, sb, calls, replaced, reloads, oauthCalls, fetched, dom, card, els, find,
     open: opts => window.goBagSignIn(sb, opts),
     heading: () => find("H2").textContent,
     text: () => card().textContent,
     input: () => find("INPUT"),
     button: label => find("BUTTON", label),
+    press: async label => { await find("BUTTON", label).fire("click"); await settle(); },
     // Types an address and sends the form, then waits for the answer.
     send: async email => { ui.input().value = email; await find("FORM").fire("submit"); await settle(); },
   };
@@ -263,6 +270,77 @@ test("drawn again, the card replaces itself and stops its countdown", async t =>
   assert.equal(ui.dom.document.head.children.length, 1, "the styles go in once");
 });
 
+// What Supabase's public /auth/v1/settings answers, with Google on or off.
+const settings = google => async () => ({ ok: true, json: async () => ({ external: { email: true, google }, disable_signup: false }) });
+
+test("Continue with Google shows only while the project's settings say Google is on", async () => {
+  const off = signin();
+  await off.open();
+  assert.equal(off.button(off.TEXT.google), undefined, "no way to ask: no button");
+  assert.ok(!off.text().includes(off.TEXT.or));
+
+  const on = signin({ fetch: settings(true) });
+  await on.open();
+  assert.ok(on.button(on.TEXT.google), "Google is on: the button shows");
+  assert.ok(on.text().includes(on.TEXT.or) && on.button(on.TEXT.send), "above the email form, which stays");
+  assert.equal(on.fetched.length, 1);
+  assert.equal(on.fetched[0][0], "https://db.example/auth/v1/settings");
+  assert.deepEqual(JSON.parse(JSON.stringify(on.fetched[0][1])), { headers: { apikey: "pk" } });
+  await on.open();
+  assert.equal(on.fetched.length, 1, "asked once, however often the card is drawn");
+
+  for (const fetch of [settings(false), settings("true"), async () => ({ ok: false, json: async () => ({ external: { google: true } }) }), async () => { throw new Error("offline"); }, () => { throw new Error("blocked"); }]) {
+    const ui = signin({ fetch });
+    await ui.open();
+    assert.equal(ui.button(ui.TEXT.google), undefined);
+    assert.ok(ui.button(ui.TEXT.send), "the email form is still there");
+  }
+});
+
+test("settings that never answer leave the email form alone after a short wait", async t => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const ui = signin({ fetch: () => new Promise(() => {}) });
+  const opened = ui.open();
+  await settle();
+  assert.equal(ui.dom.document.body.children.length, 0, "still asking");
+  t.mock.timers.tick(1500);
+  await opened;
+  assert.ok(ui.button(ui.TEXT.send));
+  assert.equal(ui.button(ui.TEXT.google), undefined);
+});
+
+test("Continue with Google hands over to Google once, coming back to /app, and opens again after a moment", async t => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const ui = signin({ search: "?start=new" });
+  await ui.open({ google: true });
+  assert.equal(ui.heading(), ui.TEXT.newHeading);
+  const btn = ui.button(ui.TEXT.google);
+  await btn.fire("click");
+  await settle();
+  assert.deepEqual(ui.oauthCalls, [{ provider: "google", options: { redirectTo: "https://go-bag.example/app" } }]);
+  assert.equal(btn.disabled, true);
+  assert.equal(btn.textContent, ui.TEXT.googleOpening);
+  await btn.fire("click");
+  await settle();
+  assert.equal(ui.oauthCalls.length, 1, "a second press while it opens does nothing");
+  assert.equal(ui.calls.length, 0, "and no link is sent");
+  t.mock.timers.tick(4000);
+  assert.equal(btn.disabled, false, "back from Google's page, it can be pressed again");
+  assert.equal(btn.textContent, ui.TEXT.google);
+});
+
+test("when Google can't be opened the card says so and keeps the typed address", async () => {
+  for (const oauth of [() => ({ error: { status: 500 } }), () => { throw new Error("offline"); }]) {
+    const ui = signin({ oauth });
+    await ui.open({ google: true });
+    ui.input().value = "alex@example.com";
+    await ui.press(ui.TEXT.google);
+    assert.ok(ui.text().includes(ui.TEXT.googleFailed));
+    assert.equal(ui.input().value, "alex@example.com");
+    assert.equal(ui.button(ui.TEXT.google).disabled, false);
+  }
+});
+
 test("an address holding markup is shown as text, and nothing is built from it", async () => {
   const ui = signin();
   await ui.open();
@@ -300,7 +378,11 @@ test("the card is drawn only in the page's own tokens, with no colour of its own
   assert.ok(css.length > 0);
   assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b/i, "no hex colour");
   assert.doesNotMatch(css, /\b(rgba?|hsla?|oklch|lab|lch|color-mix)\(/i, "no colour function");
-  assert.doesNotMatch(SIGNIN, /#[0-9a-f]{3}(?:[0-9a-f]{3})?\b(?![\w-])/i, "no hex colour anywhere in the file, the mark included");
+  // Google's "G" keeps Google's four colours, as its sign-in branding asks. Nothing else has a colour.
+  const g = SIGNIN.match(/const G = '(<svg class="gb-auth-g"[^']*)';/);
+  assert.ok(g, "the Google mark is one constant");
+  assert.deepEqual([...g[1].matchAll(/#[0-9a-f]{6}/gi)].map(m => m[0].toUpperCase()).sort(), ["#34A853", "#4285F4", "#EA4335", "#FBBC05"]);
+  assert.doesNotMatch(SIGNIN.replace(g[1], ""), /#[0-9a-f]{3}(?:[0-9a-f]{3})?\b(?![\w-])/i, "no hex colour anywhere else in the file, the mark included");
   const root = PAGE.match(/:root\s*\{([\s\S]*?)\}/)[1];
   const declared = new Set([...root.matchAll(/(--[\w-]+)\s*:/g)].map(m => m[1]));
   const used = new Set([...css.matchAll(/var\(\s*(--[\w-]+)/g)].map(m => m[1]));
@@ -313,7 +395,7 @@ test("every class the card uses is prefixed gb-auth", async () => {
   const css = await cardCss();
   const cssClasses = [...css.replace(/\{[^}]*\}/g, "{}").matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map(m => m[1]);
   const ui = signin({ senderEmail: "sign-in@go-bag.example" });
-  await ui.open();
+  await ui.open({ google: true });
   await ui.send("alex@example.com");
   const elClasses = ui.dom.made.flatMap(e => e.className.split(/\s+/).filter(Boolean));
   const svgClasses = ui.dom.html.flatMap(s => [...s.matchAll(/class="([^"]*)"/g)].flatMap(m => m[1].split(/\s+/)));
@@ -344,10 +426,12 @@ test("every string the card shows comes from TEXT", async t => {
     [{}, async ui => { await ui.send("alex@example.com"); t.mock.timers.tick(60000); }],
     [{ hash: "#error_code=otp_expired" }, async () => {}],
     [{ hash: "#error=server_error" }, async () => {}],
+    [{ google: true }, ui => ui.press(TEXT.google)],
+    [{ google: true, oauth: () => ({ error: { status: 500 } }) }, ui => ui.press(TEXT.google)],
   ];
-  for (const [opts, act] of states) {
+  for (const [{ google, ...opts }, act] of states) {
     const ui = signin(opts);
-    await ui.open();
+    await ui.open(google ? { google } : undefined);
     look(ui);
     await act(ui);
     look(ui);
@@ -357,7 +441,7 @@ test("every string the card shows comes from TEXT", async t => {
   look(ui);
   const ok = s => known.has(s) || templates.some(r => r.test(s)) || s === "alex@example.com" || s === "maria@gmail" || s === `(${sender})`;
   for (const s of new Set(shown)) assert.ok(ok(s), `"${s}" is not from TEXT`);
-  for (const s of ["sentHeading", "tooMany", "sendFailed", "invalid", "expiredHeading", "linkFailed", "unavailableHeading", "resend"]) assert.ok(shown.includes(TEXT[s]), `${s} was seen`);
+  for (const s of ["sentHeading", "tooMany", "sendFailed", "invalid", "expiredHeading", "linkFailed", "unavailableHeading", "resend", "google", "googleOpening", "googleFailed", "or"]) assert.ok(shown.includes(TEXT[s]), `${s} was seen`);
 });
 
 test("the preview writes one page, with the card and a stand-in client that answers per ?result", async () => {
@@ -375,6 +459,8 @@ test("the preview writes one page, with the card and a stand-in client that answ
   assert.equal((await ask("429")).status, 429);
   assert.ok((await ask("fail")).status >= 500);
   assert.equal((await previewClient("").auth.signInWithOtp({ email: "alex@example.com" })).error, null, "no result sends");
+  assert.equal((await previewClient("?result=ok").auth.signInWithOAuth({ provider: "google" })).error, null);
+  assert.ok((await previewClient("?result=fail").auth.signInWithOAuth({ provider: "google" })).error, "and Google fails with it");
 });
 
 // In a real browser, at 390 and 1440 px: every state with the long address fits, and nothing scrolls
@@ -385,12 +471,15 @@ test("at 390 and 1440 px every state fits the long address and nothing scrolls s
     const states = {
       form: ["ok", null], sent: ["ok", LONG], tooMany: ["429", LONG], failed: ["fail", LONG],
       invalid: ["ok", "maria.delacruz-whitfield@family-mail"], expired: ["ok", "#error_code=otp_expired"], unavailable: ["ok", "unavailable"],
+      google: ["ok", "google"], googleFailed: ["fail", "google"],
     };
     const drive = (state, result, arg) => `(async () => {
-      const sb = { auth: { signInWithOtp: async () => (${JSON.stringify(result)} === "ok" ? { error: null } : { error: { status: ${JSON.stringify(result)} === "429" ? 429 : 500 } }) } };
+      const answer = async () => (${JSON.stringify(result)} === "ok" ? { error: null } : { error: { status: ${JSON.stringify(result)} === "429" ? 429 : 500 } });
+      const sb = { auth: { signInWithOtp: answer, signInWithOAuth: answer } };
       const arg = ${JSON.stringify(arg)};
-      await goBagSignIn(sb, arg === "unavailable" ? { state: "unavailable" } : undefined);
+      await goBagSignIn(sb, arg === "unavailable" ? { state: "unavailable" } : { google: arg === "google" });
       const card = document.querySelector(".gb-auth");
+      if (arg === "google") card.querySelector(".gb-auth-google").click();
       if (arg && arg.includes("@")) { card.querySelector("input").value = arg; card.querySelector("form").requestSubmit(); }
     })()`;
     const measure = `(() => {
@@ -422,7 +511,7 @@ test("at 390 and 1440 px every state fits the long address and nothing scrolls s
     const unesc = s => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
     const got = new Map(JSON.parse(unesc(m[1])));
     const { TEXT } = signin();
-    const want = { form: TEXT.loginHeading, sent: TEXT.sentHeading, tooMany: TEXT.loginHeading, failed: TEXT.loginHeading, invalid: TEXT.loginHeading, expired: TEXT.expiredHeading, unavailable: TEXT.unavailableHeading };
+    const want = { form: TEXT.loginHeading, sent: TEXT.sentHeading, tooMany: TEXT.loginHeading, failed: TEXT.loginHeading, invalid: TEXT.loginHeading, expired: TEXT.expiredHeading, unavailable: TEXT.unavailableHeading, google: TEXT.loginHeading, googleFailed: TEXT.loginHeading };
     for (const [k, r] of got) {
       const state = k.split("@")[0];
       assert.equal(r.err, undefined, k);
@@ -434,6 +523,8 @@ test("at 390 and 1440 px every state fits the long address and nothing scrolls s
     assert.ok(got.get("tooMany@390").text.includes(TEXT.tooMany));
     assert.ok(got.get("failed@390").text.includes(TEXT.sendFailed));
     assert.ok(got.get("invalid@390").text.includes(TEXT.invalid));
-    assert.equal(got.size, 14);
+    assert.ok(got.get("google@390").text.includes(TEXT.googleOpening) && got.get("google@390").text.includes(TEXT.or));
+    assert.ok(got.get("googleFailed@390").text.includes(TEXT.googleFailed));
+    assert.equal(got.size, 18);
   } finally { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 }); }
 });

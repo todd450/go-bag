@@ -3,6 +3,7 @@
 // the page wrapped by tools/page.js with the card over it and a stand-in supabase-js client, so no
 // link is ever really sent. Its signInWithOtp answers per the address's ?result:
 //   ok (or none)  the link "went"      429  too many links      fail  the send failed
+// ?google=1 draws Continue with Google, which goes nowhere here (and fails with ?result=fail).
 // The card's own parameters work too: ?start=new, ?error_code=otp_expired, #error=server_error.
 // More for screenshots: ?email=<address> types it and sends, ?state=unavailable draws that card, and
 // ?theme=dark|light sets the page's theme whatever the system's is.
@@ -19,13 +20,16 @@ function previewClient(search) {
     429: { status: 429, code: "over_email_send_rate_limit", message: "email rate limit exceeded" },
     fail: { status: 500, code: "unexpected_failure", message: "Error sending magic link email" },
   };
-  return { auth: { signInWithOtp: async () => ({ data: {}, error: answers[result] || null }) } };
+  return { auth: {
+    signInWithOtp: async () => ({ data: {}, error: answers[result] || null }),
+    signInWithOAuth: async () => ({ data: {}, error: answers[result] ? answers.fail : null }),
+  } };
 }
 
 async function start(client) {
   const q = new URLSearchParams(location.search);
   if (["dark", "light"].includes(q.get("theme"))) document.documentElement.dataset.theme = q.get("theme");
-  await window.goBagSignIn(client, q.get("state") === "unavailable" ? { state: "unavailable" } : undefined);
+  await window.goBagSignIn(client, q.get("state") === "unavailable" ? { state: "unavailable" } : { google: q.get("google") === "1" });
   if (q.get("email") === null) return;
   const card = document.querySelector(".gb-auth");
   card.querySelector("input").value = q.get("email");
