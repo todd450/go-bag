@@ -584,6 +584,18 @@ function buyGuide(cat, qty, unit, kt, h, ess) {
 /* The kit item a list entry becomes when ticked. A line for a named essential makes an item already tagged with it. */
 const itemFromShop = (e, kitId) => ({ kitId, name: e.name || catLabel(e.cat), category: e.cat, qty: e.unit ? 1 : Math.max(1, num(e.qty)), liters: e.unit === "L" ? num(e.qty) : 0, kcal: e.unit === "kcal" ? num(e.qty) : 0, expires: "", note: "Bought from the shopping list", source: "list",
   ...(essentialList(e.cat).some(x => x.id === e.essential) ? { essential: e.essential } : {}) });
+/* A name as the words in it, lower case, in order of spelling and without a plural "s", so "Water bottles" and
+   "bottle, water" read as the same thing. */
+const nameKey = s => String(s || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).map(w => w.length > 3 && !w.endsWith("ss") ? w.replace(/s$/, "") : w).sort().join(" ");
+/* A rescan: which of the kit's `items` each row of a photo read already is, as one item id (or "") per row. A row's
+   `same` is the item Claude said it is and is believed when that item is in the kit; any other row matches an item
+   of the same name. Each item is matched once, and never one in `taken` (ids an earlier read already claimed). */
+function matchScan(rows, items, taken = []) {
+  const used = new Set(taken), free = it => it && !used.has(it.id);
+  const pick = it => (free(it) ? (used.add(it.id), it.id) : "");
+  const said = rows.map(r => pick(r.same ? items.find(it => it.id === r.same) : null));
+  return rows.map((r, i) => said[i] || pick(nameKey(r.name) ? items.find(it => free(it) && nameKey(it.name) === nameKey(r.name)) : null));
+}
 /* Household readiness if these entries were bought and put in their kits: the same sum ticking them does.
    `M` is the model of the household as it is now. Nothing is scored again from scratch (#158): what each
    emergency needs and weighs doesn't depend on what's in the kits, so only the stocks the new items land in
@@ -946,7 +958,7 @@ if (typeof module === "object" && module && module.exports) module.exports = {
   HOUSEHOLD, num, uid, f1, clone, strip, isExampleKit, BANDS, band, catLabel, amazonLink, expState, household,
   relevance, FACT_WORDS, FACTS, factText, householdWhy, itemsIn, stock, stockItems, stockPlus, needFor, modelStocks, model, haveOf, needRow,
   fillRow, essCov, rawScore, scoreRows, overallIf, orList, gal, gapPlan, scoreIfShopped, scoreIfFilled, pl, whoIs,
-  hasCond, forWho, rxAsk, ESS_BUY, PICKS, essentialGuide, pk, buyGuide, itemFromShop, scoreIfBought, overallWith, shopInfo, TRIPS,
+  hasCond, forWho, rxAsk, ESS_BUY, PICKS, essentialGuide, pk, buyGuide, itemFromShop, nameKey, matchScan, scoreIfBought, overallWith, shopInfo, TRIPS,
   tripOf, shopItems, gapKey, splitListed, gapName, shopFromGap, ownKit, shopKit, kitGaps, KIT_STD, kitReadiness,
   dollars, cents, itemCost, kitTypeOf, spentOn, shortOf, lineCost, kitCost, hzCost, householdCost, PACK, WATER_G,
   itemLoad, bodyKg, carryShare, carryKg, PACK_L, CONTAINER_KINDS, CTR_MAX, cutText, containerOf, kitLimits, packPlan,
