@@ -211,40 +211,68 @@ test("each group lists its emergencies most likely first, and among equally like
   }
 });
 
-test("a group's unlikely emergencies wait behind a button at its end, unless they matter more to the household", () => {
+test("a group shows its first five emergencies, and the rest wait behind a button at its end", () => {
   const { run, json } = load({ fixture: "tests/household" });
   const drawn = () => [...run("viewOverview(model())").matchAll(/data-act="toggleHz" data-id="([^"]+)"/g)].map(m => m[1]);
   const buttons = () => [...run("viewOverview(model())").matchAll(/data-act="toggleLow" data-g="([^"]*)" aria-expanded="(\w+)">([^<]*)</g)].map(([, g, open, label]) => ({ g, open, label }));
+  const TOP = json("HZ_TOP");
   const rows = json(`model().results.map(r => ({ id: r.hz.id, group: r.hz.group || "", level: LEVELS[r.rel][1], score: r.score }))`);
-  const low = rows.filter(r => r.level === 1), health = low.filter(r => r.group === "health").map(r => r.id);
-  assert.ok(health.length >= 2 && low.length === health.length, "the standard household's Low emergencies are health ones");
-  // Closed: every emergency that applies but the Low ones, and one button, in their group
-  assert.deepEqual(drawn().sort(), rows.filter(r => r.level > 1).map(r => r.id).sort());
-  assert.deepEqual(buttons(), [{ g: "health", open: "false", label: `Show ${health.length} less likely` }]);
+  const inGroup = g => rows.filter(r => r.group === g && r.level > 0), health = inGroup("health");
+  assert.ok(health.filter(r => r.level > 1).length > TOP && inGroup("").length <= TOP, "the standard household has more than five likely health emergencies, and no more than five disasters");
+  // Opened, a group is in the list's order: the most likely first
+  run(`ACT.toggleLow({ dataset: { g: "health" } })`);
+  const order = drawn().filter(id => health.some(r => r.id === id));
+  assert.equal(order.length, health.length);
+  assert.deepEqual(buttons(), [{ g: "health", open: "true", label: `Show the first ${TOP} only` }]);
+  run(`ACT.toggleLow({ dataset: { g: "health" } })`);
+  // Closed: its first five, and one button counting everything behind it. A group of five or fewer shows them all.
+  assert.deepEqual(drawn().filter(id => order.includes(id)), order.slice(0, TOP));
+  assert.deepEqual(buttons(), [{ g: "health", open: "false", label: `Show ${health.length - TOP} more` }]);
+  for (const r of inGroup("")) assert.ok(drawn().includes(r.id), `${r.id} shows`);
   // They still count: hiding them is only what the list shows
-  assert.ok(json("model().active.map(r => r.hz.id)").includes(health[0]));
-  // Opened, they are at the end of their group, in the list's order
-  run(`ACT.toggleLow({ dataset: { g: "health" } })`);
-  assert.deepEqual(drawn().slice(-health.length - rows.filter(r => r.group === "everyday" && r.level > 1).length).slice(0, health.length).sort(), [...health].sort());
-  assert.deepEqual(buttons(), [{ g: "health", open: "true", label: `Hide ${health.length} less likely` }]);
-  run(`ACT.toggleLow({ dataset: { g: "health" } })`);
-  assert.equal(drawn().length, rows.filter(r => r.level > 1).length, "and hidden again");
-  // An opened one is never hidden either: rated Low in its own panel, it stays where it is, and out of the count
-  const mod = rows.find(r => r.group === "health" && r.level === 2).id;
-  run(`S.openHz = new Set([${JSON.stringify(mod)}]); S.hazards = { ...S.hazards, levels: { ...S.hazards?.levels, [${JSON.stringify(mod)}]: "low" } }`);
-  assert.equal(json(`LEVELS[model().results.find(r => r.hz.id === ${JSON.stringify(mod)}).rel][1]`), 1, "it is rated Low now");
-  assert.ok(drawn().includes(mod), "rated Low while open, it still shows");
-  assert.match(run("viewOverview(model())"), new RegExp(`id="hzp-${mod}"`), "with its panel");
-  assert.deepEqual(buttons(), [{ g: "health", open: "false", label: `Show ${health.length} less likely` }]);
+  assert.ok(json("model().active.map(r => r.hz.id)").includes(order.at(-1)));
+  // An opened one is never hidden, wherever it is in the order, and it isn't in the count
+  const last = order.at(-1);
+  run(`S.openHz = new Set([${JSON.stringify(last)}])`);
+  assert.ok(drawn().includes(last), "open, the last one shows");
+  assert.match(run("viewOverview(model())"), new RegExp(`id="hzp-${last}"`), "with its panel");
+  assert.deepEqual(buttons(), [{ g: "health", open: "false", label: `Show ${health.length - TOP - 1} more` }]);
   run(`S.openHz = new Set()`);
-  assert.ok(!drawn().includes(mod), "closed, it joins the others behind the button");
-  assert.deepEqual(buttons(), [{ g: "health", open: "false", label: `Show ${health.length + 1} less likely` }]);
-  run(`S.hazards = { ...S.hazards, levels: { ...S.hazards.levels, [${JSON.stringify(mod)}]: "moderate" } }`);
-  // One the household marked as mattering more is never hidden, and isn't in the count
-  run(`S.hazards = { ...S.hazards, importance: { ...S.hazards?.importance, [${JSON.stringify(health[0])}]: "more" } }`);
-  assert.ok(drawn().includes(health[0]), "the starred one shows");
-  assert.ok(!drawn().includes(health[1]), "the others stay hidden");
-  assert.deepEqual(buttons(), [{ g: "health", open: "false", label: `Show ${health.length - 1} less likely` }]);
+  assert.ok(!drawn().includes(last), "closed, it joins the others behind the button");
+  // One the household marked as mattering more is never hidden either
+  run(`S.hazards = { ...S.hazards, importance: { ...S.hazards?.importance, [${JSON.stringify(last)}]: "more" } }`);
+  assert.ok(drawn().includes(last), "the starred one shows");
+  assert.ok(!drawn().includes(order.at(-2)), "the others stay hidden");
+});
+
+test("a group of five or fewer keeps only its unlikely emergencies behind the button", () => {
+  const { run, json } = load({ fixture: "tests/household" });
+  const drawn = () => [...run("viewOverview(model())").matchAll(/data-act="toggleHz" data-id="([^"]+)"/g)].map(m => m[1]);
+  const label = () => [...run("viewOverview(model())").matchAll(/data-act="toggleLow" data-g="" aria-expanded="\w+">([^<]*)</g)].map(m => m[1]);
+  const mine = json(`model().results.filter(r => !r.hz.group && LEVELS[r.rel][1] > 0).map(r => r.hz.id)`);
+  assert.deepEqual(label(), []);
+  run(`S.hazards = { ...S.hazards, levels: { ...S.hazards?.levels, [${JSON.stringify(mine[0])}]: "low" } }`);
+  assert.ok(!drawn().includes(mine[0]), "rated Low, it waits behind the button");
+  assert.deepEqual(label(), ["Show 1 less likely"]);
+  run(`ACT.toggleLow({ dataset: { g: "" } })`);
+  assert.ok(drawn().includes(mine[0]));
+  assert.deepEqual(label(), ["Hide 1 less likely"]);
+});
+
+test("Readiness opens the shopping list, and its rows say they open", () => {
+  const { run, json } = load({ fixture: "tests/household" });
+  run(`S.canWrite = true`);
+  const html = () => run("viewOverview(model())");
+  assert.match(html(), /id="ov-shop" data-act="shopOpen">Shopping list</);
+  run(`HOUSEHOLD.shopping = S.shopping = { items: [shopFromGap(model().gaps[0], model().h), { ...shopFromGap(model().gaps[1], model().h), done: true }] }`);
+  assert.match(html(), /data-act="shopOpen">Shopping list · 1 to buy</);
+  run(`ACT.shopOpen()`);
+  assert.equal(json("S.view"), "kits");
+  assert.equal(json("S.allKits"), true);
+  // Every emergency's row ends in a chevron, as a kit's row does
+  const rows = html().match(/<div class="hz-row[\s\S]*?<span class="hz-needs">/g);
+  assert.ok(rows.length > 3);
+  for (const r of rows) assert.match(r, /<svg[^>]*class="ic chev"/);
 });
 
 // An emergency's two ratings. On its row they are marks to read; its pickers are in the opened emergency.
