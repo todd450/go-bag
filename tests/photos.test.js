@@ -101,7 +101,7 @@ const read = async reply => {
 };
 // The draft's rows, read from the rendered table: the row's category, and its Essential select's options and value
 // (null when the row has none).
-const draftRows = app => [...app.run(`draftTable(S.draft)`).match(/<tbody>[\s\S]*<\/tbody>/)[0].matchAll(/<tr>[\s\S]*?<\/tr>/g)].map(([tr]) => {
+const draftRows = app => [...app.run(`draftTable(S.draft)`).match(/<tbody>[\s\S]*<\/tbody>/)[0].matchAll(/<tr[^>]*>[\s\S]*?<\/tr>/g)].map(([tr]) => {
   const sel = tr.match(/<select[^>]*data-f="essential"[^>]*>[\s\S]*?<\/select>/)?.[0];
   return {
     category: tr.match(/data-f="category"[\s\S]*?<option value="([^"]*)" selected>/)?.[1],
@@ -294,4 +294,21 @@ test("a match whose item was deleted meanwhile is added as new", async () => {
   assert.doesNotMatch(kitsView(app), /Already in this kit/);
   await run(`ACT.draftSave()`);
   assert.equal(goItems(app).length, n);
+});
+
+test("a draft row has a line that opens its details, which says what Claude read", async () => {
+  const app = rescan([{ name: "Twenty dollar bills", category: "documents", qty: 5, grams: 454 }, { name: "Water bottles", category: "water", qty: 6, liters: 3, expires: "2027-06" }]);
+  const { run, json } = app;
+  run(`addToTray([photo(1)])`);
+  await run(`ACT.readTray()`);
+  const rows = () => [...run(`draftTable(S.draft)`).matchAll(/<tr class="(\w*)">[\s\S]*?<button type="button" class="d-more"[^>]*aria-expanded="(\w+)"[^>]*><span class="ell">([^<]*)<\/span>/g)].map(m => m.slice(1));
+  assert.deepEqual(rows(), [["shut", "false", "Documents &amp; cash · Pick its essential · 1 lb"], ["shut", "false", "Water · 3 L · exp 2027-06"]]);
+  run(`ACT.draftOpen({ dataset: { i: "1" } })`);
+  assert.deepEqual(rows(), [["shut", "false", "Documents &amp; cash · Pick its essential · 1 lb"], ["", "true", "Fewer details"]]);
+  // Once the essential is picked the line names it; "Not one of these" says nothing
+  await app.fire("input", { dataset: { input: "draft", i: "0", f: "essential" }, value: "cash" });
+  assert.equal(rows()[0][2], "Documents &amp; cash · Cash · 1 lb");
+  // Whether a row is open is never saved with the item
+  await run(`ACT.draftSave()`);
+  assert.ok(json(`S.items.every(i => !("open" in i) && !("kept" in i))`));
 });

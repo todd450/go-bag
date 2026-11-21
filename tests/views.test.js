@@ -82,7 +82,7 @@ test("every inventory cell with something in it is labelled for the card layout"
     const cells = table[0].match(/<td[^>]*>[\s\S]*?<\/td>/g);
     assert.ok(cells.length > 8);
     for (const td of cells) {
-      if (/^<td[^>]*><\/td>$/.test(td) || /^<td class="(sel|x-td)"/.test(td)) continue;
+      if (/^<td[^>]*><\/td>$/.test(td) || /^<td class="(sel|x-td|d-sum)"/.test(td)) continue; // d-sum: the line that opens a draft row on a phone, a button with its own name
       assert.match(td, /^<td[^>]*data-label="[^"]+"/, td.slice(0, 80));
     }
   }
