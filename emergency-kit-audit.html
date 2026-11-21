@@ -297,12 +297,12 @@ label.f > input, label.f > select { color: var(--ink); font-size: .95rem; font-w
 .chip.full { border-color: color-mix(in srgb, var(--good) 30%, transparent); background: color-mix(in srgb, var(--good) 9%, var(--card)); }
 .chip.full .ic { color: var(--good); }
 /* An essential pill: present is .chip.full with a check, missing is outlined with an empty circle and its points. */
-.chip.ess { line-height: 1.3; text-align: left; max-width: 100%; }
-.chip.ess .ic { stroke-width: 2; }
-.chip.ess.miss { background: var(--card); border-color: var(--rule-2); }
-.chip.ess .gain { font-size: inherit; }
-button.chip.ess { min-height: 32px; font-family: inherit; cursor: pointer; }
-button.chip.ess:hover { border-color: var(--ink); }
+.chip:is(.ess, .cnt) { line-height: 1.3; text-align: left; max-width: 100%; }
+.chip:is(.ess, .cnt) .ic { stroke-width: 2; }
+.chip:is(.ess, .cnt).miss { background: var(--card); border-color: var(--rule-2); }
+.chip:is(.ess, .cnt) .gain { font-size: inherit; }
+button.chip:is(.ess, .cnt) { min-height: 32px; font-family: inherit; cursor: pointer; }
+button.chip:is(.ess, .cnt):hover { border-color: var(--ink); }
 /* One checklist category of named essentials: icon, name, "1 of 4" and a bar, its pills, then its button and notes. */
 .ess-blk { display: grid; gap: 8px; padding: 10px 0 12px; border-top: 1px solid var(--rule); min-width: 0; }
 .ess-h { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto 72px; gap: 8px; align-items: center; font-size: .9rem; }
@@ -345,6 +345,16 @@ button.chip.ess:hover { border-color: var(--ink); }
 .kit-pct { font-family: var(--f-display); font-size: 2rem; font-weight: 700; line-height: 1; letter-spacing: -.03em; }
 .exp-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: .88rem; }
 .exp-row .flag { flex: none; font-size: .75rem; font-weight: 500; }
+.exp-row { align-items: center; } .exp-row .ell { flex: 1; } .exp-row .btn, .exp-on { flex: none; }
+/* The next best step: one thing to do, above the score */
+.next { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; border-color: color-mix(in srgb, var(--brand) 45%, var(--rule)); }
+.next > .stack { gap: 3px; flex: 1 1 260px; min-width: 0; } .next-t { font-size: 1.05rem; overflow-wrap: anywhere; }
+.kit-chk { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; color: var(--ink-2); margin: 0; }
+.kit-chk.stale { color: var(--warn); }
+.cost-unp { display: block; white-space: nowrap; }
+.plan-l { display: grid; gap: 1px; } .plan-l .k { font-size: .75rem; font-weight: 500; color: var(--ink-2); }
+.shop-kit { display: grid; gap: 6px; justify-items: start; } .ord-tag { color: var(--ink-2); font-weight: 500; }
+.shop-kit .ord[aria-pressed="true"] { border-style: dashed; }
 @media (max-width: 560px) {
   /* On a phone a kit's row says everything in full: its name beside the bar, what kind of kit it is on a line of its
      own, and two lines of what it is missing. The name's button spans the row, and its name leaves the bar, score and
@@ -708,6 +718,9 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
   .draft .inv tbody tr.shut { grid-template-columns: minmax(0, 1fr) 64px 28px; grid-template-areas: "name qty x" "sum sum sum"; }
   .draft .inv tr.shut td:not([data-label="Item"], [data-label="Qty"], .x-td, .d-sum) { display: none; }
   .draft .inv td.d-sum { display: block; grid-area: sum; }
+  /* A shut row keeps to its two lines: its note, its Amazon link and "Add as new" wait in the opened row */
+  .draft .inv tr.shut :is(.d-note, a.buy, .d-same .btn) { display: none; }
+  .draft .inv tr.shut .d-same { flex-wrap: nowrap; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
 }
 /* The line that opens a draft row's details shows only where rows are shut, on a phone */
 .inv td.d-sum { display: none; }
@@ -1047,7 +1060,20 @@ function amount(row, h, days = "household-days") {
   return `${row.have} of ${row.need}`;
 }
 // The counted categories, one chip each; the five of named essentials are blocks (essBlock)
-const chipsFor = (rows, h, days) => rows.filter(row => !row.ess).map(row => `<span class="chip ${row.cov >= 1 ? "full" : ""}">${icon(row.cat, "ic ic-s")}${esc(catLabel(row.cat))} · ${amount(row, h, days).replace(/<[^>]+>/g, "")}</span>`).join("");
+/* One mark means one thing on every chip of a checklist: a tick is covered, "+" is a button that puts what's short on
+   the shopping list for this kit, and a circle is short with the reason said (on your list, or nothing to add). */
+function chipsFor(M, rows, h, days, kitId) {
+  const off = new Set(splitListed(M.gaps).off), kitName = S.kits.find(k => k.id === kitId)?.name;
+  return rows.filter(row => !row.ess).map(row => {
+    const amt = `${esc(catLabel(row.cat))} · ${amount(row, h, days).replace(/<[^>]+>/g, "")}`;
+    if (row.cov >= 1) return `<span class="chip full">${icon("yes", "ic ic-s")}<span class="vh">Have </span>${amt}</span>`;
+    const g = M.gaps.find(x => x.cat === row.cat && !x.essential), gain = g ? gapGain(M, g, kitId) : 0;
+    const tail = g && !off.has(g) ? ` · <span class="muted">on your list</span>` : gain ? ` · <span class="gain" title="Readiness points adding it adds">${pts(gain)}</span>` : g ? "" : ` · <span class="muted">no emergency is short of it</span>`;
+    return S.canWrite && kitName != null && g && off.has(g)
+      ? `<button type="button" class="chip cnt miss" data-act="shopAdd" data-cat="${esc(row.cat)}" data-kit="${esc(kitId)}" aria-label="${esc(`${catLabel(row.cat)}: add to your list for ${kitName}`)}"><b aria-hidden="true">+</b><span class="vh">Short on </span>${amt}${tail}</button>`
+      : `<span class="chip cnt miss">${icon("no", "ic ic-s")}<span class="vh">Short on </span>${amt}${tail}</span>`;
+  }).join("");
+}
 const itemNames = its => { const n = its.map(i => String(i.name || "Unnamed item")); return n.length > 3 ? `${n.slice(0, 3).join(", ")} and ${n.length - 3} more` : orList(n, "and"); };
 /* A category of named essentials' notes, as escaped text: its items still to tag, and its expired ones, which don't count. */
 function essNotes(cat, items) {
@@ -1074,7 +1100,7 @@ function essBlock(M, row, items, kitId) {
   const kitName = S.kits.find(k => k.id === kitId)?.name;
   const lacks = miss.map(({ e, g, gain }) => {
     const btn = S.canWrite && kitName != null && g && first.get(gapKey(g)) === g;
-    const body = `${btn ? `<b aria-hidden="true">+</b>` : icon("no", "ic ic-s")}<span class="vh">Missing </span>${esc(e.label)}${g && !off.has(g) ? ` · <span class="muted">on your list</span>` : gain ? ` · <span class="gain" title="Readiness points adding it adds">${pts(gain)}</span>` : ""}`;
+    const body = `${btn ? `<b aria-hidden="true">+</b>` : icon("no", "ic ic-s")}<span class="vh">Missing </span>${esc(e.label)}${g && !off.has(g) ? ` · <span class="muted">on your list</span>` : gain ? ` · <span class="gain" title="Readiness points adding it adds">${pts(gain)}</span>` : g ? "" : ` · <span class="muted">no emergency is short of it</span>`}`;
     return btn
       ? `<button type="button" class="chip ess miss" data-act="shopAdd" data-cat="${esc(row.cat)}" data-essential="${esc(e.id)}" data-kit="${esc(kitId)}" aria-label="${esc(`${e.label}: add to your list for ${kitName}`)}">${body}</button>`
       : `<span class="chip ess miss">${body}</span>`;
@@ -1089,7 +1115,7 @@ function essBlock(M, row, items, kitId) {
 }
 /* A kit's checklist: a block for each category of named essentials, then the counted ones as chips. */
 function checklist(M, rows, h, days, items, kitId) {
-  const counted = chipsFor(rows, h, days);
+  const counted = chipsFor(M, rows, h, days, kitId);
   return rows.filter(r => r.ess).map(r => essBlock(M, r, items, kitId)).join("")
     + (counted ? `<p class="eyebrow">Counted by amount</p><div class="chips">${counted}</div>` : "");
 }
@@ -1108,6 +1134,31 @@ function viewBanner() {
   return parts.join("");
 }
 
+/* The one thing to do next, for the top of Readiness: the step worth the most points, a line already on the list
+   before a gap that isn't; then what keeps a kit true (an item going out of date, a kit not looked through in six
+   months), then the plan. null when there's nothing left, or for someone who can't change anything. */
+const KIT_STALE = 182; // days since a kit was last checked before it asks to be looked through again
+const checkedDays = kit => num(kit.checkedAt) ? Math.floor((Date.now() - num(kit.checkedAt)) / 864e5) : null;
+const replaceLine = id => shopItems().find(e => !e.done && e.replaces === id);
+function nextStep(M) {
+  if (!S.canWrite) return null;
+  if (!S.kits.length) return { t: "Add your first kit", d: "A go-bag, a home supply bin or a car kit. Photograph what's in it and your score fills in.", btn: `data-act="tab" data-v="kits"`, label: "Add a kit" };
+  const cost = p => p === 0 ? "free, from home" : p == null ? "" : `about ${usd(p)}`, kitOf = id => S.kits.find(k => k.id === id)?.name;
+  const line = shopItems().filter(e => !e.done && !e.ordered).map(e => ({ e, i: shopInfo(e, M) })).sort((a, b) => b.i.gain - a.i.gain)[0];
+  const gap = splitListed(M.gaps).off.map(g => ({ g, gain: gapGain(M, g) })).sort((a, b) => b.gain - a.gain)[0];
+  if (line?.i.gain && line.i.gain >= (gap?.gain || 0)) return { t: line.i.price === 0 ? `From home: ${line.i.line}` : `Buy: ${line.i.line}`,
+    d: [`${pts(line.i.gain)}, the most of anything on your list`, cost(line.i.price), kitOf(shopKit(line.e)) && `goes in ${kitOf(shopKit(line.e))}`].filter(Boolean).join(" · "), btn: `data-act="shopOpen"`, label: "Open the shopping list" };
+  if (gap?.gain) { const n = gapName(gap.g), e = shopFromGap(gap.g, M.h);
+    return { t: `Get ${n}`, d: [`${pts(gap.gain)}, the most of anything you're missing`, cost(linePrice(e, M)), kitOf(shopKit(e)) && `goes in ${kitOf(shopKit(e))}`].filter(Boolean).join(" · "),
+      btn: `data-act="shopAdd" data-cat="${esc(gap.g.cat)}"${gap.g.essential ? ` data-essential="${esc(gap.g.essential)}"` : ""}`, label: "Add to shopping list" }; }
+  const old = M.exp.find(x => !replaceLine(x.it.id));
+  if (old) return { t: `Replace ${old.it.name}`, d: `${old.st === "expired" ? "Expired" : "Expires"} ${old.it.expires} · in ${old.kit}${old.st === "expired" ? " · it doesn't count until it's replaced" : ""}`, btn: `data-act="shopReplace" data-id="${esc(old.it.id)}"`, label: "Add to shopping list" };
+  const stale = S.kits.filter(k => S.items.some(i => i.kitId === k.id) && (checkedDays(k) == null || checkedDays(k) >= KIT_STALE)).sort((a, b) => num(a.checkedAt) - num(b.checkedAt))[0];
+  if (stale) return { t: `Look through ${stale.name}`, d: num(stale.checkedAt) ? `Last checked ${when(num(stale.checkedAt))}. Photograph it again and anything that changed is updated.` : "No check is recorded for it yet. Photograph it again, or say you've checked it.", btn: `data-act="gotoKit" data-id="${esc(stale.id)}"`, label: `Open ${stale.name}` };
+  const filled = PLAN.filter(([k]) => String(S.plan?.[k] || "").trim()).length;
+  if (filled < PLAN.length) return { t: "Finish your family plan", d: `${filled} of ${PLAN.length} parts filled in: where you meet, who you call, where the shut-offs are.`, btn: `data-act="tab" data-v="household"`, label: "Open the plan" };
+  return null;
+}
 const HZ_TOP = 5; // how many of a group's emergencies the Readiness list shows before "Show N more"
 function viewOverview(M) {
   const { h, results, overall, exp } = M;
@@ -1121,7 +1172,8 @@ function viewOverview(M) {
   const sorted = [...results].sort((a, b) => LEVELS[b.rel][1] - LEVELS[a.rel][1] || a.score - b.score || b.wt - a.wt);
   const applies = r => LEVELS[r.rel][1] > 0 && !(r.hz.vehicle && h.vehicles === 0);
   const offCount = results.filter(r => !applies(r)).length;
-  const hc = householdCost(M), toBuy = shopItems().filter(x => !x.done).length;
+  const hc = householdCost(M), open = shopItems().filter(x => !x.done), ordered = open.filter(x => x.ordered).length, toBuy = open.length - ordered;
+  const step = nextStep(M);
   /* A group's rows. Its unlikely emergencies (rated Low, and not marked as mattering more) wait behind a button at its
      end, and so does anything past its first HZ_TOP, so the list is the ones to act on first; they still count in the
      score. S.showLow holds the groups showing theirs. An opened one is never hidden: its ratings are set in its panel,
@@ -1139,6 +1191,7 @@ function viewOverview(M) {
     ${shown.length ? `<div class="hz-grid">${shown.map(r => hzRow(r, h, M)).join("")}</div>` : ""}
     ${low.size ? `<div class="grp-low"><button class="btn ghost sm" data-act="toggleLow" data-g="${key}" aria-expanded="${open}">${past.length ? (open ? `Show the first ${HZ_TOP} only` : `Show ${low.size} more`) : `${open ? "Hide" : "Show"} ${low.size} less likely`}</button></div>` : ""}</div>` : ""; };
   return `
+  ${step ? `<section class="panel next" id="next-step" aria-labelledby="next-h"><div class="stack"><p class="eyebrow" id="next-h">Next best step</p><b class="next-t">${esc(step.t)}</b><p class="small muted">${esc(step.d)}</p></div><button class="btn sm" id="next-go" ${step.btn}>${esc(step.label)}</button></section>` : ""}
   <div class="panel sum">
     <div class="sum-score">
       <p class="eyebrow">Household readiness</p>
@@ -1152,7 +1205,7 @@ function viewOverview(M) {
         <div><dt>Spent so far</dt><dd>${spentAmt(hc.spent)}</dd>${factNote(hc.spent.unpriced)}</div>
         <div><dt>To close every gap</dt><dd>${toGetAmt(hc.toGet)}</dd>${factNote(hc.toGet.unpriced)}</div>
       </dl>
-      ${S.kits.length && (toBuy || M.gaps.length) ? `<div><button class="btn sm" id="ov-shop" data-act="shopOpen">Shopping list${toBuy ? ` · ${toBuy} to buy` : ""}</button></div>` : ""}
+      ${S.kits.length && (open.length || M.gaps.length) ? `<div><button class="btn sm" id="ov-shop" data-act="shopOpen">Shopping list${[toBuy && `${toBuy} to buy`, ordered && `${ordered} ordered`].filter(Boolean).map(x => " · " + x).join("")}</button></div>` : ""}
       <p class="small muted">${hzNote}</p>
       ${how("score", "Your score is averaged across the emergencies that apply to you, weighted by how likely each one is, how bad it is to face unprepared and how much it matters to you.")}
     </div>
@@ -1161,7 +1214,7 @@ function viewOverview(M) {
       ${S.kits.length ? `<div class="hz">${[...S.kits].sort((a, b) => M.kitRes[a.id].score - M.kitRes[b.id].score).map(k => kitRow(k, M.kitRes[k.id])).join("")}</div>`
         : `<p class="small muted">No kits yet. <button class="btn ghost sm" data-act="tab" data-v="kits">Add your first kit</button></p>`}
       <div class="sec-h"><h2>Expiring</h2><span class="small muted">Expired items don't count</span></div>
-      ${exp.length ? `<div class="hz">${exp.map(x => `<div class="exp-row"><span class="ell"><b>${esc(x.it.name)}</b> <span class="muted">· ${esc(x.kit)}</span></span><span class="mono flag ${x.st}">${x.st === "expired" ? "Expired" : "Expires"} ${esc(x.it.expires)}</span></div>`).join("")}</div>`
+      ${exp.length ? `<div class="hz">${exp.map(x => `<div class="exp-row"><span class="ell"><b>${esc(x.it.name)}</b> <span class="muted">· ${esc(x.kit)}</span></span><span class="mono flag ${x.st}">${x.st === "expired" ? "Expired" : "Expires"} ${esc(x.it.expires)}</span>${replaceLine(x.it.id) ? `<span class="small muted exp-on">On your list</span>` : S.canWrite ? `<button class="btn ghost sm" data-act="shopReplace" data-id="${esc(x.it.id)}" aria-label="Add replacing ${esc(x.it.name)} to your shopping list">Replace</button>` : ""}</div>`).join("")}</div>`
         : `<p class="small muted">Nothing expires in the next 90 days${S.items.some(i => i.expires) ? "" : ". Add expiry dates to food, water, batteries and medications so they show up here"}.</p>`}
     </div>
   </div>
@@ -1183,7 +1236,7 @@ const unpricedNote = n => n ? ` <span class="muted" title="Prescriptions and ite
 /* What was spent: "about" unless every dollar of it is from receipts. What's left is always the list's estimate. */
 const spentAmt = s => `${s.paid < s.total || s.unpriced ? "about " : ""}<b>${usd(s.total)}</b>`;
 const toGetAmt = s => `about <b>${usd(s.total)}</b>`;
-const costCell = s => `<td class="mono">${usd(s.total)}${s.unpriced ? `<span class="muted small" title="${pl(s.unpriced, "line")} with no price"> +${s.unpriced}</span>` : ""}</td>`;
+const costCell = s => `<td class="mono">${usd(s.total)}${s.unpriced ? `<span class="muted small cost-unp" title="Prescriptions and items in Other have no price">+${s.unpriced} unpriced</span>` : ""}</td>`;
 /* The Overview's What it costs: each kit's spend and what finishing it would cost. An emergency's cost is on its own
    row (hzRow) and in its opened panel. */
 function costsSection(M) {
@@ -1361,7 +1414,7 @@ function hzRow(r, h, M = model()) {
     <span class="hz-nm"><button class="hz-tg" data-act="toggleHz" data-id="${id}" aria-expanded="${open}"${open ? ` aria-controls="hzp-${id}"` : ""} title="${esc(r.hz.name)} · ${esc(modeLine(r.hz))}">${esc(r.hz.name)}</button><span class="mode">${esc(modeLine(r.hz))}</span></span>
     <span class="hz-sc">${lockedOff ? `<span class="small muted">No vehicle</span>` : hzMarks(r.hz, r.rel, off)}<span class="bar" aria-hidden="true" style="--c:${statusColor(r.score)}"><span style="width:${r.score}%"></span></span><span class="pct"${alarm ? ` style="color:var(--bad)"` : ""}>${r.score}%${alarm ? `<span class="vh">, needs attention</span>` : ""}</span></span>${icon("chev", "ic chev")}
     <span class="hz-needs">${gaps.length ? "" : `<span class="need have">${icon("yes")}Everything covered</span>`}${gaps.slice(0, 3).map(x => { const s = needRank(x); return `<span class="need ${NEED[s]}">${icon(s === 2 ? "yes" : x.cat)}<span class="vh">${NEED_WORD[s]} </span>${esc(catLabel(x.cat))}${s === 1 ? ` <span class="amt">${amount(x, h, "days").replace(/ <span[\s\S]*/, "")}</span>` : ""}</span>`; }).join("")}${more > 0 ? `<span class="need more">+${more} more</span>` : ""}</span>
-    ${c && (c.total || c.unpriced) ? `<span class="hz-cost">${c.total ? `<b>${usd(c.total)}</b>${c.unpriced ? ` <span class="hz-unp" title="${c.unpriced} more with no price">+${c.unpriced}</span>` : ""}<span class="hz-ready"> to be ready</span>` : "Not priced yet"}</span>` : ""}
+    ${c && (c.total || c.unpriced) ? `<span class="hz-cost">${c.total ? `<b>${usd(c.total)}</b><span class="hz-ready"> to be ready</span>${c.unpriced ? `<span class="hz-unp" title="Prescriptions and items in Other have no price">, plus ${c.unpriced} unpriced</span>` : ""}` : "Not priced yet"}</span>` : ""}
   </div>${open ? hzPanel(r, h, M, rows) : ""}`;
 }
 /* What an opened emergency involves: where you'd be and with what, how bad it is and why it's rated as it is, each
@@ -1440,6 +1493,13 @@ function itemFields(it) {
     ["", "Expires", `<input type="month" id="it-${esc(it.id)}-exp" value="${esc(it.expires || "")}" ${a("expires")} aria-label="Expiry month" ${D()}>${st ? `<span class="flag ${st}">${st === "expired" ? "expired" : "expiring soon"}</span>` : ""}`],
   ];
 }
+/* When a kit was last looked through: saving a photo read stamps it, and so does saying so here. After KIT_STALE days
+   it asks to be looked through again. */
+function checkedLine(kit) {
+  const d = checkedDays(kit), stale = d != null && d >= KIT_STALE;
+  const text = d == null ? "No check recorded yet" : d < 1 ? "Checked today" : `Last checked ${when(num(kit.checkedAt))}${stale ? `, ${Math.round(d / 30.4)} months ago. Time to look through it again` : ""}`;
+  return `<p class="small kit-chk${stale ? " stale" : ""}"><span id="kit-chk-t" tabindex="-1">${text}</span>${S.canWrite && !(d != null && d < 1) ? `<button class="btn ghost sm" id="kit-chk" data-act="kitChecked" data-id="${esc(kit.id)}">I checked it today</button>` : ""}</p>`;
+}
 const KIT_SPARSE = 5; // a kit with fewer items than this leads with the photo prompt
 function kitDetail(kit, ready, M = model()) {
   const val = itemValues(kit, ready);
@@ -1507,6 +1567,7 @@ function kitDetail(kit, ready, M = model()) {
       : `<details class="more"><summary class="btn ghost sm" aria-label="More for ${esc(kit.name)}">⋯</summary><div class="more-m"><button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button></div></details>`) : ""}
   </div>${get
     ? `<div class="panel stack">${shopTools(M, P, kit)}${shopSection(M, P, kit) || `<p class="small muted">Nothing to get for this kit.</p>`}</div>${reviewBtn}` : `
+  ${checkedLine(kit)}
   ${sparse ? "" : top}
   ${S.canWrite ? `<div class="panel stack" data-drop="photos">
     <div class="row" style="justify-content:space-between">
@@ -1560,7 +1621,7 @@ const essPicker = (id, cat, sel, attrs = "") => essentialList(cat).length ? `<se
 /* Under a draft row that is already in the kit: what it was, and the way to add it as a second item instead. */
 function sameNote(d, r, i) {
   const it = matchOf(d, r), was = it && Math.max(1, num(it.qty));
-  return it ? `<div class="small row" style="padding:2px 6px;gap:6px"><span><b>Already in this kit</b>${was !== Math.max(1, Math.round(num(r.qty) || 1)) ? `, was ×${was}` : ""}</span><button class="btn ghost sm" data-act="draftUnmatch" data-i="${i}" aria-label="Add ${esc(r.name)} as a new item instead">Add as new</button></div>` : "";
+  return it ? `<div class="small row d-same" style="padding:2px 6px;gap:6px"><span><b>Already in this kit</b>${was !== Math.max(1, Math.round(num(r.qty) || 1)) ? `, was ×${was}` : ""}</span><button class="btn ghost sm" data-act="draftUnmatch" data-i="${i}" aria-label="Add ${esc(r.name)} as a new item instead">Add as new</button></div>` : "";
 }
 /* A draft row in a line, for a phone, where a row keeps its details shut until asked: its category, the essential it
    is (or that one needs picking), and the weight and date read from the photo. */
@@ -1579,7 +1640,7 @@ function draftTable(d) {
     <div class="tbl-wrap draft"><table class="inv">
       <thead><tr><th>Item</th><th style="width:136px">Category</th><th style="width:136px">Essential</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px">lb</th><th style="width:56px">Size L</th><th style="width:136px">Expires</th><th style="width:28px"></th></tr></thead>
       <tbody>${d.rows.map((r, i) => `<tr class="${r.open ? "" : "shut"}">
-        <td data-label="Item"><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted" style="padding:0 6px">${esc(r.note)}</div>` : ""}${amazonA({ shopQuery: r.shop })}${sameNote(d, r, i)}</td>
+        <td data-label="Item"><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted d-note" style="padding:0 6px">${esc(r.note)}</div>` : ""}${amazonA({ shopQuery: r.shop })}${sameNote(d, r, i)}</td>
         <td data-label="Category"><select id="d-${r.key}-cat" data-input="draft" data-i="${i}" data-f="category" aria-label="Category">${catOptions(r.category)}</select></td>
         <td class="d-ess" data-label="Essential">${essentialList(r.category).length ? `<select id="d-${r.key}-ess" data-input="draft" data-i="${i}" data-f="essential" aria-label="Which essential ${esc(r.name)} is">${essOptions(r.category, essentialOf(r))}</select>` : ""}</td>
         <td class="num" data-label="Qty"><input type="number" min="1" id="d-${r.key}-qty" value="${r.qty}" data-input="draft" data-i="${i}" data-f="qty" aria-label="Quantity"></td>
@@ -1752,8 +1813,8 @@ function hhContact(p) {
   return `<div class="panel"><div class="card-h"><b>Everyone checks in with</b></div>
     <div class="contact">${tel.length >= 3 ? `<a class="call" href="tel:${esc(tel)}" aria-label="Call ${esc(p.contactName || "your contact")}">${icon("phone")}</a>` : `<span class="call off" aria-hidden="true">${icon("phone")}</span>`}
       <div class="stack" style="gap:2px;flex:1">
-        <input type="text" class="ed nm" id="plan-contactName" value="${esc(p.contactName || "")}" data-change="plan" data-f="contactName" placeholder="Someone out of the area" maxlength="120" aria-label="Out-of-area contact" ${D()}>
-        <input type="tel" class="ed" id="plan-contactPhone" value="${esc(p.contactPhone || "")}" data-change="plan" data-f="contactPhone" placeholder="Their phone" maxlength="120" aria-label="Their phone" ${D()}>
+        <label class="plan-l"><span class="k">Out-of-area contact</span><input type="text" class="ed nm" id="plan-contactName" value="${esc(p.contactName || "")}" data-change="plan" data-f="contactName" placeholder="Someone out of the area" maxlength="120" ${D()}></label>
+        <label class="plan-l"><span class="k">Their phone</span><input type="tel" class="ed" id="plan-contactPhone" value="${esc(p.contactPhone || "")}" data-change="plan" data-f="contactPhone" placeholder="Phone number" maxlength="120" ${D()}></label>
         <p class="small muted">Long-distance calls and texts often get through when local ones don't.</p>
       </div></div>
   </div>`;
@@ -1809,6 +1870,7 @@ function shopPlan(M, left) {
   const sort = S.shopSort || "points", order = [...left], budget = Math.max(0, num(S.budget));
   if (sort === "points") order.sort((a, b) => I(b).gain - I(a).gain);
   else if (sort === "value") order.sort((a, b) => ratio(b) - ratio(a) || I(b).gain - I(a).gain);
+  order.sort((a, b) => !!a.ordered - !!b.ordered); // what's ordered waits at the end: it's bought, not yet here
   let pick = null, spent = 0;
   if (budget) {
     pick = new Set();
@@ -1823,15 +1885,17 @@ const pickOf = i => PICKS[i.pick]?.url ? PICKS[i.pick] : null;
 function shopRow(e, i, over) {
   const cur = shopKit(e), inKit = S.kits.find(k => k.id === e.inKit)?.name;
   const buyLine = () => { const p = pickOf(i), q = PICKS[i.pick]?.q;
+    if (i.amazonUrl && amazonLink({ amazonUrl: i.amazonUrl })) return `<span class="small">The one you bought before: ${amazonA({ amazonUrl: i.amazonUrl })}</span>`;
     if (p) return `<span class="small"><b>${esc(p.name)}</b> · Qty ${i.qty} · ${amazonA({ amazonUrl: p.url })}${p.heavy ? ` <span style="color:var(--warn)">Heavy to ship: often cheaper to pick up locally</span>` : ""}</span>`;
     const why = q ? `Mixed groceries: ${amazonA({ shopQuery: q })}` : i.price === null ? "Prescription: ask the pharmacy" : i.price === 0 ? "From home: nothing to buy"
       : e.cat === "trauma" ? "Buy from a medical supplier: counterfeits are sold on marketplaces" : "";
     return why ? `<span class="small muted">${why}</span>` : ""; };
   return `<li class="shop-row ${e.done ? "done" : ""} ${S.flash === e.id ? "flash" : ""} ${over && !e.done ? "over" : ""}">
-    <label class="shop-chk"><input type="checkbox" id="shop-${esc(e.id)}" data-change="shopTick" data-id="${esc(e.id)}" ${e.done ? "checked" : ""} ${D()}>${icon(e.cat || "other")}<span><b>${esc(i.line)}</b>${!e.done && i.sub ? `<span class="small muted">${esc(i.sub)}</span>` : ""}${!e.done && i.tip ? `<span class="small shop-tip">${esc(i.tip)}</span>` : ""}${e.done ? "" : buyLine()}</span></label>
+    <label class="shop-chk"><input type="checkbox" id="shop-${esc(e.id)}" data-change="shopTick" data-id="${esc(e.id)}" ${e.done ? "checked" : ""} ${D()}>${icon(e.cat || "other")}<span><b>${esc(i.line)}</b>${!e.done && i.sub ? `<span class="small muted">${esc(i.sub)}</span>` : ""}${!e.done && i.tip ? `<span class="small shop-tip">${esc(i.tip)}</span>` : ""}${e.done ? "" : buyLine()}${!e.done && e.ordered ? `<span class="small ord-tag">Ordered ${when(e.ordered)}. Tick it when it arrives</span>` : ""}</span></label>
     <div class="shop-meta">${e.done ? "" : `${i.gain ? `<span class="gain mono" title="Readiness points this adds">${pts(i.gain)}</span>` : ""}${money(i.price) ? `<span class="small muted">${money(i.price)}</span>` : ""}`}</div>
     <div class="shop-kit">${e.done ? (inKit ? `<span class="small muted">In ${esc(inKit)}</span>` : "")
-      : CATS[e.cat] && S.kits.length ? `<select id="shop-${esc(e.id)}-kit" data-change="shopKit" data-id="${esc(e.id)}" aria-label="Kit for ${esc(i.line)}" ${D()}><option value="none" ${cur ? "" : "selected"}>Not in a kit yet</option>${S.kits.map(k => `<option value="${esc(k.id)}" ${k.id === cur ? "selected" : ""}>Goes in ${esc(k.name)}</option>`).join("")}</select>` : ""}</div>
+      : replaced(e) ? `<span class="small muted">In ${esc(S.kits.find(k => k.id === replaced(e).kitId)?.name || "its kit")}</span>`
+      : CATS[e.cat] && S.kits.length ? `<select id="shop-${esc(e.id)}-kit" data-change="shopKit" data-id="${esc(e.id)}" aria-label="Kit for ${esc(i.line)}" ${D()}><option value="none" ${cur ? "" : "selected"}>Not in a kit yet</option>${S.kits.map(k => `<option value="${esc(k.id)}" ${k.id === cur ? "selected" : ""}>Goes in ${esc(k.name)}</option>`).join("")}</select>` : ""}${!e.done && S.canWrite && i.price !== 0 ? `<button type="button" class="btn ghost sm ord" id="shop-${esc(e.id)}-ord" data-act="shopOrdered" data-id="${esc(e.id)}" aria-pressed="${!!e.ordered}" aria-label="${esc(`${i.line}: ${e.ordered ? "not ordered after all" : "mark as ordered"}`)}">${e.ordered ? "Not ordered" : "Mark ordered"}</button>` : ""}</div>
     ${S.canWrite ? `<button class="x" data-act="shopDel" data-id="${esc(e.id)}" aria-label="Remove ${esc(i.line)} from the list">×</button>` : ""}
   </li>`;
 }
@@ -1842,7 +1906,8 @@ function shopTools(M, P, kit) {
   if (!left.length) return "";
   const after = M.overall == null ? null : scoreIfBought(left, M), pickAfter = pick && M.overall != null ? scoreIfBought(left.filter(e => pick.has(e.id)), M) : null;
   const total = left.reduce((a, e) => a + (I(e).price || 0), 0), rx = left.filter(e => I(e).price === null).length;
-  return `<div class="row" style="justify-content:space-between"><b>${left.length} to buy</b><button class="btn ghost sm" data-act="shopShare"${kit ? ` data-kit="${esc(kit.id)}"` : ""}>Share list</button></div>
+  const onWay = left.filter(e => e.ordered).length;
+  return `<div class="row" style="justify-content:space-between"><b>${[left.length - onWay ? `${left.length - onWay} to buy` : "", onWay ? `${onWay} ordered` : ""].filter(Boolean).join(" · ")}</b><button class="btn ghost sm" data-act="shopShare"${kit ? ` data-kit="${esc(kit.id)}"` : ""}>Share list</button></div>
     <p class="shop-sum">About <b>$${total.toLocaleString()}</b>${rx ? ` plus ${rx} prescription item${rx === 1 ? "" : "s"}` : ""}.${after != null && after > M.overall ? ` Buying it all takes readiness from ${M.overall} to <b>${after}</b>.` : ""}</p>
     ${left.some(e => pickOf(I(e))) ? `<p class="small muted">Each product is one we've checked. Links carry no tracking tag.</p>` : ""}
     ${kit ? "" : `<div class="shop-tools">
@@ -2283,7 +2348,8 @@ async function saveDraft() {
       updated++;
       return setDoc("items", it.id, { ...rest, ...seen });
     }));
-    if (d.photoIds.length) await setDoc("kits", kit.id, { ...strip(kit), photos: [...(kit.photos || []), ...d.photoIds], updatedAt: now });
+    // A saved photo read is the kit looked through: it stamps when, with or without new photos to keep
+    await setDoc("kits", kit.id, { ...strip(kit), photos: [...(kit.photos || []), ...d.photoIds], updatedAt: now, checkedAt: now });
     S.draft = null;
     const added = rows.length - updated;
     toast(`${[updated && `Updated ${pl(updated, "item")}`, added && `${updated ? "added" : "Added"} ${pl(added, "item")}`].filter(Boolean).join(" and ") || "Nothing to add"} in ${kit.name}`);
@@ -2366,6 +2432,11 @@ const ACT = {
   allBack: () => {
     S.allKits = null; render();
     [reviewFrom && document.getElementById(reviewFrom), $("#kit-all"), $('#tabs [aria-current="page"]')].find(b => b?.offsetParent)?.focus();
+  },
+  kitChecked: async b => {
+    const kit = S.kits.find(k => k.id === b.dataset.id); if (!kit) return;
+    await setDoc("kits", kit.id, { ...strip(kit), checkedAt: Date.now() }).catch(() => {});
+    toast(`${kit.name} marked as checked today`); render(); $("#kit-chk-t")?.focus?.();
   },
   removeSel: () => removeItems([...S.sel]),
   clearSel: () => { S.sel.clear(); render(); },
@@ -2514,6 +2585,14 @@ const ACT = {
     toast(`Added ${pl(add.length, "item")} to your shopping list`);
   },
   budgetClear: () => { S.budget = ""; render(); },
+  // Ordered: bought but not here yet. The line stays open, and ticking it once it arrives puts it in its kit
+  shopOrdered: b => saveShop(clone(shopItems()).map(x => { if (x.id === b.dataset.id) { if (x.ordered) delete x.ordered; else x.ordered = Date.now(); } return x; })),
+  // A line that buys an item going out of date again (shopFromItem), once per item
+  shopReplace: b => {
+    const it = S.items.find(i => i.id === b.dataset.id); if (!it || replaceLine(it.id)) return;
+    saveShop([...shopItems(), shopFromItem(it)]);
+    toast(`Added replacing ${it.name} to your shopping list`);
+  },
   shopDel: b => saveShop(shopItems().filter(x => x.id !== b.dataset.id)),
   shopClear: () => saveShop(shopItems().filter(x => !x.done)),
   shopShare: b => shareShop(b?.dataset.kit),
@@ -2710,8 +2789,16 @@ async function shopTick(id, on, rowEl, undoItem) {
   const from = rowEl?.getBoundingClientRect?.(); // measured now: saving re-renders the list
   let undo; ticking.add(id);
   if (on) {
-    const kit = S.kits.find(k => k.id === shopKit(e));
-    if (kit && CATS[e.cat]) {
+    const kit = S.kits.find(k => k.id === shopKit(e)), old = replaced(e);
+    if (old) {
+      // A Replace line: the item it is for starts again without its old date, so it counts; nothing is added
+      const before = model().overall;
+      flyPoints(from, shopInfo(e, model()).gain);
+      try { await setDoc("items", old.id, { ...strip(old), expires: "" }); } catch (_) { ticking.delete(id); render(); return; }
+      e.wasExp = old.expires; e.inKit = old.kitId;
+      const after = model().overall, name = S.kits.find(k => k.id === old.kitId)?.name;
+      undo = [`Replaced ${old.name}${after > before ? `. Readiness ${before} → ${after}` : ""}. Set its new expiry date${name ? ` in ${name}` : ""}`, { label: "Undo", run: () => shopTick(id, false, 0) }];
+    } else if (kit && CATS[e.cat]) {
       const before = model().overall, itemId = uid();
       flyPoints(from, shopInfo(e, model()).gain); // the row's points are exactly what the tick adds (tests/shopping.test.js)
       try {
@@ -2726,18 +2813,21 @@ async function shopTick(id, on, rowEl, undoItem) {
   } else {
     const out = undoItem || e.itemId;
     if (out && (undoItem || S.items.some(i => i.id === out))) await delDoc("items", out).catch(() => {});
-    e.done = false; delete e.itemId; delete e.inKit;
+    // Unticking a Replace line gives its item the date it had, unless a new one has been typed since
+    const was = e.wasExp && S.items.find(i => i.id === e.replaces && !i.expires);
+    if (was) await setDoc("items", was.id, { ...strip(was), expires: e.wasExp }).catch(() => {});
+    e.done = false; delete e.itemId; delete e.inKit; delete e.wasExp;
   }
   // Saved from the list as it is now, with only this line changed: while the item was saving, another tap or
   // another phone may have changed other lines, and the copy taken above would undo them (#161).
   const now = clone(shopItems()), cur = now.find(x => x.id === id);
-  if (cur) { cur.done = e.done; for (const k of ["itemId", "inKit"]) if (k in e) cur[k] = e[k]; else delete cur[k]; }
+  if (cur) { cur.done = e.done; if (e.done) delete cur.ordered; for (const k of ["itemId", "inKit", "wasExp"]) if (k in e) cur[k] = e[k]; else delete cur[k]; }
   const ok = cur ? await saveShop(now) : 0; ticking.delete(id);
   ok && undo && toast(...undo);
 }
 // Every open line, or with one of the household's kits only the lines that go in it
 async function shareShop(kit) {
-  const id = ownKit(kit), left = shopItems().filter(x => !x.done && (!id || shopKit(x) === id));
+  const id = ownKit(kit), left = shopItems().filter(x => !x.done && !x.ordered && (!id || shopKit(x) === id));
   if (!left.length) return;
   const M = model();
   const text = "Emergency kit shopping list\n" + left.map(x => { const i = shopInfo(x, M); return `- ${i.line}${i.sub && i.sub !== i.line ? ` (${i.sub})` : ""}`; }).join("\n");

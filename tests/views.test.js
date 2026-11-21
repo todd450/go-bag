@@ -427,7 +427,9 @@ test("in a kit, counted categories stay chips under Counted by amount", () => {
   const html = goKit(run);
   assert.ok(html.includes("Counted by amount"));
   const counted = html.slice(html.indexOf("Counted by amount"));
-  for (const cat of ["Light", "Clothing"]) assert.match(counted, new RegExp(`<span class="chip[^"]*">(<svg[\\s\\S]*?</svg>)?${cat} · \\d+ of \\d+</span>`), cat);
+  // A short one is a button that plans it for this kit, marked "+" like a missing essential; a covered one has a tick
+  for (const cat of ["Light", "Clothing"]) assert.match(counted, new RegExp(`<button type="button" class="chip cnt miss" data-act="shopAdd" data-cat="${cat.toLowerCase()}" data-kit="go"[^>]*><b aria-hidden="true">\\+</b><span class="vh">Short on </span>${cat} · \\d+ of \\d+`), cat);
+  assert.match(counted, /<span class="chip full"><svg[\s\S]*?<\/svg><span class="vh">Have <\/span>First aid · 1 of 1<\/span>/, "a covered one");
 });
 
 test("the kit panel uses the same blocks, and the kit list names what's missing", () => {

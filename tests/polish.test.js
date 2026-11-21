@@ -175,7 +175,7 @@ test("an emergency's row says what it still costs to be ready, as its opened pan
     const rows = app.json(ROW_COSTS);
     let shown = 0;
     for (const r of rows) {
-      const want = r.off || !(r.total || r.unpriced) ? null : r.total ? `$${r.total.toLocaleString("en-US")}${r.unpriced ? ` +${r.unpriced}` : ""} to be ready` : "Not priced yet";
+      const want = r.off || !(r.total || r.unpriced) ? null : r.total ? `$${r.total.toLocaleString("en-US")} to be ready${r.unpriced ? `, plus ${r.unpriced} unpriced` : ""}` : "Not priced yet";
       assert.equal(r.shown === null ? null : plain(r.shown), want, `${fixture} ${r.id}`);
       if (want && r.total) assert.ok(r.shown.startsWith(`<b>$${r.total.toLocaleString("en-US")}</b>`), `${fixture} ${r.id}: the amount alone is marked out (${r.shown})`);
       shown += want !== null;
@@ -241,9 +241,9 @@ test("on a phone an emergency's cost shows just the amount, with the words kept 
       const box = c.getBoundingClientRect(), end = c.querySelector("b").getBoundingClientRect().right;
       return { said: c.textContent, past: box.right - end, w: x.width, h: x.height }; }))`));
     assert.ok(rows.length > 3, `${width}px: ${rows.length} priced rows`);
-    assert.ok(rows.some(r => / \+\d+ /.test(r.said)), `${width}px: some row has items with no price, so the +N is tried`);
+    assert.ok(rows.some(r => /, plus \d+ unpriced$/.test(r.said)), `${width}px: some row has items with no price, so "plus N unpriced" is tried`);
     for (const r of rows) {
-      assert.match(r.said, /^\$[\d,]+( \+\d+)? to be ready$/, `${width}px: a screen reader hears the whole line (${r.said})`);
+      assert.match(r.said, /^\$[\d,]+ to be ready(, plus \d+ unpriced)?$/, `${width}px: a screen reader hears the whole line (${r.said})`);
       if (width < 561) {
         assert.ok(r.w <= 1 && r.h <= 1, `${width}px: "to be ready" takes no room (${r.w}×${r.h})`);
         assert.ok(r.past <= 1, `${width}px: the line ends where the amount does (${r.past}px past it)`);
