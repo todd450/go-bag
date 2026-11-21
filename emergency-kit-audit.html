@@ -806,11 +806,11 @@ function profileText() {
     `Notes: ${p.notes || "none"}`,
   ].join("\n");
 }
-function photoPrompt(kit) {
+function photoPrompt(kit, have = []) {
   return `These photos show the contents of an emergency kit called "${kit.name}" (${KIT_TYPES[kit.type] || "kit"}). List every distinct supply item you can see. Combine identical units into one line with a quantity. Several photos may show the same item from different angles or distances: count each physical item once. If an item is partly hidden or you are unsure what it is, still list it and say so in the note.
 
 Reply with only a JSON array. Each element:
-{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "grams": estimated total weight of the whole line in grams including packaging, "ml": estimated total packed volume of the whole line in millilitres, "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or "", "shop": an Amazon search query for this exact product, with the brand, product name and size as printed on the label (a short generic query when there is no brand), or "" for a prescription medicine or anything you can't identify, "essential": for a line in a category listed under Essential ids, the one id on that category's list that this item is, or "" when you are unsure or it is none of them; "" for every other category, "box": ${BOX_ASK}}
+{"name": short item name, "category": one of the ids below, "qty": whole number of units, "liters": total litres of drinking water this line provides (0 if not water), "kcal": total food calories this line provides, estimated from the packaging (0 if not food), "grams": estimated total weight of the whole line in grams including packaging, "ml": estimated total packed volume of the whole line in millilitres, "expires": "YYYY-MM" if an expiry or best-by date is legible, otherwise null, "note": a few words such as "label unreadable", or "", "shop": an Amazon search query for this exact product, with the brand, product name and size as printed on the label (a short generic query when there is no brand), or "" for a prescription medicine or anything you can't identify, "essential": for a line in a category listed under Essential ids, the one id on that category's list that this item is, or "" when you are unsure or it is none of them; "" for every other category, "box": ${BOX_ASK}${have.length ? `, "same": the number of the line under Already in this kit that this item is, or null when it is none of them` : ""}}
 
 Example: [{"name":"500 ml water bottle","category":"water","qty":24,"liters":12,"kcal":0,"grams":12500,"ml":13500,"expires":"2027-06","note":"","shop":"Poland Spring 500 ml water bottles 24 pack","essential":"","box":[1,120,340,260,610]}]
 
@@ -818,7 +818,10 @@ Category ids:
 ${catGuide()}
 
 Essential ids, by category:
-${Object.entries(ESSENTIALS).map(([c, l]) => `${c}: ${l.map(e => `${e.id} (${e.label})`).join(", ")}`).join("\n")}`;
+${Object.entries(ESSENTIALS).map(([c, l]) => `${c}: ${l.map(e => `${e.id} (${e.label})`).join(", ")}`).join("\n")}${have.length ? `
+
+Already in this kit, from an earlier look. Each line is: number | name | category | quantity. When an item you see is the same supply as one of these, even if you would name it differently or its quantity has changed, give that line's number as "same". Still list it in full, as you see it now. Use each number at most once.
+${have.map((it, i) => [i + 1, String(it.name).replace(/[|\n]/g, " "), catLabel(it.category), Math.max(1, num(it.qty))].join(" | ")).join("\n")}` : ""}`;
 }
 function packPrompt(items) {
   return `Estimate the weight and packed size of these emergency-kit items. Each line is: id | name | category | quantity | litres of water | food calories.
@@ -901,6 +904,8 @@ function cleanRows(out) {
     // Only an id on this category's list. "none" is the household's to say, never Claude's.
     essential: x.essential === "none" ? "" : essentialOf({ category, essential: x.essential }),
     box: cleanBox(x.box),
+    // The line number under "Already in this kit" Claude gave; scanPhotos turns it into that item's id.
+    same: Number.isInteger(x.same) && x.same > 0 ? x.same : 0,
   }; });
 }
 
@@ -1528,16 +1533,22 @@ const essOptions = (cat, v, blank = true) => [...blank ? [["", "Pick one…"]] :
   .map(([id, label]) => `<option value="${esc(id)}"${id === (v || "") ? " selected" : ""}>${esc(label)}</option>`).join("");
 /* The Essential select for an item in category `cat` tagged `sel` (essentialOf). Nothing outside the five checklist categories. */
 const essPicker = (id, cat, sel, attrs = "") => essentialList(cat).length ? `<select id="${id}" aria-label="Essential" ${attrs}>${essOptions(cat, sel, !sel)}</select>` : "";
+/* Under a draft row that is already in the kit: what it was, and the way to add it as a second item instead. */
+function sameNote(d, r, i) {
+  const it = matchOf(d, r), was = it && Math.max(1, num(it.qty));
+  return it ? `<div class="small row" style="padding:2px 6px;gap:6px"><span><b>Already in this kit</b>${was !== Math.max(1, Math.round(num(r.qty) || 1)) ? `, was ×${was}` : ""}</span><button class="btn ghost sm" data-act="draftUnmatch" data-i="${i}" aria-label="Add ${esc(r.name)} as a new item instead">Add as new</button></div>` : "";
+}
 function draftTable(d) {
+  const same = d.rows.filter(r => matchOf(d, r)).length, fresh = d.rows.length - same;
   return `<div class="panel stack" style="border-color:var(--accent)">
     <div class="row" style="justify-content:space-between">
-      <div><b>Claude found ${d.rows.length} item${d.rows.length === 1 ? "" : "s"}</b><p class="small muted">Fix anything it misread, remove what isn't there, then add them to the kit.</p></div>
-      <div class="row"><button class="btn" data-act="draftSave" ${d.rows.length ? "" : "disabled"}>Add ${d.rows.length} to kit</button><button class="btn ghost" data-act="draftCancel">Discard</button></div>
+      <div><b>Claude found ${d.rows.length} item${d.rows.length === 1 ? "" : "s"}</b><p class="small muted">${same ? `${same} ${same === 1 ? "is" : "are"} already in this kit and will be updated, not added again${fresh ? `; ${fresh} ${fresh === 1 ? "is" : "are"} new` : ""}. ` : ""}Fix anything it misread, remove what isn't there, then ${same ? "save them" : "add them to the kit"}.</p></div>
+      <div class="row"><button class="btn" data-act="draftSave" ${d.rows.length ? "" : "disabled"}>${same ? [`Update ${same}`, fresh && `add ${fresh}`].filter(Boolean).join(", ") : `Add ${d.rows.length} to kit`}</button><button class="btn ghost" data-act="draftCancel">Discard</button></div>
     </div>
     <div class="tbl-wrap draft"><table class="inv">
       <thead><tr><th>Item</th><th style="width:136px">Category</th><th style="width:136px">Essential</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px">lb</th><th style="width:56px">Size L</th><th style="width:136px">Expires</th><th style="width:28px"></th></tr></thead>
       <tbody>${d.rows.map((r, i) => `<tr>
-        <td data-label="Item"><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted" style="padding:0 6px">${esc(r.note)}</div>` : ""}${amazonA({ shopQuery: r.shop })}</td>
+        <td data-label="Item"><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted" style="padding:0 6px">${esc(r.note)}</div>` : ""}${amazonA({ shopQuery: r.shop })}${sameNote(d, r, i)}</td>
         <td data-label="Category"><select id="d-${r.key}-cat" data-input="draft" data-i="${i}" data-f="category" aria-label="Category">${catOptions(r.category)}</select></td>
         <td class="d-ess" data-label="Essential">${essentialList(r.category).length ? `<select id="d-${r.key}-ess" data-input="draft" data-i="${i}" data-f="essential" aria-label="Which essential ${esc(r.name)} is">${essOptions(r.category, essentialOf(r))}</select>` : ""}</td>
         <td class="num" data-label="Qty"><input type="number" min="1" id="d-${r.key}-qty" value="${r.qty}" data-input="draft" data-i="${i}" data-f="qty" aria-label="Quantity"></td>
@@ -2173,7 +2184,7 @@ async function scanPhotos(files) {
   if (!sample) { toast("Reading photos needs Claude, which this view can't reach. Add items by hand instead."); return; }
   const lim = await sample.limits().catch(() => null);
   if (!lim?.images) { toast("This view can't send photos to Claude. Add items by hand instead."); return; }
-  const ctl = new AbortController();
+  const ctl = new AbortController(), have = S.items.filter(i => i.kitId === kit.id);
   S.scan = { kitId: kit.id, state: "working", msg: `Preparing ${files.length} photo${files.length > 1 ? "s" : ""}…`, ctl };
   render();
   const photoIds = [];
@@ -2189,14 +2200,19 @@ async function scanPhotos(files) {
     for (let i = 0; i < blobs.length; i += max) {
       S.scan.msg = blobs.length > max ? `Claude is reading photos ${i + 1}–${Math.min(blobs.length, i + max)} of ${blobs.length}…` : "Claude is reading your photos. This can take a minute…";
       render();
-      const got = cleanRows(await sample.json(photoPrompt(kit), { images: blobs.slice(i, i + max), signal: ctl.signal }));
-      for (const r of got) if (r.box) r.box = r.box[0] > Math.min(max, blobs.length - i) ? null : [r.box[0] + i, ...r.box.slice(1)];
+      const got = cleanRows(await sample.json(photoPrompt(kit, have), { images: blobs.slice(i, i + max), signal: ctl.signal }));
+      for (const r of got) {
+        if (r.box) r.box = r.box[0] > Math.min(max, blobs.length - i) ? null : [r.box[0] + i, ...r.box.slice(1)];
+        r.same = have[r.same - 1]?.id || "";
+      }
       rows = rows.concat(got);
     }
     S.scan.msg = "Cutting out item pictures…"; render();
     await addPics(rows, blobs);
     // Photos read while you're still checking an earlier list add to that list.
     const prev = S.draft?.kitId === kit.id ? S.draft : null;
+    // A rescan: a row that is something the kit already holds will update that item, not add a second one.
+    matchScan(rows, have, (prev?.rows || []).map(r => r.match).filter(Boolean)).forEach((id, i) => id && matchRow(rows[i], have.find(it => it.id === id)));
     S.draft = { kitId: kit.id, rows: [...(prev?.rows || []), ...rows], photoIds: [...(prev?.photoIds || []), ...photoIds] };
     S.scan = null;
     if (S.tray?.kitId === kit.id) clearTray();
@@ -2206,16 +2222,39 @@ async function scanPhotos(files) {
   }
   render();
 }
+/* Ties a photo-read row to the kit item it already is. The household's own name, category, essential, note and saved
+   weight and size stay (scaled to the count seen now); the photo gives the count, and the date, water and
+   calories it could read. */
+function matchRow(r, it) {
+  const k = r.qty / Math.max(1, num(it.qty));
+  Object.assign(r, { match: it.id, name: it.name, category: it.category, essential: essentialOf(it), expires: r.expires || it.expires || "", note: it.note || r.note, shop: it.shopQuery || r.shop,
+    liters: r.liters || Math.round(num(it.liters) * k * 10) / 10, kcal: r.kcal || Math.round(num(it.kcal) * k),
+    lb: num(it.grams) ? lb1(it.grams * k) : r.lb, L: num(it.ml) ? Math.round(it.ml * k / 100) / 10 : r.L });
+  // The saved weight and size to the gram, kept unless the row's rounded lb or L is then edited.
+  r.kept = { lb: r.lb, grams: Math.round(num(it.grams) * k), L: r.L, ml: Math.round(num(it.ml) * k) };
+}
+/* The kit item a draft row will update: its match, while that item is still in the draft's kit. */
+const matchOf = (d, r) => r.match ? S.items.find(i => i.id === r.match && i.kitId === d.kitId) : undefined;
 async function saveDraft() {
   const d = S.draft; const kit = S.kits.find(k => k.id === d?.kitId);
   if (!d || !kit) return;
   const now = Date.now();
   const rows = d.rows.filter(r => String(r.name).trim());
   try {
-    await Promise.all(rows.map(async r => ({ r, thumb: await upPic(r.pic) }))).then(xs => Promise.all(xs.map(({ r, thumb }) => setDoc("items", uid(), { kitId: kit.id, name: r.name.trim(), category: r.category, qty: Math.max(1, Math.round(num(r.qty) || 1)), liters: num(r.liters), kcal: num(r.kcal), grams: gOfLb(r.lb), ml: Math.round(num(r.L) * 1000), expires: r.expires || "", note: r.note || "", ...(r.shop ? { shopQuery: r.shop } : {}), ...(essentialOf(r) ? { essential: essentialOf(r) } : {}), ...(thumb ? { thumb } : {}), source: "photo", addedAt: now }))));
+    let updated = 0;
+    await Promise.all(rows.map(async r => {
+      const it = matchOf(d, r), thumb = it?.thumb || await upPic(r.pic), ess = essentialOf(r);
+      const seen = { name: r.name.trim(), category: r.category, qty: Math.max(1, Math.round(num(r.qty) || 1)), liters: num(r.liters), kcal: num(r.kcal), grams: it && r.kept?.grams && num(r.lb) === num(r.kept.lb) ? r.kept.grams : gOfLb(r.lb), ml: it && r.kept?.ml && num(r.L) === num(r.kept.L) ? r.kept.ml : Math.round(num(r.L) * 1000), expires: r.expires || "", note: r.note || "", ...(r.shop ? { shopQuery: r.shop } : {}), ...(ess ? { essential: ess } : {}), ...(thumb ? { thumb } : {}) };
+      if (!it) return setDoc("items", uid(), { kitId: kit.id, ...seen, source: "photo", addedAt: now });
+      // Everything else the item carries stays: its Amazon link, value, where it came from and when.
+      const { essential, ...rest } = strip(it);
+      updated++;
+      return setDoc("items", it.id, { ...rest, ...seen });
+    }));
     if (d.photoIds.length) await setDoc("kits", kit.id, { ...strip(kit), photos: [...(kit.photos || []), ...d.photoIds], updatedAt: now });
     S.draft = null;
-    toast(`Added ${rows.length} item${rows.length === 1 ? "" : "s"} to ${kit.name}`);
+    const added = rows.length - updated;
+    toast(`${[updated && `Updated ${pl(updated, "item")}`, added && `${updated ? "added" : "Added"} ${pl(added, "item")}`].filter(Boolean).join(" and ") || "Nothing to add"} in ${kit.name}`);
   } catch (_) {}
   render();
 }
@@ -2332,6 +2371,7 @@ const ACT = {
     render();
   },
   trayClear: () => { clearTray(); render(); },
+  draftUnmatch: b => { const r = S.draft?.rows[+b.dataset.i]; if (r) r.match = ""; render(); },
   draftDrop: b => { S.draft.rows.splice(+b.dataset.i, 1); render(); },
   draftCancel: () => { for (const id of S.draft?.photoIds || []) assets?.delete(id).catch(() => {}); S.draft = null; render(); },
   draftSave: saveDraft,
