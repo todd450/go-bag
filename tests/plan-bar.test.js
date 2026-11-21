@@ -138,9 +138,10 @@ function measurePhone(fixtures) {
       S.view = "kits"; S.allKits = null; S.toGet = side === "get" ? S.openKit : null; render();
       scrollTo(0, document.documentElement.scrollHeight);
       const w = innerWidth, bar = document.querySelector(".plan-bar"), r = bar?.getBoundingClientRect(), nav = document.querySelector("#tabs").getBoundingClientRect();
-      // Every element the tab draws, but the bar and the grid that holds it, whose bottom padding is room for the bar
+      // Every element the tab draws, but the bar and the grid that holds it, whose bottom padding is room for the bar.
+      // What a folded panel holds isn't drawn (a kit with little in it folds its checklist), so it isn't measured.
       const tab = document.querySelector("#v-kits"), grid = tab.querySelector(".kits-grid");
-      const rest = [...tab.querySelectorAll("*")].filter(e => e !== grid && !bar.contains(e) && e.getBoundingClientRect().height);
+      const rest = [...tab.querySelectorAll("*")].filter(e => e !== grid && !bar.contains(e) && (e.checkVisibility?.() ?? true) && e.getBoundingClientRect().height);
       return { width: w, scroll: document.documentElement.scrollWidth, bar: r && { top: r.top, bottom: r.bottom, height: r.height }, nav: { top: nav.top },
         last: Math.max(...rest.map(e => e.getBoundingClientRect().bottom)),
         out: [...tab.querySelectorAll("*")].filter(e => { const b = e.getBoundingClientRect(); return b.width && (b.left < -0.5 || b.right > w + 0.5); }).map(e => e.tagName + "." + e.getAttribute("class")) };

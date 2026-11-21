@@ -236,15 +236,44 @@ test("+ Add by hand switches to List and focuses the add row's name, and read-on
 
 test("the kit's panels come in order: readiness, photo prompt, Contents, checklist, weight and space", () => {
   const app = load({ fixture: "tests/household" });
-  app.run(`S.kits[0].photos = ["p1"]`);
+  // Five items or more: the standard household's go-bag holds three, so two are added
+  app.run(`S.kits[0].photos = ["p1"]; S.items.push({ id: "x1", kitId: "go", name: "Rope", category: "tools", qty: 1 }, { id: "x2", kitId: "go", name: "Tarp", category: "shelter", qty: 1 })`);
   const html = kitHtml(app.run, "go");
   const at = re => { const i = html.search(re); assert.ok(i >= 0, String(re)); return i; };
   const marks = [/class="kit-pct"/, /People this kit is for/, /Photograph the contents/, /data-act="pickPhotos"/, /class="photos"/, /class="fl-zone"/, /class="ess-blk"/, /Expired items don't count/, /Weight and space/];
   const pos = marks.map(at);
   assert.deepEqual(pos, [...pos].sort((a, b) => a - b), marks.map(String).join(" < "));
+  assert.doesNotMatch(html, /<details class="fold"/, "nothing is folded");
   // The readiness panel ends before Contents starts: the checklist is no longer inside it
   const ready = app.run(`(() => { const M = model(); return kitReadyPanel(S.kits[0], M.kitRes.go, M); })()`);
   assert.doesNotMatch(ready, /ess-blk|Expired items don't count/);
+});
+
+test("a kit with little in it leads with the photo prompt, and folds its checklist and its weight and space", () => {
+  const app = load({ fixture: "tests/household" });
+  app.run(`S.canWrite = true`);
+  assert.ok(app.json(`S.items.filter(i => i.kitId === "go").length`) < app.json("KIT_SPARSE"));
+  const html = kitHtml(app.run, "go");
+  const at = re => { const i = html.search(re); assert.ok(i >= 0, String(re)); return i; };
+  const marks = [/Photograph the contents/, /data-act="pickPhotos"/, /class="kit-pct"/, /People this kit is for/, /class="fl-zone"/, /<details class="fold" data-how="ck" ><summary>Checklist · \d+ of \d+ covered<\/summary>/, /class="ess-blk"/, /<details class="fold" data-how="pk" ><summary>Weight and space<\/summary>/];
+  const pos = marks.map(at);
+  assert.deepEqual(pos, [...pos].sort((a, b) => a - b), marks.map(String).join(" < "));
+  // The count on the fold is the checklist's own: its rows that are fully covered
+  const [, have, of] = html.match(/Checklist · (\d+) of (\d+) covered/).map(Number);
+  assert.deepEqual([have, of], app.json(`(r => [r.rows.filter(x => x.cov >= 1).length, r.rows.length])(model().kitRes.go)`));
+  // A fold stays open once opened, as "How this works" does
+  app.run(`S.how.add("ck")`);
+  assert.match(kitHtml(app.run, "go"), /<details class="fold" data-how="ck" open>/);
+  // A home supply has no weight and space, so nothing to fold there; a draft being checked sits right under the prompt
+  assert.doesNotMatch(kitHtml(app.run, "home"), /data-how="pk"/);
+  app.run(`S.draft = { kitId: "go", rows: [{ key: "a", name: "Tent", category: "shelter", qty: 1, liters: 0, kcal: 0, lb: 4.4, L: 9, expires: "", shop: "" }], photoIds: [] }`);
+  const withDraft = kitHtml(app.run, "go");
+  assert.ok(withDraft.indexOf("Photograph the contents") < withDraft.indexOf("Claude found 1 item") && withDraft.indexOf("Claude found 1 item") < withDraft.indexOf('class="kit-pct"'));
+  // Someone who can't add photos sees the kit in its usual order, unfolded
+  app.run(`S.draft = null; S.canWrite = false`);
+  const ro = kitHtml(app.run, "go");
+  assert.doesNotMatch(ro, /<details class="fold"|Photograph the contents/);
+  assert.ok(ro.indexOf('class="kit-pct"') < ro.indexOf('class="fl-zone"'));
 });
 
 test("an empty kit says so under the photo prompt, which explains itself there, and a one-item kit shows one tile", () => {

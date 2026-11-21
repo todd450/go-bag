@@ -69,6 +69,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .how { font-size: .85rem; color: var(--ink-2); }
 .how summary { cursor: pointer; width: fit-content; text-decoration: underline dotted; text-underline-offset: 3px; }
 .how p { max-width: 70ch; margin-top: 4px; }
+/* A panel folded behind one line, as a kit's checklist is while the kit has little in it */
+.fold > summary { cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 12px 16px; border: 1px solid var(--rule); border-radius: var(--r, 14px); background: var(--card); font-size: .9rem; font-weight: 600; list-style: none; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::after { content: "Show"; margin-left: auto; font-size: .82rem; font-weight: 500; color: var(--ink-2); }
+.fold[open] > summary::after { content: "Hide"; }
+.fold[open] > summary { margin-bottom: 10px; }
 .eyebrow { font-size: .8rem; font-weight: 500; color: var(--ink-2); }
 
 /* The header (#154, after Airbnb's): on desktop one row, the wordmark left, the tabs centred, each an illustrated
@@ -696,8 +702,18 @@ tr.picked td { background: color-mix(in srgb, var(--bad) 8%, transparent); }
   .inv tbody tr:has(> td.ess-td > select) {
     grid-template-areas: "sel name name name name x" ". cat cat qty val val" ". ess ess ess . ." ". water food wt size size" ". exp exp exp . ."; }
   .draft .inv tbody tr { grid-template-columns: repeat(4, minmax(0, 1fr)) 28px;
-    grid-template-areas: "name name name name x" "cat cat cat cat cat" "ess ess ess ess ess" "water food wt size ." "qty exp exp exp ."; }
+    grid-template-areas: "name name name name x" "cat cat cat cat cat" "ess ess ess ess ess" "water food wt size ." "qty exp exp exp ." "sum sum sum sum sum"; }
+  /* On a phone a draft row is two lines until its details are asked for: its name, count and ×, then the rest of
+     what Claude read in a line that opens the row. Twenty items are then a short list to check, not twenty forms. */
+  .draft .inv tbody tr.shut { grid-template-columns: minmax(0, 1fr) 64px 28px; grid-template-areas: "name qty x" "sum sum sum"; }
+  .draft .inv tr.shut td:not([data-label="Item"], [data-label="Qty"], .x-td, .d-sum) { display: none; }
+  .draft .inv td.d-sum { display: block; grid-area: sum; }
 }
+/* The line that opens a draft row's details shows only where rows are shut, on a phone */
+.inv td.d-sum { display: none; }
+.d-more { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 32px; padding: 2px 6px; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: .8rem; text-align: left; cursor: pointer; }
+.d-more .chev { flex: none; width: 14px; height: 14px; margin-left: auto; transform: rotate(90deg); }
+.d-more[aria-expanded="true"] .chev { transform: rotate(-90deg); }
 /* The Contents panel: a Flat-lay | List switch, and the flat-lay's zones of item tiles, 4 a row on a phone and more as it widens. */
 .seg { display: inline-flex; padding: 2px; border: 1px solid var(--rule-2); border-radius: 999px; background: var(--card); }
 .seg button { min-height: 30px; padding: 3px 14px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: inherit; font-size: .82rem; cursor: pointer; }
@@ -1424,6 +1440,7 @@ function itemFields(it) {
     ["", "Expires", `<input type="month" id="it-${esc(it.id)}-exp" value="${esc(it.expires || "")}" ${a("expires")} aria-label="Expiry month" ${D()}>${st ? `<span class="flag ${st}">${st === "expired" ? "expired" : "expiring soon"}</span>` : ""}`],
   ];
 }
+const KIT_SPARSE = 5; // a kit with fewer items than this leads with the photo prompt
 function kitDetail(kit, ready, M = model()) {
   const val = itemValues(kit, ready);
   const maxPts = Math.max(1, ...Object.values(val).map(v => v.pts));
@@ -1440,6 +1457,12 @@ function kitDetail(kit, ready, M = model()) {
   const get = kit.id != null && S.toGet === kit.id, left = shopItems().filter(e => !e.done && shopKit(e) === kit.id), off = new Set(splitListed(M.gaps).off);
   const getN = left.length + kitGaps(M, kit.id).filter(g => off.has(g)).length, P = get && shopPlan(M, left);
   const side =(v, label) => `<button type="button" id="ks-${v}" data-act="kitSide" data-v="${v}" aria-pressed="${get === (v === "get")}">${label}</button>`;
+  /* A kit with little in it yet (under KIT_SPARSE items) leads with the camera: the photo prompt comes first, ahead of
+     its readiness, and its long checklist and its weight and space wait folded, each behind one line. Someone who
+     can't add photos sees the kit in its usual order. */
+  const sparse = S.canWrite && items.length < KIT_SPARSE;
+  const top = `<div class="kit-top">${kitReadyPanel(kit, ready, M)}${containerCard(kit, ready.h)}</div>`;
+  const fold = (id, label, body) => !sparse || !body ? body : `<details class="fold" data-how="${id}" ${S.how.has(id) ? "open" : ""}><summary>${label}</summary>${body}</details>`;
   // List: the item table as it always was, shown in the Contents panel once List is pressed
   const list = S.listKit !== kit.id ? "" : `
   ${S.canWrite && S.sel.size ? `<div class="selbar">
@@ -1484,7 +1507,7 @@ function kitDetail(kit, ready, M = model()) {
       : `<details class="more"><summary class="btn ghost sm" aria-label="More for ${esc(kit.name)}">⋯</summary><div class="more-m"><button class="btn ghost sm" data-act="askConfirm" data-k="kit:${esc(kit.id)}">Delete kit</button></div></details>`) : ""}
   </div>${get
     ? `<div class="panel stack">${shopTools(M, P, kit)}${shopSection(M, P, kit) || `<p class="small muted">Nothing to get for this kit.</p>`}</div>${reviewBtn}` : `
-  <div class="kit-top">${kitReadyPanel(kit, ready, M)}${containerCard(kit, ready.h)}</div>
+  ${sparse ? "" : top}
   ${S.canWrite ? `<div class="panel stack" data-drop="photos">
     <div class="row" style="justify-content:space-between">
       <div><b>Photograph the contents</b>${items.length && !tray.length && !scanning ? "" : `<p class="small muted">Lay items out so labels face up. Add as many photos as you need, from the camera or your library, or drop them here. Claude reads them together, then you check the list before anything is saved.</p>`}</div>
@@ -1497,9 +1520,10 @@ function kitDetail(kit, ready, M = model()) {
     ${scanning ? (working ? `<div class="working"><span class="pulse"></span><span>${esc(scanning.msg)}</span></div>` : `<p class="small" style="color:var(--bad)">${esc(scanning.msg)}</p>`) : ""}
   </div>` : shots}
   ${draft ? draftTable(draft) : ""}
+  ${sparse ? top : ""}
   ${contentsPanel(kit, items, list)}
-  ${kitChecklist(kit, ready, M)}
-  ${packPanel(kit, ready)}`}`;
+  ${fold("ck", `Checklist · ${ready.rows.filter(x => x.cov >= 1).length} of ${ready.rows.length} covered`, kitChecklist(kit, ready, M))}
+  ${fold("pk", "Weight and space", packPanel(kit, ready))}`}`;
 }
 /* The Contents panel: Flat-lay, one tile per item in the zones of ZONES, or List, the item table (`list`). It shows
    what is packed; what is missing is the kit's To get. */
@@ -1538,6 +1562,13 @@ function sameNote(d, r, i) {
   const it = matchOf(d, r), was = it && Math.max(1, num(it.qty));
   return it ? `<div class="small row" style="padding:2px 6px;gap:6px"><span><b>Already in this kit</b>${was !== Math.max(1, Math.round(num(r.qty) || 1)) ? `, was ×${was}` : ""}</span><button class="btn ghost sm" data-act="draftUnmatch" data-i="${i}" aria-label="Add ${esc(r.name)} as a new item instead">Add as new</button></div>` : "";
 }
+/* A draft row in a line, for a phone, where a row keeps its details shut until asked: its category, the essential it
+   is (or that one needs picking), and the weight and date read from the photo. */
+function draftSum(r) {
+  const ess = essentialOf(r), list = essentialList(r.category);
+  return [catLabel(r.category), list.length ? (list.find(e => e.id === ess)?.label || (ess === "none" ? "" : "Pick its essential")) : "",
+    num(r.liters) ? `${f1(num(r.liters))} L` : "", num(r.kcal) ? `${Math.round(num(r.kcal)).toLocaleString()} kcal` : "", num(r.lb) ? `${num(r.lb)} lb` : "", r.expires ? `exp ${r.expires}` : ""].filter(Boolean).map(esc).join(" · ");
+}
 function draftTable(d) {
   const same = d.rows.filter(r => matchOf(d, r)).length, fresh = d.rows.length - same;
   return `<div class="panel stack" style="border-color:var(--accent)">
@@ -1547,7 +1578,7 @@ function draftTable(d) {
     </div>
     <div class="tbl-wrap draft"><table class="inv">
       <thead><tr><th>Item</th><th style="width:136px">Category</th><th style="width:136px">Essential</th><th style="width:50px">Qty</th><th style="width:58px">Water L</th><th style="width:64px">Food kcal</th><th style="width:52px">lb</th><th style="width:56px">Size L</th><th style="width:136px">Expires</th><th style="width:28px"></th></tr></thead>
-      <tbody>${d.rows.map((r, i) => `<tr>
+      <tbody>${d.rows.map((r, i) => `<tr class="${r.open ? "" : "shut"}">
         <td data-label="Item"><input type="text" id="d-${r.key}-name" value="${esc(r.name)}" data-input="draft" data-i="${i}" data-f="name" aria-label="Item name">${r.note ? `<div class="small muted" style="padding:0 6px">${esc(r.note)}</div>` : ""}${amazonA({ shopQuery: r.shop })}${sameNote(d, r, i)}</td>
         <td data-label="Category"><select id="d-${r.key}-cat" data-input="draft" data-i="${i}" data-f="category" aria-label="Category">${catOptions(r.category)}</select></td>
         <td class="d-ess" data-label="Essential">${essentialList(r.category).length ? `<select id="d-${r.key}-ess" data-input="draft" data-i="${i}" data-f="essential" aria-label="Which essential ${esc(r.name)} is">${essOptions(r.category, essentialOf(r))}</select>` : ""}</td>
@@ -1558,6 +1589,7 @@ function draftTable(d) {
         <td class="num" data-label="Size L"><input type="number" min="0" step="0.1" id="d-${r.key}-ml" value="${r.L || ""}" data-input="draft" data-i="${i}" data-f="L" aria-label="Size in litres"></td>
         <td data-label="Expires"><input type="month" id="d-${r.key}-exp" value="${esc(r.expires)}" data-input="draft" data-i="${i}" data-f="expires" aria-label="Expiry"></td>
         <td class="x-td"><button class="x" data-act="draftDrop" data-i="${i}" aria-label="Remove ${esc(r.name)}">×</button></td>
+        <td class="d-sum"><button type="button" class="d-more" id="d-${r.key}-more" data-act="draftOpen" data-i="${i}" aria-expanded="${!!r.open}" aria-label="${r.open ? "Fewer" : "More"} details for ${esc(r.name)}"><span class="ell">${r.open ? "Fewer details" : draftSum(r)}</span>${icon("chev", "ic chev")}</button></td>
       </tr>`).join("")}</tbody>
     </table></div>
   </div>`;
@@ -2371,6 +2403,7 @@ const ACT = {
     render();
   },
   trayClear: () => { clearTray(); render(); },
+  draftOpen: b => { const r = S.draft?.rows[+b.dataset.i]; if (r) r.open = !r.open; render(); },
   draftUnmatch: b => { const r = S.draft?.rows[+b.dataset.i]; if (r) r.match = ""; render(); },
   draftDrop: b => { S.draft.rows.splice(+b.dataset.i, 1); render(); },
   draftCancel: () => { for (const id of S.draft?.photoIds || []) assets?.delete(id).catch(() => {}); S.draft = null; render(); },
