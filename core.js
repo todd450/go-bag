@@ -602,7 +602,8 @@ function matchScan(rows, items, taken = []) {
    are added to, and only the emergencies that draw on those stocks are filled again. It is model().overall
    with the items in their kits, to the point (tests/shopping.test.js). */
 function scoreIfBought(list, M = model()) {
-  const add = list.filter(e => CATS[e.cat] && shopKit(e)).map(e => ({ id: "_sim", ...itemFromShop(e, shopKit(e)) }));
+  // A Replace line (shopFromItem) adds nothing new: ticking it makes an out-of-date item count again, and only then
+  const add = list.filter(e => CATS[e.cat] && shopKit(e)).flatMap(e => { const it = replaced(e); return !it ? [{ id: "_sim", ...itemFromShop(e, shopKit(e)) }] : expState(it) === "expired" ? [{ ...it, id: "_sim", expires: "" }] : []; });
   return add.length ? overallWith(M, add) : M.overall;
 }
 /* model().overall with these items added to the household's, without building the model again. */
@@ -629,10 +630,15 @@ function overallWith(M, add) {
 /* A list entry with everything the row shows, worked out from the household as it is now. */
 function shopInfo(e, M) {
   if (!CATS[e.cat]) return { line: e.text, sub: "", tip: "", gain: 0 };
+  /* A Replace line while its item is still in a kit: the item by name, when it goes out of date, and what it cost.
+     Its points are what ticking adds: an expired item counts again, one not yet expired already counts. */
+  const old = !e.done && replaced(e);
+  if (old) return { line: `Replace ${old.name}`, sub: `${expState(old) === "expired" ? "Expired" : "Expires"} ${old.expires}`, tip: "", price: lineCost(e, M.h) ?? undefined, amazonUrl: old.amazonUrl,
+    gain: M.overall == null ? 0 : Math.max(0, scoreIfBought([e], M) - M.overall) };
   const kt = HOUSEHOLD.kits.find(k => k.id === (e.done ? e.inKit : shopKit(e)))?.type || (Array.isArray(e.kits) && e.kits[0]) || "home";
   const b = buyGuide(e.cat, e.qty, e.unit, kt, M.h, e.essential);
   // The bold line says what to buy; below it, water and food say how much and everything else its category
-  return { ...b, sub: e.unit ? e.text : catLabel(e.cat), gain: e.done || e.kitId === "none" || M.overall == null ? 0 : Math.max(0, scoreIfShopped(M, [e]) - M.overall) };
+  return { ...b, ...(e.replaces ? { line: `Replace ${e.name}` } : {}), sub: e.unit ? e.text : catLabel(e.cat), gain: e.done || e.kitId === "none" || M.overall == null ? 0 : Math.max(0, scoreIfShopped(M, [e]) - M.overall) };
 }
 /* The one trip that buys an open line (#123): free is from home, no price the pharmacy, a checked product Amazon, else a
    store run. `i` is its shopInfo, when the caller has it. TRIPS is Review's order. */
@@ -642,7 +648,11 @@ const shopItems = () => Array.isArray(HOUSEHOLD.shopping?.items) ? HOUSEHOLD.sho
 /* Gaps and list lines match on category plus essential. Each line still to buy covers one gap, so two
    prescriptions lines cover two people's, and an old line with no essential covers none of the five's. */
 const gapKey = x => `${x.cat}|${typeof x.essential === "string" ? x.essential : ""}`;
-function splitListed(gaps, lines = shopItems().filter(x => !x.done)) {
+/* The kit item a Replace line is for, while it is still in a kit and still dated. Such a line covers a gap only once
+   its item has expired: until then the item counts, and the gap, if there is one, is something else to buy. */
+const replaced = e => e.replaces ? HOUSEHOLD.items.find(i => i.id === e.replaces && expState(i)) : undefined;
+const coversGap = e => { const it = replaced(e); return !it || expState(it) === "expired"; };
+function splitListed(gaps, lines = shopItems().filter(x => !x.done && coversGap(x))) {
   const n = new Map();
   for (const e of lines) n.set(gapKey(e), (n.get(gapKey(e)) || 0) + 1);
   const on = [], off = [];
@@ -655,6 +665,13 @@ const gapName = g => g.essential ? g.label : catLabel(g.cat).replace(/^[A-Z](?=[
 function shopFromGap(g, h, kitId) {
   const p = gapPlan(g, h);
   return { id: uid(), cat: g.cat, ...(g.essential ? { essential: g.essential } : {}), qty: p.qty, unit: p.unit, name: p.name, text: p.text, note: p.hint, kits: p.kits, kitId: ownKit(kitId), done: false, at: Date.now() };
+}
+/* The line that buys a kit item again before it goes out of date, or after: the same thing, for the kit it is in.
+   Ticking it gives the item a fresh start instead of adding a second one (the page's shopTick). */
+function shopFromItem(it) {
+  const unit = num(it.liters) ? "L" : num(it.kcal) ? "kcal" : "", ess = essentialOf(it), kit = HOUSEHOLD.kits.find(k => k.id === it.kitId);
+  return { id: uid(), cat: CATS[it.category] ? it.category : "other", ...(essentialList(it.category).some(x => x.id === ess) ? { essential: ess } : {}), qty: unit === "L" ? num(it.liters) : unit === "kcal" ? num(it.kcal) : Math.max(1, num(it.qty)), unit,
+    name: String(it.name || catLabel(it.category)), text: `Replace ${it.name || catLabel(it.category)}`, kits: kit ? [kit.type] : [], kitId: ownKit(it.kitId), replaces: it.id, done: false, at: Date.now() };
 }
 // The id of one of the household's kits, else "": "none" and anything else name no kit
 const ownKit = id => id !== "none" && HOUSEHOLD.kits.some(k => k.id === id) ? id : "";
@@ -739,7 +756,7 @@ function shortOf(rows, kt, h) {
   return s;
 }
 /* A list line's price, for the kit it goes in, as Review and the plan bar price it (undefined outside CATS). */
-const lineCost = (e, h) => CATS[e.cat] ? buyGuide(e.cat, e.qty, e.unit, HOUSEHOLD.kits.find(k => k.id === shopKit(e))?.type || (Array.isArray(e.kits) && e.kits[0]) || "home", h, e.essential).price : undefined;
+const lineCost = (e, h) => !e.done && replaced(e) ? itemCost({ ...replaced(e), paid: null }, kitTypeOf(replaced(e)), h).price : CATS[e.cat] ? buyGuide(e.cat, e.qty, e.unit, HOUSEHOLD.kits.find(k => k.id === shopKit(e))?.type || (Array.isArray(e.kits) && e.kits[0]) || "home", h, e.essential).price : undefined;
 /* A kit: what its items cost, and what taking its own checklist (`r`, from kitReadiness) to 100% would. */
 const kitCost = (kit, r, h) => ({ spent: spentOn(HOUSEHOLD.items.filter(i => i.kitId === kit.id), h), toGet: shortOf(r.rows, kit.type, r.kh) });
 /* An emergency, at its full cost: what's in the kits it counts, in the categories it needs, and what it's short.
@@ -959,7 +976,7 @@ if (typeof module === "object" && module && module.exports) module.exports = {
   relevance, FACT_WORDS, FACTS, factText, householdWhy, itemsIn, stock, stockItems, stockPlus, needFor, modelStocks, model, haveOf, needRow,
   fillRow, essCov, rawScore, scoreRows, overallIf, orList, gal, gapPlan, scoreIfShopped, scoreIfFilled, pl, whoIs,
   hasCond, forWho, rxAsk, ESS_BUY, PICKS, essentialGuide, pk, buyGuide, itemFromShop, nameKey, matchScan, scoreIfBought, overallWith, shopInfo, TRIPS,
-  tripOf, shopItems, gapKey, splitListed, gapName, shopFromGap, ownKit, shopKit, kitGaps, KIT_STD, kitReadiness,
+  tripOf, shopItems, gapKey, replaced, coversGap, shopFromItem, splitListed, gapName, shopFromGap, ownKit, shopKit, kitGaps, KIT_STD, kitReadiness,
   dollars, cents, itemCost, kitTypeOf, spentOn, shortOf, lineCost, kitCost, hzCost, householdCost, PACK, WATER_G,
   itemLoad, bodyKg, carryShare, carryKg, PACK_L, CONTAINER_KINDS, CTR_MAX, cutText, containerOf, kitLimits, packPlan,
   itemValues, servesLine, essGap, gapGains, gapGain, essWord, modeLine, personName, daysCovered, MILESTONES
