@@ -55,6 +55,10 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
   Claude features (photo scan, hazard check, review) are off. It serves a temporary copy of the
   page only, never this folder. `sh preview.sh tests/household` (or any fixture) starts it with
   that made-up household loaded from memory (`tools/fixture-db.js`); edits there are never saved.
+- **Design:** read `DESIGN.md` before any visual change. Fonts, colours, spacing, radius and motion
+  are defined there, with what each colour may mean; do not depart from it without the founder's
+  yes, and flag code that does not match it. The page does not match it yet (the founder approved
+  it on 24 Nov 2026 and the restyle is its own pull request).
 - **Screenshots in every PR that changes the page:** run
   `node tools/screenshots.js <scratch dir>`. It shoots every tab at phone (390) and desktop (1440)
   width, from `origin/main` and from your change, with `tests/household` loaded. It takes about
