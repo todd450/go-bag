@@ -2,9 +2,9 @@
 
 Photograph what is in your emergency kits and see how ready your household is: scores sized to
 who lives with you, where you live, and the emergencies you care about most, plus a shopping
-list and a family plan that close the gaps. For now it serves one family, the founder's, at
-https://gobag.halfbadger.com behind a sign-in. *(Drafted from the founder's requests; the founder
-rewrites it.)*
+list and a family plan that close the gaps. It runs at https://gobag.halfbadger.com behind a
+sign-in, and anyone can create an account: each account gets a private household of its own, and
+the founder's family shares one. *(Drafted from the founder's requests; the founder rewrites it.)*
 
 Built by the Founding Agents team with one founder. This file is a short map, not a rulebook: a
 rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its evidence goes in
@@ -40,8 +40,9 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
   stands in for `window.claude` (db, assets, sample, user) on Supabase project `go-bag`
   (`jltxxtjlnzpxdozxovmz`) and the functions in `api/`; `tools/build-web.js` wraps the page with it
   into `dist/` (`npm run build`, Vercel's only build step). The page file is never edited for
-  Vercel. Schema and policies are in `supabase/migrations/`; who may sign in is the
-  `allowed_emails` table. `tests/web-runtime.test.js` covers it.
+  Vercel. Schema and policies are in `supabase/migrations/`. Anyone may sign up; the
+  `allowed_emails` table names the addresses that join the family household instead of getting a
+  new one (`my_household()` in `0002_households.sql`). `tests/web-runtime.test.js` covers it.
   - **Keys are in Doppler**, project `go-bag`, and set or rotated nowhere else: `dev` for this
     machine (`doppler run -- npm run build`, from `doppler.yaml`), `prd` for Vercel production
     through Doppler's Vercel integration. `ANTHROPIC_API_KEY` is in `prd` only and the founder
