@@ -3,7 +3,7 @@
 Photograph what is in your emergency kits and see how ready your household is: scores sized to
 who lives with you, where you live, and the emergencies you care about most, plus a shopping
 list and a family plan that close the gaps. For now it serves one family, the founder's, at
-https://go-bag.vercel.app behind a sign-in. *(Drafted from the founder's requests; the founder
+https://gobag.halfbadger.com behind a sign-in. *(Drafted from the founder's requests; the founder
 rewrites it.)*
 
 Built by the Founding Agents team with one founder. This file is a short map, not a rulebook: a
@@ -25,7 +25,9 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
   is `tests/household.json`.
 - **Shipping:** changes reach `main` only through a pull request. Merging to `main` deploys to
   production: yes. Vercel builds every push to `main` and makes it production at
-  https://go-bag.vercel.app. The integrator merges even though merging deploys (the founder,
+  https://gobag.halfbadger.com (24 Nov 2026; `go-bag.vercel.app` still serves the same deployment,
+  with no redirect, and stays on Supabase's redirect list). The integrator merges even though
+  merging deploys (the founder,
   11 Nov 2026): once a PR's reviewers have approved it, the integrator readies it (up to date,
   Vercel preview built) and turns on auto-merge, and GitHub merges it when the required `check`
   passes. Never merge around a failing check. A bad deploy is undone with Vercel's Instant
