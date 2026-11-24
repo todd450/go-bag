@@ -17,6 +17,6 @@ photos, rating local hazards, reviewing the plan); it works in memory without th
     account one private household of its own; the family's addresses join the family household.
   - The database's SQL tests run by hand, not in CI: `supabase start`, then `supabase test db`
     (Supabase CLI and Docker; decision D10 on #70).
-  - The site is open to anyone. [`docs/opening.md`](docs/opening.md) is the checklist that opened it,
-    followed in order.
+  - The site is open to anyone. The checklist that opened it is
+    [`docs/opening.md`](docs/opening.md).
 - `CLAUDE.md` is the map for agent sessions, including how a change ships.
