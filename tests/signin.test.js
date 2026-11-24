@@ -8,9 +8,8 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const vm = require("node:vm");
-const { execFileSync } = require("node:child_process");
 const { ROOT } = require("./load");
-const { chrome } = require("./phone");
+const { chrome, dumpDom } = require("./phone");
 const { wrap } = require("../tools/page");
 
 const SIGNIN = fs.readFileSync(path.join(ROOT, "web", "signin.js"), "utf8");
@@ -504,8 +503,7 @@ test("at 390 and 1440 px every state fits the long address and nothing scrolls s
       }, 1000);</script>`;
     fs.writeFileSync(path.join(dir, "probe.html"), `<!doctype html><body>${frames}${probe}</body>`);
     // --allow-file-access-from-files lets the probe reach into frames opened from files.
-    const out = execFileSync(chrome, ["--headless=new", "--disable-gpu", "--no-first-run", "--allow-file-access-from-files", `--user-data-dir=${path.join(dir, "profile")}`,
-      "--virtual-time-budget=8000", "--dump-dom", `file://${path.join(dir, "probe.html")}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 60000 });
+    const out = dumpDom(`file://${path.join(dir, "probe.html")}`, dir, { flags: ["--allow-file-access-from-files"], budget: 8000 });
     const m = out.match(/<body data-out="([^"]*)"/);
     assert.ok(m, "the page reported nothing");
     const unesc = s => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");

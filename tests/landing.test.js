@@ -10,7 +10,7 @@ const vm = require("node:vm");
 const { execFileSync } = require("node:child_process");
 const { render } = require("../tools/landing");
 const { load, PAGE, ROOT } = require("./load");
-const { chrome } = require("./phone");
+const { chrome, dumpDom } = require("./phone");
 
 const page = fs.readFileSync(PAGE, "utf8");
 const ADDRESS = "hello@go-bag.example";
@@ -164,8 +164,7 @@ function measure(cases) {
     });
     const run = `<script>onload = () => setTimeout(() => { document.body.dataset.out = JSON.stringify([...document.querySelectorAll("iframe")].map(f => [f.dataset.k, f.contentWindow.eval("(" + ${JSON.stringify(probe)} + ")()")])); }, 500);</script>`;
     fs.writeFileSync(path.join(dir, "probe.html"), `<!doctype html><body>${frames}${run}</body>`);
-    const dom = execFileSync(chrome, ["--headless=new", "--disable-gpu", "--no-first-run", `--user-data-dir=${path.join(dir, "profile")}`, "--host-resolver-rules=MAP * ~NOTFOUND",
-      "--virtual-time-budget=5000", "--dump-dom", `file://${path.join(dir, "probe.html")}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 60000 });
+    const dom = dumpDom(`file://${path.join(dir, "probe.html")}`, dir, { flags: ["--host-resolver-rules=MAP * ~NOTFOUND"] });
     const m = dom.match(/<body data-out="([^"]*)"/);
     assert.ok(m, "the page reported nothing");
     return new Map(JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")));
