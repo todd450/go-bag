@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
+const { dumpDom } = require("./phone");
 const { load, PAGE, ROOT } = require("./load");
 const { wrap } = require("../tools/page");
 
@@ -231,10 +232,8 @@ function inChrome(fixture, width, probe, extraHead) {
       `<script>addEventListener("load", () => setTimeout(() => { const p = document.createElement("pre"); p.id = "probe";`
       + ` p.textContent = encodeURIComponent(JSON.stringify((${probe})())); document.body.append(p); }, 500));</script></body>`);
     fs.writeFileSync(path.join(dir, "index.html"), page);
-    const out = execFileSync(chrome, ["--headless=new", "--disable-gpu", "--no-first-run", "--hide-scrollbars",
-      ...(process.platform === "linux" ? ["--no-sandbox"] : []), `--user-data-dir=${path.join(dir, "profile")}`,
-      `--window-size=${width},900`, "--virtual-time-budget=5000", "--dump-dom", `file://${path.join(dir, "index.html")}#kits`],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 45000 });
+    const out = dumpDom(`file://${path.join(dir, "index.html")}#kits`, dir, { bin: chrome, timeout: 45000,
+      flags: ["--hide-scrollbars", ...(process.platform === "linux" ? ["--no-sandbox"] : []), `--window-size=${width},900`] });
     const m = out.match(/<pre id="probe">([^<]*)<\/pre>/);
     assert.ok(m, "the page settled and the probe ran");
     return JSON.parse(decodeURIComponent(m[1]));
