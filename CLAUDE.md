@@ -25,11 +25,10 @@ rule that must hold becomes a test in `check.sh`, a lint rule or a hook, and its
   is `tests/household.json`.
 - **Shipping:** changes reach `main` only through a pull request. Merging to `main` deploys to
   production: yes. Vercel builds every push to `main` and makes it production at
-  https://gobag.halfbadger.com (24 Nov 2026; `go-bag.vercel.app` still serves the same deployment,
-  with no redirect, and stays on Supabase's redirect list). The integrator merges even though
-  merging deploys (the founder,
-  11 Nov 2026): once a PR's reviewers have approved it, the integrator readies it (up to date,
-  Vercel preview built) and turns on auto-merge, and GitHub merges it when the required `check`
+  https://gobag.halfbadger.com (24 Nov 2026). `go-bag.vercel.app` still serves the same
+  deployment, with no redirect, and stays on Supabase's redirect list. The integrator merges even
+  though merging deploys (the founder, 11 Nov 2026): once a PR's reviewers have approved it, the
+  integrator readies it (up to date, Vercel preview built) and turns on auto-merge, and GitHub merges it when the required `check`
   passes. Never merge around a failing check. A bad deploy is undone with Vercel's Instant
   Rollback. The `ship` skill
   (`.claude/skills/ship/`) is the step-by-step, and `live-commit.sh` there tells which commit is
