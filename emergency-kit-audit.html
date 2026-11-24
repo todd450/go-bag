@@ -2032,10 +2032,15 @@ function render() {
   $(".brand-mark").innerHTML = caseMark(M.overall, 28);
   // The tab icon shows the 75 form until the household's data has loaded, and is rewritten only when its score moves.
   // claude.ai wraps the page's markup in <body>, where browsers ignore icon links, so the first write moves it to <head>.
+  // On Vercel the head already has one, to /favicon.svg: that one is redrawn, and the page's own empty one is dropped.
   const tab = caseScore(S.loaded && M.overall != null ? M.overall : 75);
   if (tab !== tabIcon) {
     tabIcon = tab; const l = $('link[rel="icon"]');
-    if (l) { if (document.head && l.parentNode !== document.head) document.head.appendChild(l); l.href = tabIconHref(tab); }
+    if (l) {
+      if (document.head && l.parentNode !== document.head) document.head.appendChild(l);
+      l.href = tabIconHref(tab);
+      for (const x of document.querySelectorAll('link[rel="icon"]')) if (x !== l) x.remove();
+    }
   }
   $("#banner").innerHTML = viewBanner();
   $(".top").inert = $("#banner").inert = S.view === "kits" && !!S.allKits; // Review is modal

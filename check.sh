@@ -24,7 +24,7 @@ fi
 
 # The Vercel version (issue #48): the runtime that stands in for window.claude, its build, and its
 # functions parse. Their behaviour is in tests/web-runtime.test.js.
-for f in web/runtime.js tools/build-web.js api/*.mjs; do node --check "$f"; done
+for f in web/runtime.js tools/build-web.js tools/icons.js api/*.mjs; do node --check "$f"; done
 
 # The app's size (the page and core.js), gzipped, the way it travels to the founder's phone: reported, never a failure. The size
 # budget set in #25 was removed on 14 Nov 2026 by the founder's choice, after it had been raised eight times.

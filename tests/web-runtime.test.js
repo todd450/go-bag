@@ -984,7 +984,7 @@ test("the build needs Supabase's address and key", () => {
 
 test("the build puts the landing at / and the page, wrapped byte for byte, at /app", () => {
   withBuild({ ...BASE, SUPABASE_PUBLISHABLE_KEY: "pk</script><script>alert(1)</script>", CONTACT_EMAIL: "hello@go-bag.example" }, ({ dist, read, render }) => {
-    assert.deepEqual(walk(dist).sort(), ["app/index.html", "core.js", "index.html", "runtime.js", "signin.js", "supabase.js"]);
+    assert.deepEqual(walk(dist).sort(), ["app/index.html", "apple-touch-icon.png", "core.js", "favicon.ico", "favicon.svg", "index.html", "runtime.js", "signin.js", "supabase.js"]);
 
     const html = read("app/index.html");
     const page = fs.readFileSync(path.join(ROOT, "emergency-kit-audit.html"), "utf8");
@@ -1008,6 +1008,14 @@ test("the build puts the landing at / and the page, wrapped byte for byte, at /a
 
     const landing = read("index.html");
     assert.equal(landing, render({ contactEmail: "hello@go-bag.example" }));
+
+    // The icon: its files at the site's root, and both pages linking them from <head>, so a tab has one before any script runs.
+    for (const name of ["favicon.ico", "favicon.svg", "apple-touch-icon.png"]) assert.ok(fs.readFileSync(path.join(dist, name)).equals(fs.readFileSync(path.join(ROOT, "web", name))), name);
+    for (const [name, top] of [["/app", head], ["/", landing.slice(0, landing.indexOf("</head>"))]]) {
+      assert.deepEqual(top.match(/<link[^>]*rel="icon"[^>]*>/g), ['<link rel="icon" type="image/svg+xml" href="/favicon.svg">'], `${name} has one icon link in its head`);
+      assert.ok(top.includes('<link rel="apple-touch-icon" href="/apple-touch-icon.png">'), `${name} names the home-screen icon`);
+    }
+    assert.ok(head.indexOf('rel="icon"') < head.indexOf("<script"), "the app's icon link comes before any script");
     assert.ok(!/<script\s+src/i.test(landing), "the landing loads no scripts");
   });
 });

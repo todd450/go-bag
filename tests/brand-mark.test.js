@@ -142,6 +142,19 @@ test("the tab icon shows 75 before data loads, then the live household score, re
   assert.equal(app.run("__icon.writes.length"), writes + 1);
 });
 
+test("the site's icon files are the page's own tab icon at 75", () => {
+  const web = f => fs.readFileSync(path.join(ROOT, "web", f));
+  assert.equal(web("favicon.svg").toString(), require("../tools/icons").svg() + "\n", "web/favicon.svg is out of date: run node tools/icons.js");
+  assert.equal(fillOf(web("favicon.svg").toString()), 75);
+  // The drawn copies can't be compared without Chrome; check they are what their names say.
+  const ico = web("favicon.ico"), png = web("apple-touch-icon.png"), PNG = "89504e470d0a1a0a";
+  assert.deepEqual([ico.readUInt16LE(0), ico.readUInt16LE(2), ico.readUInt16LE(4)], [0, 1, 2], "an .ico with two pictures");
+  assert.deepEqual([ico[6], ico[22]], [32, 48]);
+  for (const e of [6, 22]) assert.equal(ico.subarray(ico.readUInt32LE(e + 12), ico.readUInt32LE(e + 12) + 8).toString("hex"), PNG);
+  assert.equal(png.subarray(0, 8).toString("hex"), PNG);
+  assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [180, 180]);
+});
+
 test("the tab icon at 0 and 100 still draws a case", () => {
   const { run } = load();
   for (const [s, fill] of [[0, null], [100, 100]]) {
@@ -210,11 +223,11 @@ const needsChrome = { skip: !chrome && !process.env.CI && "needs Chrome", timeou
 // Loads the page wrapped the way claude.ai wraps it (its markup lands in <body>), with `fixture`, on
 // the Kits tab in headless Chrome `width` pixels wide, and returns what `probe` returns once it has
 // settled. The web font is left out, so the test makes no network calls.
-function inChrome(fixture, width, probe) {
+function inChrome(fixture, width, probe, extraHead) {
   assert.ok(chrome, "no Chrome found: install it or set CHROME");
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-mark-"));
   try {
-    const page = wrap(undefined, fixture).replace(/<link[^>]*fonts\.g[^>]*>/g, "").replace(/<\/body>/,
+    const page = wrap(undefined, fixture, extraHead).replace(/<link[^>]*fonts\.g[^>]*>/g, "").replace(/<\/body>/,
       `<script>addEventListener("load", () => setTimeout(() => { const p = document.createElement("pre"); p.id = "probe";`
       + ` p.textContent = encodeURIComponent(JSON.stringify((${probe})())); document.body.append(p); }, 500));</script></body>`);
     fs.writeFileSync(path.join(dir, "index.html"), page);
@@ -235,6 +248,16 @@ test("in Chrome, the tab icon link sits in <head>, where browsers read it, at th
   });
   assert.deepEqual(got.inHead, [true], "one icon link, in <head>");
   assert.equal(fillOf(iconSvg(got.href)), got.overall || null);
+});
+
+test("in Chrome, with the Vercel build's icon link already in <head>, that one is redrawn and it is the only one", needsChrome, () => {
+  const got = inChrome("tests/household", 1440, () => {
+    const links = [...document.querySelectorAll('link[rel~="icon"]')];
+    return { inHead: links.map(l => l.parentNode === document.head), href: links[0] && links[0].getAttribute("href"), touch: !!document.querySelector('head > link[rel="apple-touch-icon"]'), overall: model().overall };
+  }, require("../tools/build-web").ICON_LINKS);
+  assert.deepEqual(got.inHead, [true], "one icon link, in <head>: the page's own empty one is gone");
+  assert.equal(fillOf(iconSvg(got.href)), got.overall || null);
+  assert.ok(got.touch, "the home-screen icon is left alone");
 });
 
 for (const fixture of ["tests/household", "fixtures/empty-and-one/big-household"]) {
