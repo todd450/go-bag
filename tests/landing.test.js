@@ -85,14 +85,17 @@ test("the design tokens are the page's own, byte for byte, and the landing write
   assert.ok(!/(?<!&)#[0-9a-f]{3,8}\b/i.test(markup), "no hex colour in the markup either");
 });
 
-test("the case mark is the page's at 75, and the font links are the page's own", () => {
+test("the case mark is the page's at 75, the font links are the page's own, and the icon is the site's", () => {
   const app = load();
   const mark = app.run("caseMark(75, 28)");
   assert.ok(out.includes(mark), "the top bar's case mark is caseMark(75, 28)");
   const pageLinks = new Set(page.match(/<link\b[^>]*>/g));
   const links = out.match(/<link\b[^>]*>/g) || [];
   assert.ok(links.some(l => /fonts\.googleapis\.com\/css2\?family=Inter/.test(l)), "the Inter stylesheet");
-  for (const l of links) assert.ok(pageLinks.has(l), `${l} is one of the page's`);
+  // The icon links are the build's own, to the files it puts at the site's root; the app's page gets the same two.
+  const icons = require("../tools/build-web").ICON_LINKS.match(/<link\b[^>]*>/g);
+  assert.deepEqual(links.filter(l => /rel="[^"]*icon/.test(l)), icons, "the site's icon links, as the build writes them for /app");
+  for (const l of links) assert.ok(pageLinks.has(l) || icons.includes(l), `${l} is one of the page's`);
 });
 
 test("one inline script, and nothing from anywhere but the page's own Google Fonts links", () => {

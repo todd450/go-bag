@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Builds the Vercel site into dist/ (issues #48 and #78): the landing at / (tools/landing.js), and at
 // /app the page wrapped the way tools/page.js wraps it for previews, plus supabase-js, web/signin.js
-// and web/runtime.js, which stand in for claude.ai's window.claude, and core.js, which the page's script
-// needs to have run first (#113). The page itself is copied byte
+// and web/runtime.js, which stand in for claude.ai's window.claude, core.js, which the page's script
+// needs to have run first (#113), and the site's icon files. The page itself is copied byte
 // for byte. Vercel runs this as `npm run build`.
 //   SUPABASE_URL=... SUPABASE_PUBLISHABLE_KEY=... [CONTACT_EMAIL=...] [SENDER_EMAIL=...] node tools/build-web.js [outDir]
 const fs = require("node:fs");
@@ -10,6 +10,9 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const { wrap, ROOT } = require("./page");
 const landing = require("./landing");
+
+const ICONS = ["favicon.ico", "favicon.svg", "apple-touch-icon.png"];
+const ICON_LINKS = '<link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="apple-touch-icon" href="/apple-touch-icon.png">';
 
 // `supabaseJs` is the browser build of supabase-js; tests pass a stand-in, so they need no install.
 function build(out = path.join(ROOT, "dist"), env = process.env, supabaseJs = require.resolve("@supabase/supabase-js/dist/umd/supabase.js", { paths: [ROOT] })) {
@@ -26,11 +29,15 @@ function build(out = path.join(ROOT, "dist"), env = process.env, supabaseJs = re
     "runtime.js": fs.readFileSync(path.join(ROOT, "web", "runtime.js")),
     "core.js": fs.readFileSync(path.join(ROOT, "core.js")),
   };
+  // The site's icon (tools/icons.js writes the three files): the address every browser tries, the SVG the pages link, and iOS's.
+  for (const name of ICONS) files[name] = fs.readFileSync(path.join(ROOT, "web", name));
   // Content hashes in the URLs, so a new deploy is never served an old cached script.
   const v = name => crypto.createHash("sha256").update(files[name]).digest("hex").slice(0, 10);
   const tag = name => `<script src="/${name}?v=${v(name)}"></script>`;
   const js = s => s.replace(/</g, "\\u003c");
-  const head =
+  // The page's own icon link is in <body> and empty until its script runs; this one is there from the first byte,
+  // sign-in card included, and is the one the page's script then redraws at the household's score.
+  const head = ICON_LINKS +
     `<script>window.GO_BAG_CONFIG = ${js(JSON.stringify(config))};</script>` +
     ["supabase.js", "signin.js", "runtime.js"].map(tag).join("");
   files["index.html"] = landing.render({ contactEmail });
@@ -49,4 +56,4 @@ if (require.main === module) {
   try { console.log("build-web: wrote " + build(process.argv[2] ? path.resolve(process.argv[2]) : undefined)); }
   catch (e) { console.error(e.message); process.exit(1); }
 }
-module.exports = { build };
+module.exports = { build, ICONS, ICON_LINKS };
