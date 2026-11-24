@@ -254,7 +254,7 @@ test("drawing the add row again keeps its category and its Essential picker toge
 
 // The same in a real browser, the way Safari and iPhone leave it: tapping + keeps focus on the category select,
 // and render() puts back the focused control's value. Skipped when there's no Chrome.
-const { execFileSync } = require("node:child_process");
+const { dumpDom } = require("./phone");
 const os = require("node:os");
 const { wrap } = require("../tools/page.js");
 const chrome = process.env.CHROME || ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(f => fs.existsSync(f));
@@ -275,8 +275,7 @@ test("in a browser, the add row never shows a checklist category without its Ess
       document.body.dataset.out = JSON.stringify(out);
     } catch (e) { document.body.dataset.out = JSON.stringify({ error: String(e && e.stack || e) }); } }, 500));</script>`;
     fs.writeFileSync(path.join(dir, "page.html"), wrap(undefined, "tests/household").replace(/<\/body>(?![\s\S]*<\/body>)/, probe + "</body>"));
-    const html = execFileSync(chrome, ["--headless=new", "--disable-gpu", "--no-first-run", `--user-data-dir=${path.join(dir, "profile")}`,
-      "--virtual-time-budget=5000", "--dump-dom", `file://${path.join(dir, "page.html")}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 60000 });
+    const html = dumpDom(`file://${path.join(dir, "page.html")}`, dir, { bin: chrome });
     const m = html.match(/<body[^>]* data-out="([^"]*)"/);
     assert.ok(m, "the page reported nothing");
     const out = JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&"));

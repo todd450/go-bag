@@ -84,6 +84,29 @@ test("a browser that never answers is started again, then fails the run instead 
   assert.ok(ran <= 2, `started ${ran} times, never more than asked`);
 });
 
+// A one-shot Chrome (--dump-dom) was once killed the moment it started, on a machine with another run's Chrome up,
+// and failed a test that had asserted nothing. It is started again with a fresh profile; a Chrome killed every
+// time still fails, and one that exits with an error of its own is not tried twice.
+test("a one-shot Chrome killed as it starts is started again, with a new profile each time", () => {
+  const { dumpDom } = require("./phone");
+  const fake = path.join(dir, "killed-chrome"), log = path.join(dir, "kills");
+  // Dies by SIGKILL until it has been started `$LIVE_ON` times, then prints a page.
+  fs.writeFileSync(fake, `#!/bin/sh\necho "$4" >> "${log}"\n[ "$(wc -l < "${log}")" -lt "$LIVE_ON" ] && kill -9 $$\necho "<p>up</p>"\n`, { mode: 0o755 });
+  const run = (liveOn, starts) => { fs.rmSync(log, { force: true }); process.env.LIVE_ON = liveOn; try { return dumpDom("file:///x", dir, { bin: fake, starts }); } finally { delete process.env.LIVE_ON; } };
+  assert.equal(run(3, 3), "<p>up</p>\n", "the third start answers");
+  const profiles = fs.readFileSync(log, "utf8").trim().split("\n");
+  assert.equal(profiles.length, 3);
+  assert.equal(new Set(profiles).size, 3, "no start reuses a killed Chrome's profile");
+  assert.throws(() => run(9, 3), /Chrome was killed \(SIGKILL\) in each of 3 starts/);
+  assert.equal(fs.readFileSync(log, "utf8").trim().split("\n").length, 3, "never more starts than asked");
+
+  const broken = path.join(dir, "broken-chrome");
+  fs.writeFileSync(broken, `#!/bin/sh\necho x >> "${log}"\nexit 3\n`, { mode: 0o755 });
+  fs.rmSync(log, { force: true });
+  assert.throws(() => dumpDom("file:///x", dir, { bin: broken }), e => e.status === 3);
+  assert.equal(fs.readFileSync(log, "utf8").trim().split("\n").length, 1, "an error of Chrome's own is not retried");
+});
+
 // Starting Chrome is most of what a browser test waits for (issue #147), so one test file's pages share one Chrome.
 // Each page still starts clean, as a new Chrome's would: its own storage and screen size, none of the last page's.
 // Once the last page closes, Chrome exits, so the test file's process can end.

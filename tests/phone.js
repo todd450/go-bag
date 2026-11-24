@@ -15,7 +15,24 @@ const unesc = s => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;
 
 const CLASSIC = "<style>::-webkit-scrollbar { width: 15px; height: 15px; background: #ddd; }</style>";
 
-// The dump holds every frame's copy of the page, so it outgrows execFileSync's default 1 MB buffer.
+// Loads `url` in a headless Chrome of its own and returns the page as it stands once it has settled (--dump-dom).
+// `dir` is the caller's scratch folder; `flags` go ahead of the address. A Chrome killed from outside before it
+// answers (seen on a laptop whose main checkout ran the checks while another run had Chrome up: SIGKILL within
+// milliseconds, nothing printed) is started again, three starts at most, each with a profile of its own, since a
+// killed Chrome leaves its profile locked. A Chrome that runs out its time, or exits with an error, is a failure.
+function dumpDom(url, dir, { flags = [], budget = 5000, timeout = 60000, starts = 3, bin = chrome } = {}) {
+  for (let n = 1; ; n++) {
+    try {
+      return execFileSync(bin, ["--headless=new", "--disable-gpu", "--no-first-run", `--user-data-dir=${path.join(dir, "profile-" + n)}`, ...flags,
+        `--virtual-time-budget=${budget}`, "--dump-dom", url], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout, maxBuffer: 1e8 });
+    } catch (e) {
+      const killed = e.signal && e.code !== "ETIMEDOUT";
+      if (!killed || n >= starts) { if (killed) e.message = `Chrome was killed (${e.signal}) in each of ${n} starts: ${e.message}`; throw e; }
+    }
+  }
+}
+
+// (The dump holds every frame's copy of the page, so dumpDom reads it with a buffer far past execFileSync's 1 MB.)
 // Runs `measure` inside the page for each fixture, at 390px wide, and returns a Map of fixture to what it returned.
 function atPhoneWidth(fixtures, measure) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "go-bag-phone-"));
@@ -24,12 +41,11 @@ function atPhoneWidth(fixtures, measure) {
     const frames = fixtures.map(f => `<iframe data-f="${attr(f)}" style="width:390px;height:844px;border:0" srcdoc="${attr(wrap(undefined, f) + CLASSIC)}"></iframe>`).join("");
     const probe = `<script>onload = () => setTimeout(() => { document.body.dataset.out = JSON.stringify([...document.querySelectorAll("iframe")].map(fr => [fr.dataset.f, fr.contentWindow.eval("(" + ${JSON.stringify(String(measure))} + ")()")])); }, 1000);</script>`;
     fs.writeFileSync(path.join(dir, "probe.html"), `<!doctype html><body>${frames}${probe}</body>`);
-    const out = execFileSync(chrome, ["--headless=new", "--disable-gpu", "--no-first-run", `--user-data-dir=${path.join(dir, "profile")}`,
-      "--virtual-time-budget=5000", "--dump-dom", `file://${path.join(dir, "probe.html")}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 60000, maxBuffer: 1e8 });
+    const out = dumpDom(`file://${path.join(dir, "probe.html")}`, dir);
     const m = out.match(/<body data-out="([^"]*)"/);
     assert.ok(m, "the page reported nothing");
     return new Map(JSON.parse(unesc(m[1])));
   } finally { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 }); }
 }
 
-module.exports = { chrome, atPhoneWidth, CLASSIC };
+module.exports = { chrome, atPhoneWidth, dumpDom, CLASSIC };
