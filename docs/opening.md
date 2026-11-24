@@ -8,9 +8,9 @@ Supabase's Redirect URLs allow it. Supabase's Site URL is the bare domain for no
 address step 3 asks for.
 
 Placeholders: `go-bag.example` stands for the founder's domain (D8; now `gobag.halfbadger.com`),
-`alex@example.com` and `sam@example.com` for real addresses, and `<household_id>` for a household's id, copied from
-the SQL that finds it. Run SQL in the Supabase dashboard's SQL Editor for project `go-bag`. A
-session may run it for you only with your yes, since it touches the family's data.
+`alex@example.com` and `sam@example.com` for real addresses, and `<household_id>` for a household's
+id, copied from the SQL that finds it. Run SQL in the Supabase dashboard's SQL Editor for project
+`go-bag`. A session may run it for you only with your yes, since it touches the family's data.
 
 ## 1. Apply the migrations
 
