@@ -6,12 +6,12 @@
 // #95) or core.js (#113) is found too, which matching the page alone would miss. The landing at / is not checked.
 // Exits 0 with the commit, 1 when no commit matches (saying which file doesn't), 2 when it can't read
 // the site.
-//   node tools/live-commit.js [url, dist/ folder or saved app page; default https://go-bag.vercel.app/app] [ref, default origin/main]
+//   node tools/live-commit.js [url, dist/ folder or saved app page; default https://gobag.halfbadger.com/app] [ref, default origin/main]
 const fs = require("node:fs");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 
-const PROD = "https://go-bag.vercel.app/app";
+const PROD = "https://gobag.halfbadger.com/app";
 // What is served, and the file in the repo it is built from, byte for byte.
 const FILES = { page: "emergency-kit-audit.html", "runtime.js": "web/runtime.js", "signin.js": "web/signin.js", "core.js": "core.js" };
 const OPEN = "</head><body>", CLOSE = "</body></html>";
