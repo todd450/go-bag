@@ -4,7 +4,7 @@ Photograph what is in your emergency kits and see how ready your household is. S
 to who lives with you, where you live and the emergencies that matter most to you, and the app
 turns the gaps into a shopping list and a family plan.
 
-The app is one page, `emergency-kit-audit.html`, live at https://go-bag.vercel.app. Vercel serves
+The app is one page, `emergency-kit-audit.html`, live at https://gobag.halfbadger.com. Vercel serves
 it with Supabase for data, photos and sign-in, and a Vercel function for Claude (reading kit
 photos, rating local hazards, reviewing the plan); it works in memory without them. Merging to
 `main` deploys it.

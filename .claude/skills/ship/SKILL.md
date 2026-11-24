@@ -5,7 +5,7 @@ description: Ready reviewed go-bag pull requests and merge them with auto-merge,
 
 # Ship go-bag
 
-Production is https://go-bag.vercel.app, the Vercel project `go-bag` (team `todd450s-projects`),
+Production is https://gobag.halfbadger.com, the Vercel project `go-bag` (team `todd450s-projects`),
 with its data in Supabase project `go-bag` (`jltxxtjlnzpxdozxovmz`). Vercel builds every push to
 `main` and makes it production, so **merging to `main` is publishing**. The integrator merges,
 without asking the founder: it readies each reviewed PR and turns on auto-merge, and GitHub merges
@@ -59,7 +59,7 @@ For each PR:
    founder: production still serves the previous deployment, and Vercel can roll back to any
    earlier one.
 3. **Check what's served.** Run `sh .claude/skills/ship/live-commit.sh`. It fetches
-   https://go-bag.vercel.app/app and the `runtime.js` and `signin.js` it loads, and prints the
+   https://gobag.halfbadger.com/app and the `runtime.js` and `signin.js` it loads, and prints the
    newest commit whose page and both scripts all match; it must print `$sha`, or the newest commit
    before `$sha` that changed one of them (a merge that only touches tests or docs leaves them as
    they were). When nothing matches it says which file doesn't, and exits 1. The landing at `/` is

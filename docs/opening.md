@@ -3,10 +3,14 @@
 The founder's checklist from #70: follow it top to bottom, and don't skip ahead. The site stays
 behind Vercel's Deployment Protection until step 5 comes back all 0s (D7).
 
-Placeholders: `go-bag.example` stands for the founder's domain (D8), `alex@example.com` and
-`sam@example.com` for real addresses, and `<household_id>` for a household's id, copied from
-the SQL that finds it. Run SQL in the Supabase dashboard's SQL Editor for project `go-bag`. A
-session may run it for you only with your yes, since it touches the family's data.
+The site's domain is `gobag.halfbadger.com` (24 Nov 2026): it is on the Vercel project, and
+Supabase's Redirect URLs allow it. Supabase's Site URL is the bare domain for now, not the `/app`
+address step 3 asks for.
+
+Placeholders: `go-bag.example` stands for the founder's domain (D8; now `gobag.halfbadger.com`),
+`alex@example.com` and `sam@example.com` for real addresses, and `<household_id>` for a household's
+id, copied from the SQL that finds it. Run SQL in the Supabase dashboard's SQL Editor for project
+`go-bag`. A session may run it for you only with your yes, since it touches the family's data.
 
 ## 1. Apply the migrations
 
