@@ -4,8 +4,8 @@ The founder's checklist from #70: follow it top to bottom, and don't skip ahead.
 behind Vercel's Deployment Protection until step 5 comes back all 0s (D7).
 
 The site's domain is `gobag.halfbadger.com` (24 Nov 2026): it is on the Vercel project, and
-Supabase's Redirect URLs allow it. Supabase's Site URL is the bare domain for now, not the `/app`
-address step 3 asks for.
+Supabase's Redirect URLs allow it and its Site URL is `https://gobag.halfbadger.com/app`, as step 3
+asks.
 
 Placeholders: `go-bag.example` stands for the founder's domain (D8; now `gobag.halfbadger.com`),
 `alex@example.com` and `sam@example.com` for real addresses, and `<household_id>` for a household's
